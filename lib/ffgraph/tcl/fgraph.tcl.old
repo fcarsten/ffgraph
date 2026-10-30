@@ -1,0 +1,844 @@
+#!/public/bin/wish -f
+# Program: graph
+
+global PVTLIBDIR
+source $PVTLIBDIR/tcl/xfmisc.tcl
+source $PVTLIBDIR/tcl/stdGraph.tcl
+source $PVTLIBDIR/tcl/fileselect.tcl
+
+
+# procedure to show window .
+proc ShowWindow. {args} {
+
+  # Window manager configurations
+  global tk_version
+  wm positionfrom . program
+  wm sizefrom . program
+  wm geometry . 800x550+50+170
+  wm maxsize . 1152 900
+  wm minsize . 0 0
+  wm title . {Graph}
+
+  if {$tk_version >= 3.0} {
+    wm protocol . WM_DELETE_WINDOW { 
+      recall deleteWindow; 
+      if {[string match "*.topA*"    [info commands]]} {
+        destroy .topA
+      }
+      destroy .
+    }
+  }
+
+
+  # build widget .frame0
+  frame .frame0 \
+    -background {gainsboro} \
+    -relief {raised}
+
+  global aktuCanvas
+
+  # build widget .frame0.scrollbar1
+  scrollbar .frame0.scrollbar1 \
+      -command {global aktuCanvas; $aktuCanvas yview} \
+      -bg {gold} \
+      -relief {raised}
+
+  # build widget .frame0.scrollbar3
+  scrollbar .frame0.scrollbar3 \
+      -command {global aktuCanvas; $aktuCanvas xview} \
+      -bg {gold} \
+      -orient {horizontal} \
+      -relief {raised}
+
+
+  # build widget .frame0.canvas2
+  canvas .frame0.canvas2 \
+    -background {white} \
+    -height {207} \
+    -insertbackground {black} \
+    -insertofftime {600} \
+    -relief {raised} \
+    -selectbackground {black} \
+    -selectforeground {gainsboro} \
+    -width {300} \
+    -xscrollcommand {.frame0.scrollbar3 set} \
+    -yscrollcommand {.frame0.scrollbar1 set}
+
+  .frame0.canvas2 create rectangle -1000 -1000 2000 2000
+  
+  global dragItem
+  set dragItem [.frame0.canvas2 create rectangle 0 0 0 0]
+  .frame0.canvas2 itemconfigure $dragItem -outline [.frame0.canvas2 cget -bg]
+  
+  global isDirected
+  set isDirected(.frame0.canvas2) {YES}
+  
+  if {$tk_version < 4} {
+    .frame0.canvas2 xview 300 
+    .frame0.canvas2 yview 300 
+  } {
+    .frame0.canvas2 xview scroll 300 units
+    .frame0.canvas2 yview scroll 300 units
+  }
+
+  # bindings
+  bind .frame0.canvas2 <B1-Motion> {
+    global draging
+    global workingMode
+    
+    switch $workingMode {Navigate} {
+      global dragBoxX
+      global dragBoxY
+      recall moveEye [expr [%W canvasx %x] - $dragBoxX] \
+        [expr [%W canvasy %y] - $dragBoxY]
+      set dragBoxX [%W canvasx %x]
+      set dragBoxY [%W canvasy %y]
+    } {default} {
+      if {$draging == 1} {
+        drawDragBox [%W canvasx %x] [%W canvasy %y]
+      }
+    }
+  }
+  
+  bind .frame0.canvas2 <B3-Motion> {
+    MenuPopupHandle .frame0.canvas2.menu1 %W %X %Y;  
+    MenuPopupHandle .frame0.canvas2.menu0 %W %X %Y
+  }
+  
+  bind .frame0.canvas2 <Button-1> {
+    global dragBoxX
+    global dragBoxY
+    global draging  
+    set draging 0  
+    set overlapping_items [.frame0.canvas2 find overlapping \
+                             [%W canvasx %x] [%W canvasy %y] [%W canvasx %x] \
+                             [%W canvasy %y]] 
+
+    if {$overlapping_items == ""} {    
+      set dragBoxX [%W canvasx %x]
+      set dragBoxY [%W canvasy %y]
+      global dragItem
+      %W itemconfigure $dragItem -outline black
+      set draging 1
+    }
+  }
+
+  bind .frame0.canvas2 <ButtonRelease-1> {
+    global dragBoxX
+    global dragBoxY
+    global draging
+    
+    if {$draging == 1} {
+      global workingMode
+      
+      switch $workingMode {Create} {
+        recall unsetCurrent
+        set overlapping_items [.frame0.canvas2 find overlapping $dragBoxX \
+                                 $dragBoxY [%W canvasx %x] [%W canvasy %y]] 
+        foreach i $overlapping_items {
+          if {[lsearch [.frame0.canvas2 gettags $i] nodetag] != -1} { 
+            recall multiSelect $i
+          }
+        }
+      } {Zoom} {          
+        
+        scan "[%W cget -scrollregion]" {%%d %%d %%d %%d} sx1 sy1 sx2 sy2
+        scan "[%W xview]" {%%f %%f} fraqX1 fraqX2
+        scan "[%W yview]" {%%f %%f} fraqY1 fraqY2
+        set fraqX [expr $fraqX2-$fraqX1]
+        set fraqY [expr $fraqY2-$fraqY1]
+        set breite [expr ($sx2 - $sx1)*$fraqX]
+        set hoehe [expr ($sy2 - $sy1)*$fraqY]
+        # puts "Breite $breite"
+        # puts "Hoehe $hoehe"
+        
+        
+        set centX [expr $dragBoxX + ([%W canvasx %x]-$dragBoxX)/2 ]
+        set centY [expr $dragBoxY + ([%W canvasx %Y]-$dragBoxY)/2 ]
+        
+        # puts "box: $dragBoxX x $dragBoxY --- [%W canvasx %x] x [%W canvasx %Y]"
+        # puts "center $centX x $centY"
+        
+        centerCanvas %W $centX $centY
+        
+        recall boxscale [expr ($breite/([%W canvasx %x]-$dragBoxX))] \
+          [expr ($hoehe/([%W canvasy %y]-$dragBoxY))]
+            
+      } {Navigate} {
+          
+      }
+    }
+    set dragBoxX 0
+    set dragBoxY 0
+    drawDragBox 0 0
+    global dragItem
+    %W itemconfigure $dragItem -outline [%W cget -bg]
+    set draging 0
+  }
+
+  bind .frame0.canvas2 <ButtonRelease-3> {
+    .frame0.canvas2.menu1 invoke active; 
+    .frame0.canvas2.menu1 unpost;
+    .frame0.canvas2.menu0 invoke active; 
+    .frame0.canvas2.menu0 unpost
+  }
+
+  bind .frame0.canvas2 <Control-Button-1> {
+    set overlapping_items [.frame0.canvas2 find overlapping \
+                             [%W canvasx %x] [%W canvasy %y] [%W canvasx %x] \
+                             [%W canvasy %y]] 
+    set node_exist 0
+    foreach i $overlapping_items {
+      if {[lsearch [.frame0.canvas2 gettags $i] nodetag] != -1} { 
+        set node_exist 1
+        break
+      }
+    }
+    if {$node_exist == 0} {
+      recall newNode 1 [%W canvasx %x] [%W canvasy %y] %W
+    }
+  }
+
+  bind .frame0.canvas2 <Control-Shift-Button-1> {
+    recall addInstantPoint [%W canvasx %x] [%W canvasy %y] 
+  }
+
+  bind .frame0.canvas2 <Control-Shift-Button-2> {  
+    recall removeInstantPoint [%W canvasx %x] [%W canvasy %y]
+  }
+
+  bind .frame0.canvas2 <Double-Button-1> {recall unsetCurrent}
+  bind .frame0.canvas2 <Enter> {focus %W}
+  bind .frame0.canvas2 <Mod1-Key> {recall modPress %A}
+  bind .frame0.canvas2 <KeyPress> {recall keyPress %K}
+  bind .frame0.canvas2 <Shift-Button-1> {
+    recall selectIfNot [%W find withtag current] [%W canvasx %x] \
+      [%W canvasy %y] 
+  }
+
+  # build widget .frame0.canvas2.menu0
+  menu .frame0.canvas2.menu0 \
+    -activebackground {AliceBlue} \
+    -bg {LightBlue}
+
+  .frame0.canvas2.menu0 add command \
+    -label {Node Menu} \
+    -state {disabled} 
+
+  .frame0.canvas2.menu0 add separator
+  .frame0.canvas2.menu0 add command \
+    -command {recall nodeEliminateParallelEdges} \
+    -label {Eliminate Parallel Edges}
+  .frame0.canvas2.menu0 add command \
+    -command {recall toggleStartNode} \
+    -label {Toggle Startnode}
+  .frame0.canvas2.menu0 add command \
+    -command {recall toggleEndNode} \
+    -label {Toggle Endnode}
+  .frame0.canvas2.menu0 add command \
+    -command {recall normNode} \
+    -label {Move to Zero}
+  .frame0.canvas2.menu0 add command \
+    -command {.frame0.canvas2 raise current all} \
+    -label {Raise}
+
+  # build widget .frame0.canvas2.menu1
+  menu .frame0.canvas2.menu1 \
+    -activebackground {AliceBlue} \
+    -bg {LightBlue} 
+
+  .frame0.canvas2.menu1 add command \
+    -label {Edge menu} \
+    -state {disabled} 
+
+  .frame0.canvas2.menu1 add separator
+  .frame0.canvas2.menu1 add command \
+    -command {recall revertEdge} \
+    -label {Revert Edge} \
+    -underline {0}
+  .frame0.canvas2.menu1 add command \
+    -command {recall "toggleSpline"} \
+    -label {Spline} \
+    -underline {0}
+
+
+  frame .toolFrame
+  
+  buildToolBar .toolFrame
+  
+  # pack widget .frame0
+  pack append .frame0 \
+    .frame0.scrollbar1 {right frame center filly} \
+    .frame0.canvas2 {top frame center expand fill} \
+    .frame0.scrollbar3 {top frame center fillx} 
+  
+  # build widget .frame1
+  frame .frame1 \
+    -background {gainsboro} \
+    -borderwidth {2} \
+    -relief {raised}
+
+  # build widget .frame1.menubutton0
+  menubutton .frame1.menubutton0 \
+    -background {gainsboro} \
+    -menu {.frame1.menubutton0.m} \
+    -text {Layout} \
+    -underline {0}
+
+  # build widget .frame1.menubutton0.m
+  menu .frame1.menubutton0.m \
+    -background {gainsboro} 
+
+  # build widget .frame1.menubutton1
+  menubutton .frame1.menubutton1 \
+    -background {gainsboro} \
+    -menu {.frame1.menubutton1.m} \
+    -text {File} \
+    -underline {0}
+
+  # build widget .frame1.menubutton1.m
+  menu .frame1.menubutton1.m \
+    -background {gainsboro} 
+  .frame1.menubutton1.m add command \
+    -command {recall modPress n} \
+    -label {New (M-n)} \
+    -underline {0}
+  .frame1.menubutton1.m add command \
+    -command {recall modPress l} \
+    -label {Load (M-l)} \
+    -underline {0}
+  .frame1.menubutton1.m add command \
+    -command {recall modPress m} \
+    -label {Merge (M-m)} \
+    -underline {0}
+  .frame1.menubutton1.m add command \
+    -command {recall modPress s} \
+    -label {Save (M-s)} \
+    -underline {0}
+  .frame1.menubutton1.m add command \
+    -command {recall genEps} \
+    -label {Save Postscript} \
+    -underline {0}
+  .frame1.menubutton1.m add separator
+  .frame1.menubutton1.m add command \
+    -command {recall modPress w} \
+    -label {Close (M-w)} \
+    -underline {0}
+  .frame1.menubutton1.m add command \
+    -command {recall modPress q} \
+    -label {Quit (M-q)} \
+    -underline {0}
+
+  # build widget .frame1.menubutton4
+  menubutton .frame1.menubutton4 \
+    -background {gainsboro} \
+    -menu {.frame1.menubutton4.m} \
+    -text {Window} \
+    -underline {0}
+
+  # build widget .frame1.menubutton4.m
+  menu .frame1.menubutton4.m \
+    -background {gainsboro} 
+  .frame1.menubutton4.m add command \
+    -command {findGraph} \
+    -label {Find Graph} \
+    -underline {0}
+  .frame1.menubutton4.m add command \
+    -command {adjWindow} \
+    -label {Adjust Window Size} \
+    -underline {0}
+  .frame1.menubutton4.m add command \
+    -command {resetScales} \
+    -label {Reset Window} \
+    -underline {0}
+  #  .frame1.menubutton4.m add command \
+    #    -command {recall modPress w} \
+    #    -label {Close Window (M-w)} \
+    #    -underline {0}
+
+  # build widget .frame1.menubutton2
+  menubutton .frame1.menubutton2 \
+    -background {gainsboro} \
+    -menu {.frame1.menubutton2.m} \
+    -text {Help} \
+    -underline {0}
+
+  # build widget .frame1.menubutton2.m
+  menu .frame1.menubutton2.m \
+    -background {gainsboro} 
+  .frame1.menubutton2.m add command \
+    -command {if {![string match "*.topA*" [info commands]]} { \
+                                                                 showUsageBox} } \
+    -label {Usage} \
+    -state {active} \
+    -underline {0}
+
+  # build widget .frame1.menubutton3
+  menubutton .frame1.menubutton3 \
+    -background {gainsboro} \
+    -menu {.frame1.menubutton3.m} \
+    -text {Options} \
+    -underline {0}
+
+  # build widget .frame1.menubutton3.m
+  menu .frame1.menubutton3.m \
+    -background {gainsboro} 
+  .frame1.menubutton3.m add command \
+    -command {recall modPress i} \
+    -label {Inspector (M-i)} \
+    -underline {0}
+  .frame1.menubutton3.m add checkbutton \
+    -offvalue 0 \
+    -onvalue 1 \
+    -variable iconWinFlag \
+    -selectcolor {gold} \
+    -command {if {![string match "*.topIcon*" [info commands]]} { \
+                                                                    showIconBox
+    } {
+      global iconWinFlag
+      if { $iconWinFlag == 0 } {
+        wm withdraw .topIcon
+      } {
+        wm deiconify .topIcon
+      }
+    } } \
+    -label {Icons} \
+    -state {active} \
+    -underline {0}
+  .frame1.menubutton3.m add checkbutton \
+    -offvalue 0 \
+    -onvalue 1 \
+    -variable splineFlag \
+    -selectcolor {gold} \
+    -command {recall toggleSplineAll} \
+    -label {Use Splines} \
+    -underline {0}
+  .frame1.menubutton3.m add checkbutton \
+    -offvalue 0 \
+    -onvalue 1 \
+    -variable showLabelsFlag \
+    -selectcolor {gold} \
+    -command {hideallLabels} \
+    -label {Show Labels} \
+    -underline {0}    
+  .frame1.menubutton3.m add checkbutton \
+    -offvalue 0 \
+    -onvalue 1 \
+    -variable showNodesFlag \
+    -selectcolor {gold} \
+    -command {recall showNodes} \
+    -label {Show Nodes} \
+    -underline {0}    
+  .frame1.menubutton3.m add checkbutton \
+    -offvalue 0 \
+    -onvalue 1 \
+    -variable showEdgesFlag \
+    -selectcolor {gold} \
+    -command {recall showEdges} \
+    -label {Show Edges} \
+    -underline {0}    
+
+  # build widget .frame1.menubutton5
+  menubutton .frame1.menubutton5 \
+    -background {gainsboro} \
+    -menu {.frame1.menubutton5.m} \
+    -text {Edit} \
+    -underline {0}
+
+  # build widget .frame1.menubutton5.m
+  menu .frame1.menubutton5.m \
+    -background {gainsboro} 
+  .frame1.menubutton5.m add command \
+    -command {recall modPress x} \
+    -label {Cut (M-x)}
+  .frame1.menubutton5.m add command \
+    -command {recall modPress c} \
+    -label {Copy (M-c)}
+  .frame1.menubutton5.m add command \
+    -command {recall modPress v} \
+    -label {Paste (M-v)}
+  .frame1.menubutton5.m add command \
+    -command {recall clear} \
+    -label {Clear}
+  .frame1.menubutton5.m add separator
+  .frame1.menubutton5.m add command \
+    -command {recall modPress a} \
+    -label {Select all (M-a)}
+  .frame1.menubutton5.m add command \
+    -command {recall revert} \
+    -label {Revert} \
+    -underline {0}
+  .frame1.menubutton5.m add command \
+    -command {recall eliminateParallelEdges} \
+    -label {Eliminate Parallel Edges} \
+    -underline {0}
+
+  # pack widget .frame1
+  pack append .frame1 \
+    .frame1.menubutton1 {left frame center} \
+    .frame1.menubutton5 {left frame center} \
+    .frame1.menubutton4 {left frame center} \
+    .frame1.menubutton2 {right frame center} \
+    .frame1.menubutton0 {left frame center} \
+    .frame1.menubutton3 {left frame center} 
+
+  # build widget .frame2
+  frame .frame2 \
+    -background {gainsboro} \
+    -borderwidth {2} \
+    -relief {raised}
+
+  # build widget .frame2.frame7
+  frame .frame2.frame7 \
+    -background {gainsboro} \
+    -borderwidth {2} \
+    -relief {ridge}
+    
+  frame .frame2.frame7.row1 \
+      -relief flat \
+      -borderwidth 0
+
+  # build widget .frame2.frame7.row1.frame11
+  frame .frame2.frame7.row1.frame11 \
+    -background {gainsboro} \
+    -relief {raised}
+
+  createButtonRow .frame2.frame7.row1.frame11 "Move Y:" "setY"
+
+  # build widget .frame2.frame7.row1.frame12
+  frame .frame2.frame7.row1.frame12 \
+    -background {gainsboro} \
+    -relief {raised}
+
+  createButtonRow .frame2.frame7.row1.frame12 "Zoom:" "zoom" 0.7 0.95 1.05 1.5
+
+  # build widget .frame2.frame7.row1.frame13
+  frame .frame2.frame7.row1.frame13 \
+    -background {gainsboro} \
+    -relief {raised}
+
+  createButtonRow .frame2.frame7.row1.frame13 "Move X:" "setX"
+
+  # build widget .frame2.frame7.row1.frame14
+  frame .frame2.frame7.row1.frame14 \
+    -background {gainsboro} \
+    -relief {raised}
+
+  createButtonRow .frame2.frame7.row1.frame14 "Move Z:" "setZ"
+
+
+  # pack widget .frame2.frame7.row1
+  pack append .frame2.frame7.row1 \
+    .frame2.frame7.row1.frame13 {left frame center fill} \
+    .frame2.frame7.row1.frame14 {left frame center fill} \
+    .frame2.frame7.row1.frame11 {left frame center fill} \
+    .frame2.frame7.row1.frame12 {left frame center fill}
+
+
+  frame .frame2.frame7.row2 \
+      -relief flat \
+      -borderwidth 0
+
+  # build widget .frame2.frame7.row1.frame11
+  frame .frame2.frame7.row2.frame11 \
+    -background {gainsboro} \
+    -relief {raised}
+
+#  createButtonRow .frame2.frame7.row2.frame11  "Rotate  X:" {rotateX} 
+
+  pack append .frame2.frame7.row2 \
+  .frame2.frame7.row2.frame11 {left frame center fill} 
+
+#    .frame2.frame7.row1.frame13 {left frame center fill} \
+#   .frame2.frame7.row1.frame14 {left frame center fill} 
+#    .frame2.frame7.row1.frame12 {left frame center fill}
+
+  pack append .frame2.frame7 \
+      .frame2.frame7.row1 {top frame center fill} \
+      .frame2.frame7.row2 {top frame center fill}
+
+  # build widget .frame2.frame8
+  frame .frame2.frame8 \
+    -background {gainsboro} \
+    -borderwidth {2}
+
+  # build widget .frame2.frame8.scale14
+  scale .frame2.frame8.scale14 \
+    -width 10 \
+    -command {global aktuCommand; $aktuCommand setXWinkel } \
+    -orient {horizontal} \
+    -from {-360} \
+    -showvalue {0} \
+    -to {360}
+
+  .frame2.frame8.scale14 set {0}
+
+  # build widget .frame2.frame8.scale15
+  scale .frame2.frame8.scale15 \
+    -width 10 \
+    -background {gainsboro} \
+    -command {global aktuCommand; $aktuCommand setYWinkel} \
+    -orient {horizontal} \
+    -relief {raised} \
+    -showvalue {0} \
+    -from {-360} \
+    -to {360}
+
+  .frame2.frame8.scale15 set {0}
+
+  # build widget .frame2.frame8.scale16
+  scale .frame2.frame8.scale16 \
+    -width 10 \
+    -background {gainsboro} \
+    -command {global aktuCommand; $aktuCommand setZWinkel} \
+    -orient {horizontal} \
+    -relief {raised} \
+    -showvalue {0} \
+    -from {-360} \
+    -to {360}
+
+  .frame2.frame8.scale16 set {0}
+
+  # build widget .frame2.frame8.scale17
+  scale .frame2.frame8.scale17 \
+    -width 10 \
+    -background {gainsboro} \
+    -command {global aktuCommand; $aktuCommand setZvalue} \
+    -orient {horizontal} \
+    -relief {raised} \
+    -showvalue {0} \
+    -from {-1500} \
+    -to {-100}
+
+  .frame2.frame8.scale17 set {-1000}
+
+  scale .frame2.frame8.scale18 \
+    -width 10 \
+    -background {gainsboro} \
+    -command {global aktuCommand; $aktuCommand viewDist} \
+    -orient {horizontal} \
+    -relief {raised} \
+    -showvalue {0} \
+    -from {100} \
+    -to {2000}
+
+  .frame2.frame8.scale18 set {1000}
+
+# pack widget .frame2.frame8
+
+   pack append .frame2.frame8 \
+    .frame2.frame8.scale14 {top frame center fillx} \
+    .frame2.frame8.scale15 {top frame center fillx} \
+    .frame2.frame8.scale16 {top frame center fillx} \
+    .frame2.frame8.scale18 {top frame center fillx} 
+
+#    .frame2.frame8.scale17 {top frame center fillx}
+
+  # pack widget .frame2
+  pack append .frame2 \
+    .frame2.frame7 {top frame center expand fillx} \
+    .frame2.frame8 {bottom frame center expand fillx}
+
+  # pack widget .
+  pack append . \
+    .frame0 {bottom frame center expand fill} \
+    .frame1 {top frame center fillx} \
+    .frame2 {bottom frame center fill} \
+    .toolFrame {left frame center expand fillx}
+
+  global tk_version
+  if {$tk_version >= 3.0} {
+    tk_menuBar .frame1 .frame1.menubutton0 .frame1.menubutton1 \
+      .frame1.menubutton4 .frame1.menubutton2 .frame1.menubutton3 \
+      .frame1.menubutton5
+  } {
+    tk_menus . .frame1.menubutton0 .frame1.menubutton1 \
+      .frame1.menubutton4 .frame1.menubutton2 .frame1.menubutton3 \
+      .frame1.menubutton5
+  }
+
+  # build canvas items .frame0.canvas2
+  set xfTmpTag [.frame0.canvas2 create line 0 0 0 0]
+
+  ffSetColorsForWin .
+}
+
+
+
+
+
+
+# Procedure: addSubWindow
+proc addSubWindow { canv x y } {
+  set cfTmpTag [$canv create window $x $y -width 100 -height 150]
+  
+  # build widget .frame0
+  frame $canv.$cfTmpTag \
+    -bd {4} \
+    -width {100} \
+    -height {150} \
+    -bg {red} \
+    -relief {flat}
+  
+  # build widget .frame0.canvas2
+  canvas $canv.$cfTmpTag.canvas2 \
+    -background {lightgrey} \
+    -closeenough {3.0} \
+    -height {105} \
+    -insertbackground {black} \
+    -insertofftime {600} \
+    -relief {raised} \
+    -selectbackground {black} \
+    -selectforeground {gainsboro} \
+    -width {150} 
+
+  global isDirected
+  set isDirected($canv.$cfTmpTag.canvas2) {YES}
+  
+  pack append $canv.$cfTmpTag \
+    $canv.$cfTmpTag.canvas2 {top frame center expand fill} 
+    
+  $canv addtag windowNode withtag $cfTmpTag
+  $canv itemconfigure $cfTmpTag -window $canv.$cfTmpTag
+  
+  global symbolicName
+  if { $symbolicName(graphView) == $canv} {
+    set befehl recall 
+  } {
+    set befehl SubRecall.$canv
+  }        
+  
+  set body1 [concat {
+    set x [} "$canv" { canvasx [expr [winfo x %W] + %x]]; 
+    set y [} "$canv" { canvasy [expr [winfo y %W] + %y]]; 
+  } " $befehl "]
+  
+  set body2 [concat " $cfTmpTag " {$x $y}]
+
+  bind $canv.$cfTmpTag <1> "$body1 setCurrentNode $body2"    
+  bind $canv.$cfTmpTag.canvas2 <Enter> "focus $canv.$cfTmpTag.canvas2"
+  bind $canv.$cfTmpTag.canvas2 <Leave> "focus $canv"
+  bind $canv.$cfTmpTag.canvas2 <Mod1-Key> [concat \
+                                             "SubRecall.$canv.$cfTmpTag.canvas2 modPress " {%A}]    
+  bind $canv.$cfTmpTag <M1-Button-1> "$body1 changeSizeInit $body2"    
+  bind $canv.$cfTmpTag <B1-Motion> "$body1 moveCurrent $body2"    
+  bind $canv.$cfTmpTag <M1-B1-Motion> "$body1 changeSize $body2"
+  
+  return $cfTmpTag
+}
+
+# Procedure: showUsageBox
+proc showUsageBox {} {
+  toplevel .topA 
+
+  # Window manager configurations
+  global tk_version
+  wm positionfrom .topA ""
+  wm sizefrom .topA ""
+  wm maxsize .topA 1000 1000
+  wm minsize .topA 10 10
+  wm title .topA {Graph Usage: }
+
+
+  # build widget .topA.button4
+  button .topA.button4         -command {destroy .topA}  -text {OK}
+
+  # build widget .topA.message3
+  message .topA.message3     -aspect {1331}    -borderwidth {4} -justify {left}    -padx {5}    -pady {2}    -relief {raised}     -text {
+    Shift-XX, Ctrl-XX, Alt-XX etc := press key Shift, Ctrl, ... while doing XX
+    Mn := Press Mouse Button n
+    
+    Add Node: Ctrl-M1 on background
+    Add Edge: Ctrl-M1 on source Node then Ctrl-M1 on target Node
+    Add Edgepoint: Select Edge then Shift-Ctrl-M1 on background
+
+    Move Node: M1 on Node then drag
+    Move Edge: M1 on Edgepoint then drag
+    Move Edgepoint: Shift-M1 on Edgepoint then drag
+
+    Delete Node: M2 on Node
+    Delete Edge: M2 on Edge
+    Delete Edgepoint: Select Edge, Shift-Ctrl-M2 near point
+
+    Bring up Node Menu: M3 on Node
+    Bring up Edge Menu: M3 on Edge
+
+  }
+
+  # pack widget .topA
+  pack append .topA     .topA.message3 {top frame center}     .topA.button4 {bottom frame center fillx}
+}
+
+# end source
+proc EndSrc {} {
+  wm protocol . WM_DELETE_WINDOW { recall deleteWindow;}
+}
+
+proc destroyWindow {} {
+  if {[string match "*.topA*"    [info commands]]} {
+    destroy .topA
+  }
+  destroy .
+}
+
+# initialize global variables
+proc InitGlobals {} {
+  global {splineFlag}
+  set {splineFlag} {0}
+  global {draging}
+  set {draging} {0}
+  global {Inspector}
+  set {Inspector} {0}
+  global {Nase}
+  set {Nase} {Help}
+  global {Spline}
+  set {Spline} {0}
+  global {a}
+  set {a} {}
+  global {cfh}
+  set {cfh} {179}
+  global {cfw}
+  set {cfw} {284}
+  global {cfx}
+  set {cfx} {234}
+  global {cfy}
+  set {cfy} {129}
+  global {dx}
+  set {dx} {20}
+  global {dy}
+  set {dy} {6}
+  global {itemLable}
+  set {itemLable} {               }
+  global {result}
+  set {result} {-scrollincrement scrollIncrement ScrollIncrement 10 10}
+  global {scaleFaktor}
+  set {scaleFaktor} {1.0}
+  global {xoff}
+  set {xoff} {15}
+  global {yoff}
+  set {yoff} {15}
+  global {symbolicName}
+  set {symbolicName(graphView)} {.frame0.canvas2}
+}
+
+# initialize global variables
+InitGlobals
+
+# display/remove toplevel windows.
+ShowWindow.
+
+# load default bindings.
+if {[info exists env(XF_BIND_FILE)] &&
+    "[info procs XFShowHelp]" == ""} {
+  source $env(XF_BIND_FILE)
+}
+
+# parse and apply application defaults.
+XFLocalLoadAppDefs Graph
+XFLocalSetAppDefs
+
+# end source
+EndSrc
+
+# eof
+#

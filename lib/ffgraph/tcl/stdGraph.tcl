@@ -1,0 +1,2360 @@
+#!/public/bin/pixmap-wish -f
+# Program: sugi
+# Tcl version: 7.3 (Tcl/Tk/XF)
+# Tk version: 3.6
+# XF version: 2.3
+#
+
+# proc setBusy
+proc setBusy { } {
+  .frame0.canvas2 configure -cursor watch
+}
+
+# proc unsetBusy
+proc unsetBusy { } {
+  .frame0.canvas2 configure -cursor left_ptr
+}
+
+proc setWorkingMode {mode theEntry} {
+  global workingMode
+  $theEntry configure -state normal
+  $theEntry delete 0 end
+  $theEntry insert end $mode
+  $theEntry configure -state disabled
+  set workingMode $mode
+}
+
+proc buildToolBar {} {
+  frame .toolFrame
+}
+
+# proc createButton
+proc createButton {b name args} {
+  set body1 { global aktuCommand;
+    $aktuCommand }
+  
+  set nase "$body1 $args"
+  
+  button $b -text $name -command $nase -padx 0 -pady 0
+  
+  global mousepressed
+  bind $b <1> {
+    %W configure -relief sunken
+    set mousepressed 1
+    while {$mousepressed != "0"} {
+      %W invoke
+      after 1
+      update
+    }
+    break;
+  }
+  bind $b <ButtonRelease-1> {
+    %W configure -relief raised 
+    if {$mousepressed == "1"} {
+      set mousepressed 0
+    }
+    break;
+  }
+}
+
+proc ShowWindow. {args} {
+
+  # Window manager configurations
+  global tk_version
+  wm positionfrom . program
+  wm sizefrom . program
+  wm geometry . 800x550+50+170
+  wm maxsize . 1152 900
+  wm minsize . 0 0
+  wm title . {Graph}
+
+#   if {$tk_version >= 3.0} {
+#     wm protocol . WM_DELETE_WINDOW { 
+#       recall deleteWindow; 
+#       if {[string match "*.topA*"    [info commands]]} {
+#         destroy .topA
+#       }
+#       destroy .
+#     }
+#   }
+
+  buildMainCanvas
+  addCanvasBindings .frame0.canvas2
+  buildNodeMenu
+  buildEdgeMenu
+  buildMainMenu
+  buildToolBar
+  buildButtonFrame
+
+  # pack widget .
+  pack append . \
+    .frame0 {bottom frame center expand fill} \
+    .frame2 {bottom frame center fill} \
+    .frame1 {top frame center fillx} \
+    .toolFrame {left frame center expand fillx}
+
+  # build canvas items .frame0.canvas2
+#  set xfTmpTag [.frame0.canvas2 create line 0 0 0 0]
+
+  ffSetColorsForWin .
+}
+
+
+
+# Procedure: setDirected
+proc setDirected { {canv "."} } {
+    global isDirected
+
+    if {$canv == "."} {
+        global symbolicName
+        set canv $symbolicName(graphView)
+    }
+    set isDirected($canv) {YES}
+    $canv itemconfigure edgetag -arrow {last} 
+}
+
+# Procedure: unsetDirected
+proc unsetDirected { {canv "."} } {
+    global isDirected
+    if {$canv == "."} {
+        global symbolicName
+        set canv $symbolicName(graphView)
+    }
+    set isDirected($canv) {NO}
+    $canv itemconfigure edgetag -arrow {none} 
+}
+
+proc addLineBindings {canv cfTmpTag} {
+  global symbolicName
+  if { $symbolicName(graphView) == $canv} {
+    set befehl recall
+  } {
+    set befehl SubRecall.$canv
+  }        
+
+  $canv bind $cfTmpTag <Button-1> "
+    $befehl setCurrentEdge \[%W find withtag current] \[%W canvasx %x] \
+      \[%W canvasy %y] "
+      
+  $canv bind $cfTmpTag <Shift-Button-1> "
+    $befehl setCurrentEdge \[%W find withtag current] \[%W canvasx %x] \
+      \[%W canvasy %y]"
+
+  $canv bind $cfTmpTag <B1-Motion> "
+    $befehl moveCurrent \[%W find withtag current] \[%W canvasx %x] \
+      \[%W canvasy %y]"
+
+  $canv bind $cfTmpTag <Shift-B1-Motion> "
+    $befehl movePoint \[%W find withtag current] \[%W canvasx %x] \[%W canvasy %y]
+  "
+  
+  $canv bind $cfTmpTag <Button-2> "
+    $befehl removeEdge \[%W find withtag current]
+  "
+
+  $canv bind $cfTmpTag <M1-Button-1> "
+    $befehl setCurrentEdge \[%W find withtag current] %x %y;
+    $befehl modPress i"
+    
+  $canv bind $cfTmpTag <Button-3> "
+    $befehl setCurrentEdge \[%W find withtag current] \[%W canvasx %x] \
+      \[%W canvasy %y]; 
+    .frame0.canvas2.menu1 post %X %Y "
+    
+  addUserLineBindings $canv $cfTmpTag $befehl
+}
+
+proc addUserLineBindings {canv cfTmpTag befehl} {
+}
+
+# Procedure: addLine
+proc addLine { canv col args} {
+  global isDirected
+  set cfTmpTag [eval $canv create line $args]
+  $canv lower $cfTmpTag all
+  
+  $canv addtag edgetag withtag $cfTmpTag
+
+  if { $isDirected($canv) == "YES" } {
+    $canv itemconfigure $cfTmpTag -fill $col -arrow {last} \
+      -joinstyle {miter}
+  } {
+    $canv itemconfigure $cfTmpTag -fill $col 
+  }
+
+  addLineBindings $canv $cfTmpTag
+  return $cfTmpTag
+}
+
+proc createIcon { iconFile {selIconFile "__NoIcon__"} } {
+  global ICON_LIB_DIS
+  global iconCache
+  global iconFileCache
+  set unselErg [_createIcon $iconFile]
+  
+  if {$selIconFile == "__NoIcon__"} {
+    set selErg $unselErg
+  } {
+    set selErg [_createIcon $selIconFile]
+  }
+}
+  
+proc createIcon { iconFile {selIconFile "__NoIcon__"} } {
+  global ICON_LIB_DIR
+#     puts "Create Icon"
+#     puts $iconFile
+#     puts $selIconFile
+  global iconCache
+  
+  set bild [file rootname $iconFile]
+  set typ [file extension $iconFile]	
+  if { $typ == "" } {
+    set typ xpm
+  } {
+    set typ [string trimleft $typ {.}]
+  }
+  
+  switch $typ {xbm} {
+    set createTyp bitmap
+  } {xpm} {
+    set createTyp pixmap
+  } {default} {
+    set createTyp photo
+  }       
+
+  if { $selIconFile != "__NoIcon__" } {
+    set selBild [file rootname $selIconFile]
+    set selTyp [file extension $selIconFile]	
+    if { $selTyp == "" } {
+      set selTyp xpm
+    } {
+      set selTyp [string trimleft $selTyp {.}]
+    }
+
+    switch $selTyp {xbm} {
+      set selCreateTyp bitmap
+    } {xpm} {
+      set selCreateTyp pixmap
+    } {default} {
+      set selCreateTyp photo
+    }       
+  } {
+    set selTyp $typ
+    set selBild $bild
+    set selCreateTyp $createTyp
+  }
+  
+
+# Wir haben das Bild und evlt. auch ein Select Bild
+# Wenn kein Select Bild => Bild := Select Bild
+
+  set tmpF 0
+  
+  if { [info exists iconCache($bild,$typ)] } {
+    # puts "Using Cache for icon"
+    set cfTmpImage $iconCache($bild,$typ)
+    set tmpF 1
+  } {
+    if { [file exists $ICON_LIB_DIR/$typ/[set bild].$typ] } {
+      set normalBild $ICON_LIB_DIR/$typ/[set bild].$typ
+      set tmpF 1
+    }
+  }
+  
+  if { $tmpF == 1 } {
+    if { $selBild != "" } {
+      if { [info exists selIconCache($selBild,$selTyp)] } {
+        # puts "Using Cache for selectIcon"
+        set cfTmpSelImage $iconCache($selBild,$selTyp)
+      } {
+        if {[file exists $ICON_LIB_DIR/$selTyp/[set selBild].$selTyp]} {
+          set selectBild $ICON_LIB_DIR/$selTyp/[set selBild].$selTyp
+        } {
+          set selectBild $normalBild
+        }
+      }
+    } {
+      set selBild $bild
+      set selTyp $typ
+    }
+  } { 
+# Wir haben kein Bild gefunden und suchen nach der alten *N *S 
+    if { [file exists $ICON_LIB_DIR/$typ/[set bild]N.$typ] } {
+      set normalBild $ICON_LIB_DIR/$typ/[set bild]N.$typ
+      if { [file exists $ICON_LIB_DIR/$typ/[set bild]S.$typ] } {
+        set selectBild $ICON_LIB_DIR/$typ/[set bild]S.$typ 
+      } {
+        set selectBild $normalBild
+      }
+      set selCreateTyp $createTyp
+    } {
+      puts stderr " Couldn't find icon \"$iconFile\" !!! "
+      return ""
+    }
+  }
+
+  if { [info exists cfTmpImage] } {
+    # puts "Bestätige Icon Cache"
+  } {
+    set cfTmpImage [image create $createTyp -file $normalBild ]
+    set iconCache($bild,$typ) $cfTmpImage
+    global iconFileCache
+    set iconFileCache($cfTmpImage,$typ) $normalBild
+    puts "Building Icon Cache"
+    puts "set iconFileCache($cfTmpImage,$typ) $normalBild"
+  }
+  
+  set tmpA $selBild.$selTyp
+  set tmpB $bild.$typ
+  if { $tmpA != $tmpB } {
+    if { [info exists cfTmpSelImage] } {
+      # puts "Bestätige selIcon Cache"
+    } {
+      set cfTmpSelImage [image create $selCreateTyp -file $selectBild]
+      set iconCache($selBild,$selTyp) $cfTmpSelImage
+      global iconFileCache
+      set iconFileCache($cfTmpImage,$typ) $normalBild
+      puts "Building Icon Cache"
+      puts "set iconFileCache($cfTmpImage,$typ) $normalBild"
+    }
+  } {
+    set cfTmpSelImage $cfTmpImage
+  }
+  
+#   puts "$cfTmpImage $cfTmpSelImage $typ $selTyp"
+  return "$cfTmpImage $cfTmpSelImage $typ $selTyp"
+}
+
+proc nodeButton3 {befehl W X Y x y} {
+  global nodeMenuCommand
+  set nodeMenuCommand $befehl
+  
+  $befehl setCurrentNode [$W find withtag current] [$W canvasx $x] \
+    [$W canvasy $y];
+    
+  .frame0.canvas2.menu0 post $X $Y 
+}
+
+proc addNodeBindings {canv cfTmpTag} {
+  global symbolicName
+  if { $symbolicName(graphView) == $canv} {
+    set befehl recall
+  } {
+    set befehl SubRecall.$canv
+  }        
+  
+  $canv bind $cfTmpTag <Button-3> "nodeButton3 $befehl %W %X %Y %x %y"
+
+  set body { setCurrentNode [%W find withtag current] [%W canvasx %x] \
+               [%W canvasy %y] }
+  
+  $canv bind $cfTmpTag <Button-1> "$befehl $body"    
+  $canv bind $cfTmpTag <Shift-Button-1> "break"    
+  
+  set body {moveCurrent [%W find withtag current] [%W canvasx %x] \
+              [%W canvasy %y] }
+  
+  $canv bind $cfTmpTag <B1-Motion> "$befehl $body"
+  
+  set body  {newEdge [%W find withtag current] [%W canvasx %x] \
+               [%W canvasy %y]}
+  
+  $canv bind $cfTmpTag <Control-Button-1> "$befehl $body$"
+  
+  $canv bind $cfTmpTag <Control-B1-Motion> break;
+  
+  set body2 {removeNode [%W find withtag current]}
+  
+  $canv bind $cfTmpTag <Button-2> "$befehl $body2"
+  
+  set body1 {setCurrentNode [%W find withtag current] %x %y;}
+#  set body2 {modPress i}
+  set body2 [concat " $cfTmpTag " {%x %y}]
+
+  $canv bind $cfTmpTag <M1-Button-1> "$befehl $body1" 
+  $canv bind $cfTmpTag <M1-B1-Motion> "$befehl changeSize $body2"
+#  $canv bind $cfTmpTag <M1-Button-1> "$befehl $body1; $befehl $body2"
+  addUserNodeBinding $canv $cfTmpTag $befehl 
+}
+
+proc addUserNodeBinding {canv cfTmpTag befehl} {
+}
+
+proc addDefFigure {canv x y x2 y2} {
+  global DefShape
+#  puts "addDefFigure $DefShape $canv $x $y $x2 $y2"
+  case $DefShape {Circle} {
+    return [$canv create oval [expr ($x-$x2)] [expr ($y+$x2)] \
+              [expr ($x+$x2)] [expr ($y-$x2)]] 
+  } {Oval} {
+    return [$canv create oval [expr ($x-$x2)] [expr ($y+$y2)] \
+              [expr ($x+$x2)] [expr ($y-$y2)]] 
+  } {Square} {
+    return [$canv create rectangle [expr ($x-$x2)] [expr ($y+$x2)] \
+              [expr ($x+$x2)] [expr ($y-$x2)]] 
+  } {Rectangle} {
+    return [$canv create rectangle [expr ($x-$x2)] [expr ($y+$y2)] \
+              [expr ($x+$x2)] [expr ($y-$y2)]] 
+  } {Raute} {
+    return [$canv create rectangle [expr ($x-($x2/2))] [expr ($y+($y2/2))] \
+              [expr ($x+($x2/2))] [expr ($y-($y2/2))]] 
+#     return [$canv create polygon $x [expr ($y+($y2/2))] \
+#               [expr ($x+($x2/2))] $y \
+#               $x [expr ($y-($y2/2))] \
+#               [expr ($x-($x2/2))] $y]
+  }
+}
+
+# Procedure: addNode
+proc addNode { canv x y r col {iconFile "__NoIcon__"} {selIconFile "__NoIcon__"}} {
+  global DefShape
+  set tmpShape $DefShape
+  
+#   if {$iconFile != "__NoIcon__"} {
+#     set tmpShape "Icon"
+#   } else {
+#     if {$DefShape == "Icon"} {
+#       set DefShape "Circle"
+#       set tmpR [addNode $canv $x $y 1 $col]
+#       set DefShape "Icon"
+#       return $tmpR
+#     }
+#   }
+
+#   case $tmpShape {Window} {
+#     set cfTmpTag [addSubWindow $canv $x $y]
+#   } {Icon} {
+#     global ICON_LIB_DIR
+#     global tk_version
+    
+#     global selectImage
+#     global unselectImage
+#     global iconType    
+#     global iconSelType    
+    
+#     set tmpCreate [createIcon $iconFile $selIconFile]
+    
+#     if {$tmpCreate == ""} {
+#       return [addNode $canv $x $y $r $col]
+#     }
+    
+#     set cfTmpTag [$canv create image $x $y]
+    
+#     scan  $tmpCreate "%s %s %s %s" \
+#       unselectImage($canv,$cfTmpTag) \
+#       selectImage($canv,$cfTmpTag) iconType($canv,$cfTmpTag) \
+#       iconSelType($canv,$cfTmpTag)
+    
+#     $canv itemconfigure $cfTmpTag -image $unselectImage($canv,$cfTmpTag)
+#     $canv addtag iconNode withtag $cfTmpTag
+#   } {default} {
+    set cfTmpTag [addDefFigure $canv $x $y $r $r]
+    $canv itemconfigure $cfTmpTag -fill "black" \
+      -outline $col -width {2}
+#  } 
+  
+  $canv addtag nodetag withtag $cfTmpTag
+
+  if {$tmpShape == "Window"} {
+    set cfTmpTag "$canv.$cfTmpTag.canvas2 $cfTmpTag"
+  }
+  
+  addNodeBindings $canv $cfTmpTag
+
+  return $cfTmpTag
+}
+
+# Procedure: addStdLine
+proc addStdLine { col args} {
+global symbolicName
+return [eval addLine [set symbolicName(graphView)] $col $args]
+}
+
+# Procedure: addStdText
+# proc addStdText { x y t} {
+# global symbolicName
+# return [addText [set symbolicName(graphView)] $x $y $t]
+# }
+
+proc hideallLabels {} {
+  global symbolicName
+  global showLabelsFlag
+  if { $showLabelsFlag == 1 } {
+    showallLabels
+  } {
+    set canv $symbolicName(graphView)
+    foreach i [$canv find withtag cfLabelText] {
+      $canv itemconfigure $i -text {}
+    }
+  }
+}
+proc showallLabels {} {
+  global symbolicName
+  global labelTexts
+  set canv $symbolicName(graphView)
+  foreach i [$canv find withtag cfLabelText] {
+    if { $labelTexts($i) != "" } {
+      $canv itemconfigure $i -text $labelTexts($i)
+    }
+  }
+}
+
+# Procedure: addText
+proc addText { canv x y t ueber {anker center}} {
+  global showLabelsFlag
+  global labelTexts
+  
+  set cfTmpTag [$canv create text $x $y]
+  $canv addtag cfLabelText withtag $cfTmpTag
+  $canv raise $cfTmpTag $ueber
+  $canv itemconfigure $cfTmpTag -anchor $anker -justify {left}
+
+  if { $showLabelsFlag == 1 } {
+    $canv itemconfigure $cfTmpTag -text $t
+  } {
+    $canv itemconfigure $cfTmpTag -text ""
+  }
+  
+  set labelTexts($cfTmpTag) $t
+  return $cfTmpTag
+}
+
+# Procedure: addText
+proc addTextMit { canv x y t ueber {anker center}} {
+  global showLabelsFlag
+  set cfTmpTag [$canv create window [expr $x+5] $y]
+  label $canv.$cfTmpTag -padx 2 -pady 2 -bd 0 -relief flat\
+    -bg [$canv cget -bg] -fg black -text $t -anchor center
+  $canv itemconfigure $cfTmpTag -anchor $anker
+
+  if { ($t != "") && ($showLabelsFlag == 1) } {
+    $canv itemconfigure $cfTmpTag -window $canv.$cfTmpTag
+    set tmp [$canv bbox $cfTmpTag]
+    set width [expr [lindex $tmp 2] - [lindex $tmp 0]]
+    set height [expr [lindex $tmp 3] - [lindex $tmp 1]]
+    $canv itemconfigure $cfTmpTag -width $width -height $height
+  } {
+    $canv.$cfTmpTag configure -padx 0 -pady 0
+    $canv itemconfigure $cfTmpTag -width 0 -height 0
+    $canv itemconfigure $cfTmpTag -window {}
+  }
+  
+  $canv addtag cfLabelText withtag $cfTmpTag
+  $canv raise $cfTmpTag all
+    
+  return $cfTmpTag
+}
+
+# Procedure: adjStdXY
+proc adjStdXY { x y x2 y2} {
+    global symbolicName
+    [set symbolicName(graphView)] configure -scrollregion "$x $y $x2 $y2"
+}
+
+# Procedure: adjXY
+proc adjXY { canv x y x2 y2} {
+    $canv configure -scrollregion "$x $y $x2 $y2"
+}
+
+# Procedure: adjWindow
+proc adjWindow { {canv "."} {offset "100"} } {
+  if {$canv == "."} {
+    global symbolicName
+    set canv [set symbolicName(graphView)] 
+  }
+  
+  if { [scan [$canv bbox nodetag edgetag cfLabelText] "%d %d %d %d" x y w h]\
+       != -1 } {
+    $canv configure -scrollregion "[expr $x-$offset] [expr $y-$offset] \
+ 		[expr $w+$offset] [expr $h+$offset]"
+  }
+}
+
+proc zoomToFit {{canv "."}} {
+  
+  if {$canv == "."} {
+    global symbolicName
+    set canv [set symbolicName(graphView)] 
+    set befehl recall 
+  } {
+    set befehl SubRecall.$canv
+  }        
+
+  if { [scan [$canv bbox nodetag edgetag] "%d %d %d %d" bbx bby bbx2 bby2] \
+         == -1 } {
+    return
+  }
+
+  set centX [expr $bbx + ($bbx2 - $bbx)/2.0 ]
+  set centY [expr $bby + ($bby2 - $bby)/2.0 ]
+ 
+  set breite [expr [winfo width $canv] * 1.0 - 50.0]
+  set hoehe [expr [winfo height $canv] * 1.0 - 50.0]
+  
+  set scaleFak [ffMin [expr ($breite/abs($bbx - $bbx2))] \
+                  [expr ($hoehe/abs($bby - $bby2))]]
+
+  scan [unproj $centX $centY] {%f %f %f} centX centY dummy
+ 
+  $befehl  boxscale $scaleFak $scaleFak
+  
+  scan [proj $centX $centY] {%f %f %f} centX centY dummy
+  centerCanvas $canv $centX $centY
+
+  # adjWindow $canv
+}
+
+
+# Procedure: changeEdgeColor
+proc changeEdgeColor { edge col {canv "."}} {
+    if {$canv == "."} {
+        global symbolicName
+        set canv $symbolicName(graphView)
+    }
+    $canv itemconfigure $edge -fill $col
+}
+
+
+# Procedure: changeToIcon
+proc changeToIcon {item icon selIcon {x 0} {y 0} {canv "."}} {
+  global ICON_LIB_DIR
+  if {$canv == "."} {
+    global symbolicName
+    set canv [set symbolicName(graphView)]
+  }
+  
+ # puts "Change to Icon :$icon: :$selIcon: at ($x,$y)"
+
+  focus $canv
+  
+  if { ($item != {}) && ([lsearch [$canv gettags $item] iconNode] != -1)} {
+      global tk_version
+      if { $tk_version < 4 } {
+        global icons
+        $canv itemconfigure $item  -bitmap \
+          @$ICON_LIB_DIR/xpm/[set icon]N.xpm
+        set icons($canv,$item) $icon
+      } {
+        global selectImage
+        global unselectImage
+        global iconType    
+        global iconSelType    
+        
+        set tmpCreate [createIcon $icon $selIcon]
+        
+        if {$tmpCreate == ""} {
+          return ""
+        }
+      
+        scan $tmpCreate "%s %s %s %s" \
+          unselectImage($canv,$item) \
+          selectImage($canv,$item) iconType($canv,$item) \
+          iconSelType($canv,$item)
+      
+        $canv itemconfigure $item -image $unselectImage($canv,$item)
+      }
+      return "" 
+  } {
+#    scan [$canv coords $item] {%f %f} x y
+    if {$item != ""} {
+      removeItem $canv $item
+    }
+    return [addNode $canv $x $y 10 {black} $icon $selIcon]
+  }
+}
+
+proc clearLayoutMenu {} {
+  .frame1.menubutton0.m delete 0 last
+}
+
+# Procedure: changeToCircle
+proc changeToFigure {item col shape x y r {canv "."}} {
+  if {$canv == "."} {
+    global symbolicName
+    set canv [set symbolicName(graphView)]
+  }
+  
+  focus $canv
+  
+  #    scan [$canv coords $item] {%f %f} x y
+  if { $item != "" } {
+    removeItem $canv $item
+  }
+  global DefShape
+  set tmpS $DefShape
+  set DefShape $shape
+  set tmpR [addNode $canv $x $y $r $col ]
+  set DefShape $tmpS
+#  puts "Going to return :$tmpR:"
+  return $tmpR
+}
+
+proc addUserMenus {frame} {
+}
+
+proc destroyWindow {} {
+  if {[string match "*.topA*"    [info commands]]} {
+    destroy .topA
+  }
+  if {[string match "*.topIcon*"    [info commands]]} {
+    destroy .topIcon
+  }
+}
+
+proc button1Motion {befehl W x y} {
+  global draging
+  global workingMode
+    
+  switch $workingMode {Navigate} {
+    global dragBoxX;
+    global dragBoxY;
+    $befehl moveEye [expr [$W canvasx $x] - $dragBoxX]\
+      [expr [$W canvasy $y] - $dragBoxY];
+    set dragBoxX [$W canvasx $x];
+    set dragBoxY [$W canvasy $y];
+  } {default} {
+    if {$draging == 1} {
+      drawDragBox $W [$W canvasx $x] [$W canvasy $y]
+    }
+  }
+}
+
+proc Mod1Button1 { a b c } {
+  global workingMode
+  set workingMode Zoom
+  button1 $a $b $c
+}
+
+proc button1 {W x y} {
+  global dragBoxX
+  global dragBoxY
+  global draging  
+  set draging 0  
+  set overlapping_items [$W find overlapping \
+                           [$W canvasx $x] [$W canvasy $y] [$W canvasx $x] \
+                           [$W canvasy $y]] 
+  
+  if {$overlapping_items == ""} {    
+    set dragBoxX [$W canvasx $x]
+    set dragBoxY [$W canvasy $y]
+    global dragItem 
+    drawDragBox $W $dragBoxX $dragBoxY
+    $W itemconfigure $dragItem($W) -outline black
+    set draging 1
+  }
+}
+
+proc button1Release {befehl W x y} {
+  global dragBoxX
+  global dragBoxY
+  global draging
+  
+  if {$draging == 1} {
+    global workingMode
+    
+    switch $workingMode {Create}  {
+      $befehl unsetCurrent
+      set overlapping_items [$W find overlapping $dragBoxX \
+                               $dragBoxY [$W canvasx $x] [$W canvasy $y]] 
+      foreach i $overlapping_items {
+        if {[lsearch [$W gettags $i] nodetag] != -1} {
+          $befehl multiSelect $i
+        } 
+      }
+    } {Zoom} {        
+      set breite [expr [winfo width $W] * 1.0]
+      set hoehe [expr [winfo height $W] * 1.0]
+      
+      set canvX [expr [$W canvasx $x] * 1.0]
+      set canvY [expr [$W canvasy $y] * 1.0]
+      
+      set centX [expr $dragBoxX + ($canvX - $dragBoxX)/2.0 ]
+      set centY [expr $dragBoxY + ($canvY - $dragBoxY)/2.0 ]
+      
+      set dBreite [expr abs($canvX - $dragBoxX)]
+      set dHoehe [expr abs($canvY - $dragBoxY)]
+      
+      set scaleFak [ffMin [expr ($breite/$dBreite)] [expr ($hoehe/$dHoehe)]]
+        
+#       puts ""
+#       set centX [expr $centX * $scaleFak]
+#       set centY [expr $centY * $scaleFak]
+#       puts "Zentrum : $centX x $centY"
+#       puts " Unproj : [unproj $centX $centY]"
+
+#       set tmpItem [$W create oval $centX $centY [expr $centX+10] \
+#                      [expr $centY+10]]
+
+#       puts "Item    : [$W coords $tmpItem]"
+
+      scan [unproj $centX $centY] {%f %f %f} centX centY dummy
+      
+      $befehl  boxscale $scaleFak $scaleFak
+
+      scan [proj $centX $centY] {%f %f %f} centX centY dummy
+
+#       puts "   Proj : [proj $centX $centY]"
+#       puts "ZentrumN: $centX x $centY"
+
+#       puts "Item    : [$W coords $tmpItem]"
+
+#       scan [$W coords $tmpItem] {%f %f %f %f} tix1 tiy1 tix2 tiy2
+      centerCanvas $W $centX $centY
+
+#       puts "Breite  : $breite"
+#       puts "Höhe    : $hoehe"
+#       puts ""
+#       puts "Dragbox : $dragBoxX $dragBoxY $canvX $canvY"
+#       puts "Breite  : $dBreite"
+#       puts "Hoehe   : $dHoehe"
+#       puts "ScaleFak: $scaleFak"
+
+    } {Navigate} {
+    }
+    set dragBoxX 0
+    set dragBoxY 0
+    drawDragBox $W 0 0
+    global dragItem
+    $W itemconfigure $dragItem($W) -outline [$W cget -bg]
+    set draging 0
+  } 
+  global workingMode
+  set workingMode Create
+}
+
+proc controlButton1 {befehl W x y} {
+  set overlapping_items [$W find overlapping \
+                           [$W canvasx $x] [$W canvasy $y]\
+                           [$W canvasx $x] [$W canvasy $y]] 
+  set node_exist 0
+  foreach i $overlapping_items {
+    if {[lsearch [$W gettags $i] nodetag] != -1} { 
+      set node_exist 1
+      break
+    }
+  }
+  if {$node_exist == 0} {
+    $befehl newNode 1 [$W canvasx $x] [$W canvasy $y] $W
+  }
+}
+
+proc addCanvasBindings {canv } {
+  global symbolicName
+  if { $symbolicName(graphView) == $canv} {
+    set befehl recall 
+  } {
+    set befehl SubRecall.$canv
+  }        
+
+  # bindings
+  
+  bind $canv <B1-Motion> "button1Motion $befehl %W %x %y"
+
+  bind $canv <B3-Motion> {
+    MenuPopupHandle .frame0.canvas2.menu1 %W %X %Y;  
+    MenuPopupHandle .frame0.canvas2.menu0 %W %X %Y
+  }
+  
+  bind $canv <Button-1> "button1 %W %x %y"
+  bind $canv <Mod1-Button-1> "Mod1Button1 %W %x %y"
+
+  bind $canv <ButtonRelease-1> "button1Release $befehl %W %x %y"
+
+  bind $canv <ButtonRelease-3> {
+    .frame0.canvas2.menu1 invoke active; 
+    .frame0.canvas2.menu1 unpost;
+    .frame0.canvas2.menu0 invoke active; 
+    .frame0.canvas2.menu0 unpost
+  }
+
+  bind $canv <Control-Button-1> "controlButton1 $befehl %W %x %y"
+
+  set body [concat "
+    $befehl" { addInstantPoint [%W canvasx %x] [%W canvasy %y] 
+    }]
+
+  bind $canv <Control-Shift-Button-1> $body
+
+  set body [concat "
+    $befehl" { removeInstantPoint [%W canvasx %x] [%W canvasy %y]
+    }]
+
+  bind $canv <Control-Shift-Button-2> $body
+
+#   bind $canv <Double-Button-1> "$befehl unsetCurrent"
+  bind $canv <Double-Button-1> "recall modPress i"
+  bind $canv <Enter> {focus %W}
+  bind $canv <Mod1-Key> "$befehl modPress %A"
+  bind $canv <KeyPress> "$befehl keyPress %K %A"
+
+  set body [concat "
+    $befehl" {selectIfNot [%W find withtag current] [%W canvasx %x] \
+      [%W canvasy %y] 
+    }]
+  
+  bind $canv <Shift-Button-1> $body
+  
+  addUserCanvasBindings $canv $befehl
+}
+
+proc addUserCanvasBindings {a b} {
+}
+
+proc userAddNodeMenu { menu } {
+}
+
+proc buildNodeMenu {} {
+  # build widget .frame0.canvas2.menu0
+  menu .frame0.canvas2.menu0 \
+    -activebackground {AliceBlue} \
+    -bg {LightBlue}
+
+  .frame0.canvas2.menu0 add command \
+    -label {Node Menu} \
+    -state {disabled} 
+
+  .frame0.canvas2.menu0 add separator
+  .frame0.canvas2.menu0 add command \
+    -command {global nodeMenuCommand; $nodeMenuCommand nodeEliminateParallelEdges} \
+    -label {Eliminate Parallel Edges}
+  .frame0.canvas2.menu0 add command \
+    -command {global nodeMenuCommand; $nodeMenuCommand toggleStartNode} \
+    -label {Toggle Startnode}
+  .frame0.canvas2.menu0 add command \
+    -command {global nodeMenuCommand; $nodeMenuCommand toggleEndNode} \
+    -label {Toggle Endnode}
+  .frame0.canvas2.menu0 add command \
+    -command {global nodeMenuCommand; $nodeMenuCommand normNode} \
+    -label {Move to Zero}
+  .frame0.canvas2.menu0 add command \
+    -command {global nodeMenuCommand; $nodeMenuCommand switchNode} \
+    -label {Swap}
+#   .frame0.canvas2.menu0 add command \
+#     -command {global nodeMenuCommand; $nodeMenuCommand openURL} \
+#     -label {Open in Netscape}
+  .frame0.canvas2.menu0 add command \
+    -command {global nodeMenuCommand; $nodeMenuCommand edgify} \
+    -label {Edgify}
+  .frame0.canvas2.menu0 add command \
+    -command {global nodeMenuCommand; $nodeMenuCommand splitNode} \
+    -label {Split Node}
+  .frame0.canvas2.menu0 add command \
+    -command {global nodeMenuCommand; $nodeMenuCommand subgraph} \
+    -label {Copy subgraph}
+  .frame0.canvas2.menu0 add command \
+    -command {.frame0.canvas2 raise current all} \
+    -label {Raise}
+
+  userAddNodeMenu .frame0.canvas2.menu0
+}
+
+proc buildEdgeMenu {} {
+  # build widget .frame0.canvas2.menu1
+  menu .frame0.canvas2.menu1 \
+    -activebackground {AliceBlue} \
+    -bg {LightBlue} 
+
+  .frame0.canvas2.menu1 add command \
+    -label {Edge menu} \
+    -state {disabled} 
+
+  .frame0.canvas2.menu1 add separator
+  .frame0.canvas2.menu1 add command \
+    -command {recall revertEdge} \
+    -label {Revert Edge} 
+  .frame0.canvas2.menu1 add command \
+    -command {recall flattenEdge} \
+    -label {Flatten Edge} 
+  .frame0.canvas2.menu1 add command \
+    -command {recall "toggleSpline"} \
+    -label {Spline} 
+}
+
+proc buildMainCanvas {} {
+  # build widget .frame0
+  frame .frame0 \
+    -background {gainsboro} \
+    -relief {raised}
+
+  global aktuCanvas
+
+  # build widget .frame0.scrollbar1
+  scrollbar .frame0.scrollbar1 \
+      -command {global aktuCanvas; $aktuCanvas yview} \
+      -bg {gold} \
+      -relief {raised}
+
+  # build widget .frame0.scrollbar3
+  scrollbar .frame0.scrollbar3 \
+      -command {global aktuCanvas; $aktuCanvas xview} \
+      -bg {gold} \
+      -orient {horizontal} \
+      -relief {raised}
+
+
+  # build widget .frame0.canvas2
+  canvas .frame0.canvas2 \
+    -background {white} \
+    -height {207} \
+    -insertbackground {black} \
+    -insertofftime {600} \
+    -relief {raised} \
+    -selectbackground {black} \
+    -selectforeground {gainsboro} \
+    -width {300} \
+    -xscrollcommand {.frame0.scrollbar3 set} \
+    -yscrollcommand {.frame0.scrollbar1 set}
+
+#   .frame0.canvas2 create rectangle -1000 -1000 2000 2000
+  
+  global dragItem
+  set dragItem(.frame0.canvas2) [.frame0.canvas2 create rectangle 0 0 0 0]
+  .frame0.canvas2 itemconfigure $dragItem(.frame0.canvas2) \
+    -outline [.frame0.canvas2 cget -bg]
+  
+  global isDirected
+  set isDirected(.frame0.canvas2) {YES}
+  
+  global tk_version
+  if {$tk_version < 4} {
+    .frame0.canvas2 xview 300 
+    .frame0.canvas2 yview 300 
+  } {
+    .frame0.canvas2 xview scroll 300 units
+    .frame0.canvas2 yview scroll 300 units
+  }
+  # pack widget .frame0
+  pack append .frame0 \
+    .frame0.scrollbar1 {right frame center filly} \
+    .frame0.canvas2 {top frame center expand fill} \
+    .frame0.scrollbar3 {top frame center fillx} 
+}
+
+
+proc buildButtonFrame {} {
+  # build widget .frame2
+  frame .frame2 \
+    -background {gainsboro} \
+    -borderwidth {2} \
+    -relief {raised}
+    
+  # build widget .frame2.frame8
+  frame .frame2.frame8 \
+    -background {gainsboro} \
+    -borderwidth {2}
+
+  frame .frame2.frame9
+  
+  label .frame2.frame9.l1 -text "Zoom: "
+  label .frame2.frame9.l2 -text "Rotate: "
+  
+  pack append .frame2.frame9 \
+    .frame2.frame9.l1 {top} \
+    .frame2.frame9.l2 {top}
+    
+  # build widget .frame2.frame8.scale16
+  scale .frame2.frame8.scale16 \
+    -width 10 \
+    -background {gainsboro} \
+    -command {global aktuCommand; $aktuCommand setZWinkel} \
+    -orient {horizontal} \
+    -relief {raised} \
+    -showvalue {0} \
+    -from {-360} \
+    -to {360}
+
+  .frame2.frame8.scale16 set {0}
+
+  # build widget .frame2.frame8.scale17
+  scale .frame2.frame8.scale17 \
+    -width 10 \
+    -background {gainsboro} \
+    -command {global aktuCommand; $aktuCommand zoomScale} \
+    -orient {horizontal} \
+    -relief {raised} \
+    -showvalue {0} \
+    -from {4} \
+    -to {220}
+
+  .frame2.frame8.scale17 set {100}
+
+  # pack widget .frame2.frame8
+
+   pack append .frame2.frame8 \
+    .frame2.frame8.scale17 {top frame center fillx} \
+    .frame2.frame8.scale16 {top frame center fillx} 
+
+  # pack widget .frame2
+  pack append .frame2 \
+    .frame2.frame9 {left frame s} \
+    .frame2.frame8 {bottom frame center expand fillx} 
+    
+}
+
+
+proc updateRotationZ {wert} {
+  updateScale .frame2.frame8.scale16 $wert
+}
+
+proc updateRotationY {wert} {
+}
+
+proc updateRotationX {wert} {
+}
+
+proc updateScalation {wert} {
+  updateScale .frame2.frame8.scale17 $wert
+}
+
+proc updateScale {schieber wert} {
+  set tmpV [$schieber cget -command]
+  $schieber configure -command {}
+  $schieber set $wert
+  update
+  $schieber configure -command $tmpV
+}
+
+proc addUserUsage {canv} {
+  wm title $canv {Graph Usage: }
+
+  # build widget $canv.button4
+  button $canv.button4 -command "destroy $canv"  -text {OK}
+  message $canv.message3 -aspect {1331} -borderwidth {2} -justify {left}\
+    -padx {3} -pady {1} -relief {flat} -text {No Help Today ...}
+
+  pack append $canv     \
+    $canv.message3 {top frame center}     \
+    $canv.button4 {bottom frame center fillx}
+}
+
+# Procedure: addSubWindow
+proc addSubWindow { canv x y } {
+  set cfTmpTag [$canv create window $x $y -width 200 -height 150]
+  
+  # build widget .frame0
+  frame $canv.$cfTmpTag \
+    -bd {4} \
+    -width {100} \
+    -height {150} \
+    -bg {red} \
+    -relief {flat}
+  
+  # build widget .frame0.canvas2
+  canvas $canv.$cfTmpTag.canvas2 \
+    -background {lightgrey} \
+    -closeenough {3.0} \
+    -height {105} \
+    -insertbackground {black} \
+    -insertofftime {600} \
+    -relief {raised} \
+    -selectbackground {black} \
+    -selectforeground {gainsboro} \
+    -width {150} 
+
+  global isDirected
+  set isDirected($canv.$cfTmpTag.canvas2) {YES}
+  
+  pack append $canv.$cfTmpTag \
+    $canv.$cfTmpTag.canvas2 {top frame center expand fill} 
+    
+  $canv addtag windowNode withtag $cfTmpTag
+  $canv itemconfigure $cfTmpTag -window $canv.$cfTmpTag
+  
+  global symbolicName
+  if { $symbolicName(graphView) == $canv} {
+    set befehl recall 
+  } {
+    set befehl SubRecall.$canv
+  }        
+  
+   set body1 [concat {
+     set x [} "$canv" { canvasx [expr [winfo x %W] + %x]]; 
+     set y [} "$canv" { canvasy [expr [winfo y %W] + %y]]; 
+   } " $befehl "]
+  
+  set body2 [concat " $cfTmpTag " {$x $y}]
+
+#   bind $canv.$cfTmpTag.canvas2 <Enter> "focus $canv.$cfTmpTag.canvas2"
+#   bind $canv.$cfTmpTag.canvas2 <Mod1-Key> [concat \
+#  "SubRecall.$canv.$cfTmpTag.canvas2 modPress " {%A}]    
+
+  bind $canv.$cfTmpTag.canvas2 <Leave> "focus $canv"
+  bind $canv.$cfTmpTag <1> "$body1 setCurrentNode $body2"    
+  bind $canv.$cfTmpTag <B1-Motion> "$body1 moveCurrent $body2"    
+  bind $canv.$cfTmpTag <M1-Button-1> "$body1 changeSizeInit $body2"    
+  bind $canv.$cfTmpTag <M1-B1-Motion> "$body1 changeSize $body2"
+
+  global dragItem
+  set dragItem($canv.$cfTmpTag.canvas2) [$canv.$cfTmpTag.canvas2 create \
+                                           rectangle 0 0 0 0]
+  $canv.$cfTmpTag.canvas2 itemconfigure $dragItem($canv.$cfTmpTag.canvas2)\
+    -outline [$canv.$cfTmpTag.canvas2 cget -bg]
+  
+  addCanvasBindings $canv.$cfTmpTag.canvas2
+  return $cfTmpTag
+}
+
+# Procedure: resetScales
+proc resetScales {} {
+  .frame2.frame8.scale16 set {0}
+  .frame2.frame8.scale17 set {100}
+  recall resetScales
+}
+
+proc showUsageBox {} {
+  toplevel .topA 
+
+  # Window manager configurations
+  global tk_version
+  wm positionfrom .topA ""
+  wm sizefrom .topA ""
+  wm maxsize .topA 1000 1000
+  wm minsize .topA 10 10
+  addUserUsage {.topA}
+}
+
+proc buildMainMenu {} {
+  # build widget .frame1
+  frame .frame1 \
+    -background {gainsboro} \
+    -borderwidth {2} \
+    -relief {raised}
+
+  # build widget .frame1.menubutton0
+  menubutton .frame1.menubutton0 \
+    -background {gainsboro} \
+    -menu {.frame1.menubutton0.m} \
+    -text {Layout} 
+
+  # build widget .frame1.menubutton0.m
+  menu .frame1.menubutton0.m \
+    -background {gainsboro} 
+
+  # build widget .frame1.menubutton1
+  menubutton .frame1.menubutton1 \
+    -background {gainsboro} \
+    -menu {.frame1.menubutton1.m} \
+    -text {File} 
+    
+  # build widget .frame1.menubutton1.m
+  menu .frame1.menubutton1.m \
+    -background {gainsboro} 
+  .frame1.menubutton1.m add command \
+    -command {recall modPress n} \
+    -label {New (M-n)} 
+  .frame1.menubutton1.m add command \
+    -command {recall modPress l} \
+    -label {Load (M-l)} 
+  .frame1.menubutton1.m add command \
+    -command {recall modPress m} \
+    -label {Merge (M-m)} 
+  .frame1.menubutton1.m add command \
+    -command {recall modPress s} \
+    -label {Save (M-s)} 
+  .frame1.menubutton1.m add command \
+    -command {recall modPress S} \
+    -label {Save As (M-S)} 
+  .frame1.menubutton1.m add command \
+    -command {recall genEps} \
+    -label {Save Postscript} 
+  .frame1.menubutton1.m add separator
+  .frame1.menubutton1.m add command \
+    -command {recall modPress w} \
+    -label {Close (M-w)} 
+  .frame1.menubutton1.m add command \
+    -command {recall modPress q} \
+    -label {Quit (M-q)} 
+
+  # build widget .frame1.menubutton4
+  menubutton .frame1.menubutton4 \
+    -background {gainsboro} \
+    -menu {.frame1.menubutton4.m} \
+    -text {Window} 
+
+  # build widget .frame1.menubutton4.m
+  menu .frame1.menubutton4.m \
+    -background {gainsboro} 
+  .frame1.menubutton4.m add command \
+    -command {findGraph} \
+    -label {Find Graph} 
+  .frame1.menubutton4.m add command \
+    -command {zoomToFit} \
+    -label {Zoom to fit} 
+  .frame1.menubutton4.m add command \
+    -command {adjWindow} \
+    -label {Adjust Window Size} 
+  .frame1.menubutton4.m add command \
+    -command {resetScales} \
+    -label {Reset Window} 
+  
+  #  .frame1.menubutton4.m add command \
+    #    -command {recall modPress w} \
+    #    -label {Close Window (M-w)} \
+    #    -underline {0}
+
+  # build widget .frame1.menubutton2
+  menubutton .frame1.menubutton2 \
+    -background {gainsboro} \
+    -menu {.frame1.menubutton2.m} \
+    -text {Help} 
+
+  # build widget .frame1.menubutton2.m
+  menu .frame1.menubutton2.m \
+    -background {gainsboro} 
+  .frame1.menubutton2.m add command \
+    -command {if {![string match "*.topA*" [info commands]]}\
+                {showUsageBox} } \
+    -label {Usage} \
+    -state {active} 
+
+  # build widget .frame1.menubutton3
+  menubutton .frame1.menubutton3 \
+    -background {gainsboro} \
+    -menu {.frame1.menubutton3.m} \
+    -text {Options} 
+
+  # build widget .frame1.menubutton3.m
+  menu .frame1.menubutton3.m \
+    -background {gainsboro} 
+  .frame1.menubutton3.m add command \
+    -command {recall modPress i} \
+    -label {Inspector (M-i)} 
+  .frame1.menubutton3.m add cascade \
+    -menu .frame1.menubutton3.m.shape \
+    -label {Node Shape} 
+  .frame1.menubutton3.m add cascade \
+    -menu .frame1.menubutton3.m.anker \
+    -label {Text Position} 
+  .frame1.menubutton3.m add checkbutton \
+    -offvalue 0 \
+    -onvalue 1 \
+    -variable splineFlag \
+    -selectcolor {gold} \
+    -command {recall toggleSplineAll} \
+    -label {Use Splines} 
+  .frame1.menubutton3.m add checkbutton \
+    -offvalue 0 \
+    -onvalue 1 \
+    -variable showLabelsFlag \
+    -selectcolor {gold} \
+    -command {hideallLabels} \
+    -label {Show Labels} 
+  .frame1.menubutton3.m add checkbutton \
+    -offvalue 0 \
+    -onvalue 1 \
+    -variable showNodesFlag \
+    -selectcolor {gold} \
+    -command {recall showNodes} \
+    -label {Show Nodes} 
+  .frame1.menubutton3.m add checkbutton \
+    -offvalue 0 \
+    -onvalue 1 \
+    -variable showEdgesFlag \
+    -selectcolor {gold} \
+    -command {recall showEdges} \
+    -label {Show Edges} 
+
+  # build widget .frame1.menubutton5
+  menubutton .frame1.menubutton5 \
+    -background {gainsboro} \
+    -menu {.frame1.menubutton5.m} \
+    -text {Edit} 
+
+  # build widget .frame1.menubutton5.m
+  menu .frame1.menubutton5.m \
+    -background {gainsboro} 
+  .frame1.menubutton5.m add command \
+    -command {recall modPress x} \
+    -label {Cut (M-x)}
+  .frame1.menubutton5.m add command \
+    -command {recall modPress c} \
+    -label {Copy (M-c)}
+  .frame1.menubutton5.m add command \
+    -command {recall modPress v} \
+    -label {Paste (M-v)}
+  .frame1.menubutton5.m add command \
+    -command {recall clear} \
+    -label {Clear}
+  .frame1.menubutton5.m add separator
+  .frame1.menubutton5.m add command \
+    -command {recall modPress a} \
+    -label {Select all (M-a)}
+  .frame1.menubutton5.m add command \
+    -command {recall modPress r} \
+    -label {Select matching (M-r)}
+  .frame1.menubutton5.m add command \
+    -command {recall changeDirectedness} \
+    -label {Invert Directedness} 
+  .frame1.menubutton5.m add command \
+    -command {recall revert} \
+    -label {Revert} 
+  .frame1.menubutton5.m add command \
+    -command {recall eliminateParallelEdges} \
+    -label {Eliminate Parallel Edges} 
+  .frame1.menubutton5.m add command \
+    -command {recall sixColor} \
+    -label {Solve 6 Color} 
+
+  # build widget .frame1.menubutton6
+#   menubutton .frame1.menubutton6 \
+#     -background {gainsboro} \
+#     -menu {.frame1.menubutton6.m} \
+#     -text {Shape} 
+
+  # build widget .frame1.menubutton6.m
+  menu .frame1.menubutton3.m.anker \
+    -background {gainsboro} 
+  .frame1.menubutton3.m.anker add radiobutton \
+    -command {changeAnchor w; recall setNodePosition right} \
+    -variable DefAnker \
+    -state active \
+    -label {Right}
+  .frame1.menubutton3.m.anker add radiobutton \
+    -command {changeAnchor e; recall setNodePosition left} \
+    -variable DefAnker \
+    -state active \
+    -label {Left}
+  .frame1.menubutton3.m.anker add radiobutton \
+    -command {changeAnchor s; recall setNodePosition top} \
+    -variable DefAnker \
+    -state active \
+    -label {Top}
+  .frame1.menubutton3.m.anker add radiobutton \
+    -command {changeAnchor n; recall setNodePosition bottom} \
+    -variable DefAnker \
+    -state active \
+    -label {Bottom}
+  .frame1.menubutton3.m.anker add radiobutton \
+    -command {changeAnchor center; recall setNodePosition Inside} \
+    -variable DefAnker \
+    -state active \
+    -label {Inside}
+  
+  # build widget .frame1.menubutton6.m
+  menu .frame1.menubutton3.m.shape \
+    -background {gainsboro} 
+  .frame1.menubutton3.m.shape add radiobutton \
+    -command {hideIconBox; recall setShape Circle} \
+    -variable DefShape \
+    -state active \
+    -label {Circle}
+  .frame1.menubutton3.m.shape add radiobutton \
+    -command {hideIconBox; recall setShape Oval} \
+    -state disabled \
+    -variable DefShape \
+    -label {Oval}
+  .frame1.menubutton3.m.shape add radiobutton \
+    -command {hideIconBox; recall setShape Square} \
+    -variable DefShape \
+    -label {Square}
+  .frame1.menubutton3.m.shape add radiobutton \
+    -command {hideIconBox; recall setShape Rectangle} \
+    -state disabled \
+    -variable DefShape \
+    -label {Rectangle}
+  .frame1.menubutton3.m.shape add radiobutton \
+    -state disabled \
+    -command {hideIconBox; recall setShape Raute} \
+    -variable DefShape \
+    -label {Raute}
+  .frame1.menubutton3.m.shape add radiobutton \
+    -variable DefShape \
+    -command {showIconBox; recall setShape Icon} \
+    -label {Icon} 
+
+  global DefShape
+  set DefShape Circle
+
+  # pack widget .frame1
+  pack append .frame1 \
+    .frame1.menubutton1 {left frame center} \
+    .frame1.menubutton5 {left frame center} \
+    .frame1.menubutton4 {left frame center} \
+    .frame1.menubutton2 {right frame center} \
+    .frame1.menubutton0 {left frame center} \
+    .frame1.menubutton3 {left frame center} 
+  
+  addUserMenus .frame1
+#   global tk_version
+#   if {$tk_version >= 3.0} {
+#     tk_menuBar .frame1 .frame1.menubutton0 .frame1.menubutton1 \
+#       .frame1.menubutton4 .frame1.menubutton2 .frame1.menubutton3 \
+#       .frame1.menubutton5
+#   } {
+#     tk_menus . .frame1.menubutton0 .frame1.menubutton1 \
+#       .frame1.menubutton4 .frame1.menubutton2 .frame1.menubutton3 \
+#       .frame1.menubutton5
+#   }
+}
+
+# Procedure: addLayoutMenu
+proc addLayoutMenu { text} {
+  .frame1.menubutton0.m add command \
+    -command "recall layout $text" \
+    -label $text
+}
+
+# Procedure: changeAnchor
+proc changeAnchor {newAnch {canv "."} } {
+  if {$canv == "." } {
+    global symbolicName
+    set canv $symbolicName(graphView)
+  }
+  set textItems [$canv find withtag cfLabelText]
+  foreach i $textItems {
+    $canv itemconfigure $i -anchor $newAnch
+  }
+}
+
+# Procedure: changeToWindow
+proc changeToWindow { item {canv "."} } {
+  if {$canv == "." } {
+    global symbolicName
+    set canv $symbolicName(graphView)
+  }
+  
+  scan [$canv coords $item] {%f %f} x y
+  removeItem $canv $item
+  global DefShape
+  set tmpS $DefShape
+  set DefShape Window
+  set tmpR [addNode $canv $x $y 10 {green}]
+  set DefShape $tmpS
+  return $tmpR
+}
+
+# Procedure: changeWindowSize
+proc changeWindowSize { parent id xoff yoff } {
+   set canv "$parent.$id"
+   set neuW [expr [winfo w $canv] + $xoff]   
+   set neuH [expr [winfo h $canv] + $yoff]
+   $parent itemconfigure $id -width $neuW -height $neuH
+   $canv configure -width $neuW -height $neuH
+   set neuW [winfo w $canv]   
+   set neuH [winfo h $canv]
+}
+
+# Procedure: changeMask
+proc changeMask { item mask {selMask "__NoMask__"} {canv "." } } {
+  global ICON_LIB_DIR
+    
+  if {$canv == "." } {
+    global symbolicName
+    set canv $symbolicName(graphView)
+  }
+  
+  if {[lsearch [$canv gettags $item] iconNode] != -1} {
+    global tk_version
+    global selectImage
+    global unselectImage
+    global iconType    
+    global iconSelType    
+    global iconCache
+    
+    set ffHasSelectImage 0
+    
+    if { $selectImage($canv,$item) == $unselectImage($canv,$item) } {
+      set ffHasSelectImage 1
+    }
+
+    set maskBild [file rootname $mask]
+
+    if { $selMask != "__NoMask__" } {
+      set selMaskBild [file rootname $selMask]
+      set selMaskType $iconSelType($canv,$item)
+    } {
+      set selMaskBild $maskBild
+      set selMaskType $iconSelType($canv,$item)  
+      # ??? obere Zeile evtl. nicht korrekt
+    }
+    
+
+    set tmpImage $unselectImage($canv,$item)
+    set tmpTyp $iconType($canv,$item)
+    
+    if { $mask != "__NoMask__" } {
+      switch $iconType($canv,$item) {xbm} {
+        
+        if { [info exists iconCache($tmpImage,$tmpTyp,$maskBild)] } {
+          puts "Using Mask Cache"
+          set tmpNewImage $iconCache($tmpImage,$tmpTyp,$maskBild)
+        } {
+          global iconFileCache
+          puts "Building Mask Cache"
+          puts "Image: [$canv itemconfigure $item -image]"
+
+          set tmpNewImage [image create pixmap -file \
+                             $iconFileCache($tmpImage,$tmpTyp)]
+
+          $tmpNewImage configure -maskfile $ICON_LIB_DIR/xbm/$maskBild.xbm
+          set iconCache($tmpImage,$tmpTyp,$maskBild) $tmpNewImage
+        }
+
+        set $unselectImage($canv,$item) $tmpNewImage
+        $canv itemconfigure $item -image $tmpNewImage
+        
+      } {xpm} {
+
+        if { [info exists iconCache($tmpImage,$tmpTyp,$maskBild)] } {
+          puts "Using Mask Cache"
+          set tmpNewImage $iconCache($tmpImage,$tmpTyp,$maskBild)
+        } {
+          global iconFileCache
+          puts "Building Mask Cache"
+          puts "Image: $iconFileCache($tmpImage,$tmpTyp)"
+          set tmpNewImage [image create pixmap -file \
+                             $iconFileCache($tmpImage,$tmpTyp)]
+          $tmpNewImage configure -maskfile $ICON_LIB_DIR/xbm/$maskBild.xbm
+          set iconCache($tmpImage,$tmpTyp,$maskBild) $tmpNewImage
+        }
+        
+        set $unselectImage($canv,$item) $tmpNewImage
+        $canv itemconfigure $item -image $tmpNewImage
+
+      } {default} {
+        puts stderr "Masks ($mask) not supported for type $iconType($canv,$item)"
+      }
+    }
+    
+    if { $ffHasSelectImage == 1} {
+      set selectImage($canv,$item) $unselectImage($canv,$item)
+    } {
+      set tmpImage $selectImage($canv,$item)
+      set tmpTyp $selMaskType
+
+      if {$selMaskBild != "__NoMask__"} {
+        switch $selMaskType {xbm} {
+          
+          if { [info exists iconCache($tmpImage,$tmpTyp,$selMaskBild)] } {
+            puts "Using Mask Cache"
+            set tmpNewImage $iconCache($tmpImage,$tmpTyp,$selMaskBild)
+          } {
+            puts "Building Mask Cache"
+            set tmpNewImage [image create bitmap]
+          $tmpNewImage copy $tmpImage
+            $tmpNewImage configure -maskfile $ICON_LIB_DIR/xbm/$selMaskBild.xbm
+            set iconCache($tmpImage,$tmpTyp,$selMaskBild) $tmpNewImage
+          }
+          
+          set selectImage($canv,$item) $tmpNewImage
+          $canv itemconfigure $item -image $tmpNewImage
+          
+        } {xpm} {
+          if { [info exists iconCache($tmpImage,$tmpTyp,$selMaskBild)] } {
+            puts "Using Mask Cache"
+            set tmpNewImage $iconCache($tmpImage,$tmpTyp,$selMaskBild)
+          } {
+            puts "Building Mask Cache"
+            set tmpNewImage [image create pixmap]
+            $tmpNewImage copy $tmpImage
+            $tmpNewImage configure -maskfile $ICON_LIB_DIR/xbm/$selMaskBild.xbm
+            set iconCache($tmpImage,$tmpTyp,$selMaskBild) $tmpNewImage
+          }
+        
+          set selectImage($canv,$item) $tmpNewImage
+          $canv itemconfigure $item -image $tmpNewImage
+
+        } {default} {
+          if { $mask != "__NoMask__" } {
+            # puts $selMaskType
+            puts stderr "Masks ($mask) not supported for type $selMaskType"
+          }
+        }
+      }
+    }
+  }
+}
+
+# Procedure: changeNodeColor
+proc changeNodeColor { node col {canv "."}} {
+  global symbolicName
+  if { $canv == "."} {
+    set canv $symbolicName(graphView)
+  }
+  if {[lsearch [.frame0.canvas2 gettags $node] windowNode] != -1} {
+    return
+  }
+  if {[lsearch [.frame0.canvas2 gettags $node] iconNode] != -1} {
+    # $canv itemconfigure $node -foreground $col
+  } {
+    $canv itemconfigure $node -outline $col
+    # -fill $col
+  }
+}
+
+# Procedure: changeStdText
+# proc changeStdText { t y} {
+# global symbolicName
+# [set symbolicName(graphView)] itemconfigure $t -text $y
+# }
+
+# Procedure: changeText
+proc changeText {canv t y} { 
+  global labelTexts
+  set labelTexts($t) $y
+  global showLabelsFlag
+  
+  if { $showLabelsFlag == 1 } {
+    $canv itemconfigure $t -text $y
+  }
+}
+
+proc changeTextMit {canv t y} { 
+  global labelTexts
+  set labelTexts($t) $y
+  global showLabelsFlag
+  
+  if { $showLabelsFlag == 1 } {
+    $canv.$t configure -text {}
+    $canv itemconfigure $t -window {}
+    $canv.$t configure -padx 0 -pady 0
+    $canv itemconfigure $t -width 0 -height 0
+    
+    $canv itemconfigure $t -window $canv.$t
+
+    if {$y != ""} {
+      $canv.$t configure -text $y
+      set tmp [$canv bbox $t]
+      set width [expr [lindex $tmp 2] - [lindex $tmp 0]]
+      set height [expr [lindex $tmp 3] - [lindex $tmp 1]]
+      $canv itemconfigure $t -width $width -height $height
+    }
+  }
+}
+
+
+
+# Procedure: drawDragBox
+proc drawDragBox {canv x2 y2} {
+  global dragBoxX
+  global dragBoxY
+  global dragItem
+  global symbolicName
+  eval $canv coords $dragItem($canv) $dragBoxX \
+    $dragBoxY $x2 $y2 
+  
+  # $y2 $x2 $dragBoxY $dragBoxX $dragBoxY
+}
+
+proc centerCanvas {dasCanvas x y} {
+  scan "[$dasCanvas cget -scrollregion]" {%d %d %d %d} sx1 sy1 sx2 sy2
+  
+  scan "[$dasCanvas xview]" {%f %f} fraqX1 fraqX2
+  scan "[$dasCanvas yview]" {%f %f} fraqY1 fraqY2
+  set fraqX [expr $fraqX2-$fraqX1]
+  set fraqY [expr $fraqY2-$fraqY1]
+  
+  #     set breite [expr ($sx2 - $sx1)*$fraqX]
+  #     set hoehe [expr ($sy2 - $sy1)*$fraqY]
+  set breite [winfo width $dasCanvas]
+  set hoehe [winfo height $dasCanvas]
+  
+  
+  $dasCanvas xview moveto [expr ($x- $breite/2.0-$sx1)/($sx2 - $sx1)];
+  $dasCanvas yview moveto [expr ($y- $hoehe/2.0-$sy1)/($sy2 - $sy1)];
+}
+
+# Procedure: findGraph
+proc findGraph {} {
+  global symbolicName
+  set dasCanvas $symbolicName(graphView)
+  
+  if { [$dasCanvas gettags nodetag] != ""} {
+    set x [lindex  [$dasCanvas coords nodetag] 0];
+    set y [lindex  [$dasCanvas coords nodetag] 1];
+    
+    centerCanvas $dasCanvas $x $y
+  }
+}
+
+
+# # Procedure: moveStdLabel
+# proc moveStdLabel { c x y} {
+# global symbolicName
+# [set symbolicName(graphView)] coords $c [expr $x+5] $y
+# }
+
+# Procedure: moveLabel
+proc moveLabel {canv c x y {ueber -1}} {
+  $canv coords $c [expr $x+5] $y
+  if {$ueber != -1} {
+    $canv raise $c $ueber
+  }
+}
+
+# Procedure: moveStdLine
+proc moveStdLine { c args} {
+global symbolicName
+eval [set symbolicName(graphView)] coords $c $args
+}
+
+# Procedure: moveLine
+proc moveLine {canv c args} {
+eval $canv coords $c $args
+}
+
+# Procedure: moveStdNode
+proc moveStdNode { c x y r} {
+  global symbolicName
+  moveNode $symbolicName(graphView) $c $x $y $r
+#   if {[lsearch [.frame0.canvas2 gettags $c] windowNode] != -1} {
+#     [set symbolicName(graphView)] coords $c $x $y
+#     return
+#   }
+#   if {[lsearch [.frame0.canvas2 gettags $c] iconNode] != -1} {
+#     [set symbolicName(graphView)] coords $c $x $y
+#   } {
+#     [set symbolicName(graphView)] coords $c [expr ($x-$r)]  [expr ($y+$r)]\
+#       [expr ($x+$r)] [expr ($y-$r)] 
+#   }
+}
+
+# Procedure: moveNode
+proc moveNode { canv c x y r} {
+  set nase [$canv gettags $c]
+  if {[lsearch $nase windowNode] != -1} {
+    $canv coords $c $x $y
+    return
+  }
+  if {[lsearch $nase iconNode] != -1} {
+    $canv coords $c $x $y
+  } {
+    $canv coords $c [expr ($x-$r)]  [expr ($y+$r)] \
+      [expr ($x+$r)] [expr ($y-$r)] 
+  }
+}
+
+# Procedure: removeItem
+proc removeItem { canv x} {
+$canv delete $x
+}
+
+
+# Procedure: removeStdLabel
+proc removeStdLabel { x} {
+global symbolicName
+return [removeItem [set symbolicName(graphView)] $x]
+}
+
+
+# Procedure: removeStdLine
+proc removeStdLine { x} {
+global symbolicName
+return [removeItem [set symbolicName(graphView)] $x]
+}
+
+
+# Procedure: removeStdNode
+proc removeStdNode { x} {
+global symbolicName
+return [removeItem [set symbolicName(graphView)] $x]
+}
+
+# Procedure: setBoring
+proc setBoring { c {bild "-1"}} {
+
+}
+
+
+proc makeIconCanvas { frame {name ""} } {
+
+
+  frame $frame \
+    -background {gainsboro} \
+    -relief {raised}
+  
+  if {$name != ""} {
+    entry $frame.l -relief flat -bd 0
+    $frame.l insert 0 $name
+    $frame.l configure -state disabled
+    pack append $frame $frame.l {top frame nw}
+  }
+
+  canvas $frame.canvas \
+    -xscrollcommand "$frame.scrollbar3 set" \
+    -yscrollcommand "$frame.scrollbar1 set" \
+    -width 0
+  
+  # build widget .frame0.scrollbar1
+  scrollbar $frame.scrollbar1 \
+    -command "$frame.canvas yview" \
+    -bg {gold} 
+  
+  # build widget .frame0.scrollbar3
+  scrollbar $frame.scrollbar3 \
+    -command "$frame.canvas xview" \
+    -bg {gold} \
+    -orient {horizontal} 
+  
+  
+  pack append $frame \
+    $frame.scrollbar1 {right frame center filly} \
+    $frame.scrollbar3 {bottom frame center fillx} \
+    $frame.canvas {top frame center expand fill} 
+}
+
+proc fillMaskCanvas { canv fromCanv args } {
+  set x 10
+  set y 10
+  set maxY 0
+  
+  $canv delete all
+#   puts $args
+  foreach i [lindex $args 0] {
+    
+    set tmpImage [$fromCanv itemcget $i -image]
+    set tmpTag [$canv create image $x $y -image $tmpImage]
+     
+    scan [$canv bbox $tmpTag] "%f %f %f %f" dx dy dw dh
+    set dh [expr $dh - $dy]
+    set dw [expr $dw - $dx]
+    
+    if { $dh > $maxY } {set maxY $dh}
+    
+    set x [expr $x +$dw+5]
+    if { $x > 400 } {
+      set x 10
+      set y [expr $y +$maxY + 5]
+      set maxY 0
+    }
+
+    $canv bind $tmpTag <Button-1> {
+      global iconBox
+      set tmpTag [%W find withtag current]
+      scan [%W bbox $tmpTag] {%%f %%f %%f %%f} tx ty tw th
+      %W coords aktuFrame [expr $tx-1] [expr $ty-1] [expr $tw+1] \
+        [expr $th+1]
+      switch %W { 
+        .topIcon.frameLeft.framem0.canvas {
+          recall setCurrentMask $iconBox([%W itemcget $tmpTag -image])
+        } 
+        .topIcon.frameRight.framem1.canvas {
+          recall setCurrentSelMask $iconBox([%W itemcget $tmpTag -image])
+        }
+      }
+    }
+  }
+  set tmpFrame [$canv create rectangle 0 0 0 0 -outline blue]
+  $canv addtag aktuFrame withtag $tmpFrame
+
+  adjWindow $canv 5
+}
+
+proc hideIconBox {} {
+  if {[string match "*.topIcon*" [info commands]]} {
+    wm withdraw .topIcon
+  }
+}
+
+# Procedure: showIconBox
+proc showIconBox {} {
+
+  if {[string match "*.topIcon*" [info commands]]} {
+    wm iconify .topIcon
+    wm deiconify .topIcon
+    return
+  }
+
+  toplevel .topIcon
+  global tk_version
+  global ICON_LIB_DIR
+  global iconBox
+  
+  wm positionfrom .topIcon ""
+  wm sizefrom .topIcon ""
+  wm maxsize .topIcon 1000 1000
+  wm minsize .topIcon 10 10
+  wm title .topIcon {Icons: }
+  wm geometry .topIcon 350x360
+  
+  frame .topIcon.frameLeft
+  frame .topIcon.frameRight
+
+  makeIconCanvas .topIcon.frameLeft.frame0 "Icons"
+  makeIconCanvas .topIcon.frameRight.frame1 "Select Icon"
+  makeIconCanvas .topIcon.frameLeft.framem0 "Mask"
+  makeIconCanvas .topIcon.frameRight.framem1 "Select Mask"
+    
+  set canv .topIcon.frameLeft.frame0.canvas
+  set selCanv .topIcon.frameRight.frame1.canvas
+  set maskCanv .topIcon.frameLeft.framem0.canvas
+  set selMaskCanv .topIcon.frameRight.framem1.canvas
+  $maskCanv configure -height 30
+  $selMaskCanv configure -height 30
+
+  pack append .topIcon.frameRight \
+    .topIcon.frameRight.frame1 {top frame center expand fill} \
+    .topIcon.frameRight.framem1 {bottom frame center fillx} 
+
+  pack append .topIcon.frameLeft \
+    .topIcon.frameLeft.frame0 {top frame center expand fill} \
+    .topIcon.frameLeft.framem0 {bottom frame center fillx} 
+
+  pack append .topIcon \
+    .topIcon.frameRight {right frame center expand fill}\
+    .topIcon.frameLeft {right frame center expand fill} 
+  
+
+  ffSetColorsForWin .topIcon
+  update
+  
+  set x 10
+  set y 10
+  set maxY 0
+  
+  foreach i "[glob -nocomplain $ICON_LIB_DIR/xpm/*.xpm] \
+  [glob -nocomplain $ICON_LIB_DIR/gif/*.gif] \
+  [glob -nocomplain $ICON_LIB_DIR/ppm/*.ppm] \
+  [glob -nocomplain $ICON_LIB_DIR/xbm/*.xbm] " {
+    
+    set bild [file tail $i]
+    set typ [file extension $i]	
+    
+    if { $typ == "" } {
+      set typ xpm
+    } {
+      set typ [string trimleft $typ {.}]
+    }
+    
+    switch $typ {xbm} {
+      set createTyp bitmap
+    } {xpm} {
+      set createTyp pixmap
+    } {default} {
+      set createTyp photo
+    }       
+    
+    global iconCache
+    set cacheBild [file rootname $bild]
+    
+    set tmpF 1
+    if { [info exists iconCache($cacheBild,$typ)] } {
+      # puts "Using Cache for icon"
+      set neuesImage $iconCache($cacheBild,$typ)
+      set tmpF 0
+    } {
+      set tmpF [catch  "image create $createTyp -file $i" neuesImage]
+    }
+    
+    if {$tmpF == 0} {
+      set tmpTag [$canv create image $x $y -anchor nw]
+      set tmpSelTag [$selCanv create image $x $y -anchor nw]
+      set iconCache($cacheBild,$typ) $neuesImage
+#       puts "Chaching iconCache($cacheBild,$typ) $neuesImage"
+      global iconFileCache
+      set iconFileCache($neuesImage,$typ) $i
+      puts "Building Icon Cache"
+      puts "set iconFileCache($neuesImage,$typ) $i"
+      
+#     set neuesImage [image create $createTyp -file $i]
+    
+
+      $canv itemconfigure $tmpTag -image $neuesImage
+      $selCanv itemconfigure $tmpSelTag -image $neuesImage
+      
+      set iconBox($neuesImage) $bild
+      update 
+      # puts $bild
+      
+      # puts "Setting $i at ($x,$y)"
+      foreach i "$canv $selCanv" {
+        $i bind $tmpTag <Button-2> {
+          global iconBox
+          set tmpTag [%W find withtag current]
+          set tmptyp [file extension $iconBox([%W itemcget $tmpTag -image])]
+    
+          if { $tmptyp == "" } {
+            set tmptyp xpm
+          } {
+            set tmptyp [string trimleft $tmptyp {.}]
+          }
+          
+        }
+
+        $i bind $tmpTag <Button-1> {
+          global iconBox
+          set tmpTag [%W find withtag current]
+          scan [%W bbox $tmpTag] {%%f %%f %%f %%f} tx ty tw th
+          %W coords aktuFrame [expr $tx-1] [expr $ty-1] [expr $tw+1] \
+            [expr $th+1]
+          switch %W { 
+            .topIcon.frameLeft.frame0.canvas {
+              recall setCurrentIcon $iconBox([%W itemcget $tmpTag -image])
+              recall setNoMask
+
+              if { [file extension $iconBox([%W itemcget $tmpTag -image])]
+                   == ".xpm" } {
+                fillMaskCanvas .topIcon.frameLeft.framem0.canvas %W \
+                  [%W find withtag [expr $tw-$tx]x[expr $th-$ty]xxbm]
+              } {
+                fillMaskCanvas .topIcon.frameLeft.framem0.canvas %W ""
+              }
+            } 
+            .topIcon.frameRight.frame1.canvas {
+              recall setCurrentSelIcon $iconBox([%W itemcget $tmpTag -image])
+              recall setNoSelMask
+              if { [file extension $iconBox([%W itemcget $tmpTag -image])]
+                   == ".xpm" } {
+                fillMaskCanvas .topIcon.frameRight.framem1.canvas %W \
+                  [%W find withtag [expr $tw-$tx]x[expr $th-$ty]xxbm]
+              } {
+                fillMaskCanvas .topIcon.frameRight.framem1.canvas %W ""
+              }
+            }
+          }
+        }
+      }
+
+      
+      scan [$canv bbox $tmpTag] "%f %f %f %f" dx dy dw dh
+      set dh [expr $dh - $dy]
+      set dw [expr $dw - $dx]
+      
+      
+      
+      if { $dh > $maxY } {set maxY $dh}
+      
+      $canv addtag [set dw]x[set dh]x[set typ] withtag $tmpTag
+      $selCanv addtag [set dw]x[set dh]x[set typ] withtag $tmpSelTag    
+    
+      set x [expr $x +$dw+5]
+#       puts "Breite:"
+#       puts [.topIcon.frameLeft.frame0.canvas cget -width]
+#       puts [.topIcon.frameLeft.frame0 cget -width]
+#       puts [.topIcon.frameLeft cget -width]
+
+      set maxX 150
+      if { $x > [expr $maxX - 20] } {
+        set x 10
+        set y [expr $y +$maxY + 5]
+        set maxY 0
+      }
+    }
+  }
+
+  foreach i "$canv $selCanv $maskCanv $selMaskCanv" {
+    
+    bind $i <Double-Button-1> {
+      %W coords aktuFrame 0 0 0 0
+      switch %W { 
+        .topIcon.frameLeft.frame0.canvas {
+          recall setNoIcon
+          recall setNoSelIcon
+          .topIcon.frameLeft.frame0.canvas coords aktuFrame 0 0 0 0 
+          .topIcon.frameRight.frame1.canvas coords aktuFrame 0 0 0 0 
+          fillMaskCanvas .topIcon.frameLeft.framem0.canvas %W ""
+          fillMaskCanvas .topIcon.frameRight.framem1.canvas %W ""
+        } 
+        .topIcon.frameRight.framem0.canvas {
+          recall setNoMask
+        } 
+        .topIcon.frameLeft.framem1.canvas {
+          recall setNoSelMask
+        } 
+        .topIcon.frameRight.frame1.canvas {
+          recall setNoSelIcon
+          .topIcon.frameRight.frame1.canvas coords aktuFrame 0 0 0 0 
+          fillMaskCanvas .topIcon.frameRight.framem1.canvas %W ""
+        }
+      }
+    }
+  }
+
+      
+  adjWindow $canv 5
+  adjWindow $selCanv 5
+  
+  set tmpFrame [$canv create rectangle 0 0 0 0 -outline blue]
+  $canv addtag aktuFrame withtag $tmpFrame
+
+  set tmpFrame [$selCanv create rectangle 0 0 0 0 -outline blue]
+  $selCanv addtag aktuFrame withtag $tmpFrame
+
+  set tmpFrame [$maskCanv create rectangle 0 0 0 0 -outline blue]
+  $maskCanv addtag aktuFrame withtag $tmpFrame
+
+  set tmpFrame [$selMaskCanv create rectangle 0 0 0 0 -outline blue]
+  $selMaskCanv addtag aktuFrame withtag $tmpFrame
+
+  adjWindow $maskCanv 5
+  adjWindow $selMaskCanv 5
+
+#     puts $aktuNormFrame
+#     puts $aktuSelFrame 
+        
+}
+
+
+# Procedure: smoothLine
+proc smoothLine { c s {canv "."}} {
+# puts "item $c"
+# puts "value $s"
+# puts "canv $canv"
+  
+  if {$canv == "."} {
+    global symbolicName
+    set canv $symbolicName(graphView)
+  }
+  
+  $canv itemconfigure $c -smooth $s
+}
+
+
+# Procedure: unsetBoring
+proc unsetBoring { c} {
+
+}
+
+# Procedure: unsetSelected
+proc unsetSelected { c {canv "."} {col "black"} } {
+  global symbolicName
+
+  if {$canv == "."} {
+    set canv $symbolicName(graphView) 
+  }
+  
+  set tmpSet [$canv gettags $c]
+
+  if {[lsearch $tmpSet edgetag] != -1} {
+    $canv itemconfigure $c -fill $col 
+    return
+  }
+
+  if {[lsearch $tmpSet windowNode] != -1} {
+    $canv.$c configure -bg $col 
+    setAktuCanvas $symbolicName(graphView) 
+    return
+  }
+  
+  if {[lsearch $tmpSet iconNode] != -1} {
+    global tk_version
+    if { $tk_version < 4 } {
+      global icons
+      global ICON_LIB_DIR
+      set tmpMap $icons($canv,$c)N.xpm
+      $canv itemconfigure $c  -bitmap @$ICON_LIB_DIR/$tmpMap
+    } {
+      global unselectImage
+      $canv itemconfigure $c -image $unselectImage($canv,$c)
+    }
+  } {
+    #        $canv itemconfigure $c -fill $col
+    $canv itemconfigure $c -fill "black"
+  }
+}
+
+proc setAktuCanvas { {canv "."} } {
+  global symbolicName
+  global aktuCanvas
+  global oldAktuCanvas
+  global aktuCommand
+
+  if {$canv == "."} {
+    set canv $symbolicName(graphView) 
+  }
+
+  set oldAktuCanvas $aktuCanvas
+  set aktuCanvas $canv
+
+    if { $aktuCanvas == $symbolicName(graphView) } {
+	set aktuCommand recall
+    } {
+	set aktuCommand SubRecall.$aktuCanvas
+    }
+
+  $oldAktuCanvas configure -xscrollcommand {} -yscrollcommand {}
+  $aktuCanvas configure     -xscrollcommand {.frame0.scrollbar3 set} \
+    -yscrollcommand {.frame0.scrollbar1 set}
+
+
+  adjWindow $aktuCanvas 30
+}  
+                 
+# Procedure: setSelected
+proc setSelected { c {canv "."}} {
+  global symbolicName
+  
+  if {$canv == "."} {
+    set canv $symbolicName(graphView) 
+  }
+  
+  if {[lsearch [$canv gettags $c] windowNode] != -1} {
+    $canv.$c configure -bg {#ffa0a0}
+    setAktuCanvas $canv.$c.canvas2 
+    return
+  }
+  
+  if {[lsearch [$canv gettags $c] iconNode] != -1} {
+    global tk_version
+    if { $tk_version < 4 } {
+      global icons
+      global ICON_LIB_DIR
+      $canv itemconfigure $c  -bitmap @$ICON_LIB_DIR/xpm/$icons($canv,$c)S.xpm 
+    } {
+      global selectImage
+      $canv itemconfigure $c -image $selectImage($canv,$c)
+    }
+  } {
+    $canv itemconfigure $c -fill {#ffa0a0}
+  }
+}
+
+# end source
+
+proc EndSrc {} {
+#  wm protocol . WM_DELETE_WINDOW { recall deleteWindow;}
+  wm protocol . WM_DELETE_WINDOW { puts stderr "Use close";}
+}
+
+# initialize global variables
+proc InitGlobals {} {
+  global DefShape;
+  set DefShape "Circle";
+  global DefAnker;
+  set DefAnker "Bottom";
+  global {ffGrid}
+  set {ffGrid} {0}
+  global {splineFlag}
+  set {splineFlag} {0}
+  global {draging}
+  set {draging} {0}
+  global dragBoxX
+  set dragBoxX 0
+  global dragBoxY
+  set dragBoxY 0
+  global aktuCommand
+  set aktuCommand recall
+  global aktuCanvas
+  set aktuCanvas .frame0.canvas2
+  global oldAktuCanvas
+  set oldAktuCanvas {}
+  global workingMode
+  set workingMode Create
+  global {showLabelsFlag}
+  set {showLabelsFlag} {1}
+  global {showNodesFlag}
+  set {showNodesFlag} {1}
+  global {showEdgesFlag}
+  set {showEdgesFlag} {1}
+
+  global {isDirected}
+  set isDirected(.frame0.canvas2) 1
+  global {mousePressed}
+  set {mousePressed} {0}
+  global {Inspector}
+  set {Inspector} {0}
+  global {draging}
+  set {draging} {0}
+  global {xoff}
+  set {xoff} {15}
+  global {yoff}
+  set {yoff} {15}
+  global {symbolicName}
+  set {symbolicName(graphView)} {.frame0.canvas2}
+}
+
+# initialize global variables
+InitGlobals
+EndSrc
+
+

@@ -1,0 +1,184 @@
+
+The file format used in this library is a slightly extended version of the
+sgraph\cite{Sgraph:Himsolt-93a} file format. This means that you should be
+able to load all sgraph graphs, but not necessarily vice versa.
+
+The extensions are:
+
+\begin{itemize}
+
+\item
+The file may contain 8-Bit data.
+
+\item
+The file may contain quoted " and newlines.
+
+\item
+The file may contain Strings which are longer than one line or 1k.
+
+\item
+Attributes can be in arbitrary order.
+
+\end{itemize}
+
+The grammar of the sgraph file format used in the library is:
+
+\begin{grammar}
+  [(colon){$\rightarrow$}]
+  [(semicolon)\\$|$]
+  [(comma){}]
+  [(period){\\}]
+  [(quote){\begin{bf}}{\end{bf}}]
+  [(nonterminal){$\langle$}{$\rangle$}]
+  <graph> : "GRAPH" "IDENTIFIER" "=" <directedness> <graph\_internals> <list\_of\_nodes> "END" 
+     .
+  <directedness> : 
+     ; "DIRECTED" 
+     ; "UNDIRECTED" 
+     .
+  <graph\_internals> : 
+     ; "\{\$" <ffGraphArgList> "\$\}" 
+     .
+  <ffGraphArgList> : 
+     ; <ffGraphArg> <ffGraphArgList> 
+     .
+  <ffGraphArg> : "FF\_L" "IDENTIFIER" "IDENTIFIER" 
+     ; "FF\_LO" "NUMBER" "NUMBER" 
+     ; "NP" "NUMBER" "NUMBER" 
+     ; <numbers\_and\_strings> ";" 
+     ; "UNKNOWN\_INTERNAL" <unknown\_internal> 
+     ; "," 
+     .
+  <list\_of\_nodes> : 
+     ; <node> <list\_of\_nodes> 
+     .
+  <node> : <node\_nr> <node\_internals> <nodelabel> <list\_of\_edges> 
+     .
+  <node\_nr> : "NUMBER" 
+     .
+  <nodelabel> : "IDENTIFIER" 
+     .
+  <node\_internals> : 
+     ; "\{\$" <ffNodeArgList> "\$\}" 
+     .
+  <ffNodeArgList> : 
+     ; <ffNodeArgList> <ffNodeArg> 
+     ; <ffNodeArg> 
+     .
+  <ffNodeArg> : "NUMBER" "NUMBER" 
+     ; "NP" "NUMBER" "NUMBER" 
+     ; "SN" 
+     ; "EN" 
+     ; "FF\_3D" "NUMBER" "NUMBER" "NUMBER" 
+     ; "FF\_C" "IDENTIFIER" 
+     ; "FF\_L" "IDENTIFIER" "IDENTIFIER" 
+     ; "FF\_I" "IDENTIFIER" "IDENTIFIER" 
+     ; "FF\_I" "IDENTIFIER" 
+     ; "UNKNOWN\_INTERNAL" <unknown\_internal> 
+     .
+  <list\_of\_edges> : ";" 
+     ; <edge> <list\_of\_edges> 
+     .
+  <edge> : <targetnode\_nr> <edge\_internals> <edgelabel> 
+     .
+  <targetnode\_nr> : "NUMBER" 
+     .
+  <edgelabel> : "IDENTIFIER" 
+     .
+  <edge\_internals> : 
+     ; "\{\$" <ffEdgeArgList> "\$\}" 
+     .
+  <ffEdgeArgList> : 
+     ; <ffEdgeArgList> <ffEdgeArg> 
+     ; <ffEdgeArg> 
+     .
+  <ffEdgeArg> : "EL" <edgenumberlist> 
+     ; "FF\_3D" <ffEdgeNumberList> 
+     ; "FF\_C" "IDENTIFIER" 
+     ; "FF\_L" "IDENTIFIER" "IDENTIFIER" 
+     ; "UNKNOWN\_INTERNAL" <unknown\_internal> 
+     .
+  <edgenumberlist> : 
+     ; "NUMBER" "NUMBER" <edgenumberlist> 
+     .
+  <ffEdgeNumberList> : 
+     ; "NUMBER" "NUMBER" "NUMBER" <ffEdgeNumberList> 
+     .
+  <unknown\_internal> : <numbers\_and\_strings> 
+     .
+  <numbers\_and\_strings> : 
+     ; <number\_or\_string> <numbers\_and\_strings> 
+     .
+  <number\_or\_string> : "NUMBER" 
+     ; "IDENTIFIER" 
+     .
+\end{grammar}
+
+The terminal symbols are:
+
+\bigskip
+
+\begin{tabbing}
+comment wwwwwwwwwwwwww\= ::= \=\kill
+{\bf NUMBER} \> ::= \> $[0-9]$\bnfplus \bnfchoice $-[0-9]$\bnfplus \\
+{\bf IDENTIFIER} \> ::= \> \bnfterm{"} {\em char\/} \bnfstar \bnfterm{"} \\
+{\bf UNKNOWN\_INTERNAL} \> ::= \> $[A-Z]$\bnfplus \\
+\end{tabbing}
+
+{\em char\/} may be any character, but " and \verb|\|, which have
+to be escaped using \verb|\|.
+All other terminal symbols are themselves. The graph, node and edge 
+arguments expect the following parameters:
+
+\begin{itemize}
+
+\item{\bf FF\_LO X Y}
+  
+  Sets the relative offset of a name of a node to the position of
+  a node to ({\bf X}, {\bf Y})
+
+\item{\bf NP X Y}
+
+Sets the position of a node to ({\bf X}, {\bf Y}).
+
+\item{\bf SN}
+
+Marks the node as being a startnode.
+
+\item{\bf EN}
+
+Marks the node as being an endnode.
+
+\item{\bf FF\_3D X Y Z}
+  
+  Sets the position of a node in 3 dimensions to ({\bf X}, {\bf
+    Y}, {\bf Z}).
+
+\item{\bf FF\_C COLOR}
+
+Sets the color of the node or edge to {\bf COLOR}
+
+\item{\bf FF\_L TYPE CONTENT}
+  
+  Invokes the the method {\bf BOOL FFLabelClass::parse(String)} in the
+  label with type {\bf TYPE}.
+
+\item{\bf FF\_I ICON $[MASK]$}
+  
+  Tells the node to display according to icon file {\bf ICON} and
+  mask file {\bf MASK}.
+
+\item{\bf EL $[X Y]$\bnfplus}
+  
+  Sets the positions of the edgepoints of an edeg to {\bf
+    (X,Y)\bnfplus}
+
+\item{\bf FF\_3D $[X Y Z]$\bnfplus}
+  
+  Sets the positions of the edgepoints of an edge to {\bf
+    (X,Y,Z)\bnfplus}
+
+\end{itemize}
+
+
+\newpage

@@ -1,0 +1,85 @@
+
+This section describes how to compile a program using the
+various features of the library. It is assumed that you already
+have installed the library on your system. See section
+\vref{installing} for further
+information on how to install the library.
+
+\subsection{Using graphs only}
+\label{using_graphs_only}
+
+To compile C++ files using the graph library you must have the
+following programs and libraries installed on your system:
+
+\begin{itemize}
+
+\item 
+g++ Version 2.6.3 or higher.
+
+\item
+libg++ according to the g++ version.
+
+\end{itemize}
+
+You must include some or all of the include files {\bf
+  FFGraph.h}, { \bf FFGraphClass.h}, {\bf FFEdgeClass.h}, {\bf
+  FFNodeClass.h} and {\bf ffError.h} in you C++ files, depending
+on which methods you use. You might also need to tell the
+compiler where to find these files\footnote{Normally using the
+  {\bf -I} option, see your compiler manual for details}. To link
+a program using the graph library you must add {\bf -lFFGraph
+  -lffcontainer} to the linker options. You might also have to
+tell the linker where to find the library\footnote{Normally using
+  the -L option, see your compiler manual for details}.
+
+\subsection{Using graphs and graphic}
+\label{using_graphs_and_graphic}
+
+If you want to use the graphic facilities provided by the library
+you must have the following additional libraries installed on
+your system:
+
+\begin{itemize}
+
+\item
+The X11R5 library or higher
+
+\item
+either
+
+\begin{itemize}
+
+\item
+tcl 7.4 with tk 4.0 (recommended)
+
+\end{itemize}
+
+or
+
+\begin{itemize}
+
+\item
+tcl 7.3 with tk 3.6 (will no longer be supported in the future)
+
+\end{itemize}
+
+\item optional but highly recommended: The Xpm library. 
+
+\item the tkPixmap extension, if you have tk 3.6 and want to use Xpm images.
+
+\end{itemize}
+
+You may have to include some or all of the files {\bf
+  FFTclWindow.h}, {\bf FFGraphicNode.h}, {\bf FFGraphicEdge.h}
+and {\bf tk.h} depending on which methods you use. You also have to add {\bf -lFFGraphic -ltk -ltcl
+  -lXpm -lX11 -lm} to your library list.  If you use tk 4.0 and
+do not have the Xpm library installed on your system you must
+leave out {\bf -lXpm}. Or better install the Xpm library first.
+
+\subsection{Using graphs, graphic and layouters}
+\label{using_graph_graphic_and_layouters}
+
+You must do all the above and additionally include the files {\bf
+  FFSugi.h} and {\bf FFSpring.h}. You also have to add {\bf
+  -lflayout} to your library list.
+

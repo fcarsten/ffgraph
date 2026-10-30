@@ -1,0 +1,125 @@
+
+Layouters are used to arrange the nodes and the edges of a graph
+on the screen to optimally suit the representation of the
+data the graph contains. As there are a huge number of
+different data a graph may contain and an even larger number of
+opinions on what an optimal representation of this data is, there
+exists a huge amount of different layout algorithms. In the
+ffgraph library layout algorithms are implemented as graph
+labels. By this you can add specific layouters to specific graphs
+and other classes like windows can determine at runtime which
+layouters are available. These classes can even use layouters
+they did not know about when they were written. E.g. the
+graph-window class {\bf FFTclWindow} included in the distribution
+automatically adds all layouters available for a graph to its
+layout menu.
+
+\subsection{Using layouters} 
+\label{using_layouters}
+
+Layouters are usually subclasses of {\bf FFLayoutLabel} which is
+a subclass of {\bf FFGraphLabel}. Of course layouters do not need
+to be implemented as graph labels.  This subsection only
+describes how to use the layouters included in the library. It
+should work for other layouters as well, but may not.
+
+In your program you have to add layout labels to all graphs you
+want to layout using the {\bf
+  FFGraphClass::addGraphLabel(FFGraphLabel *)} method.  E.g.
+
+\bigskip
+
+{\tt  
+FFGraph g;\\
+g->addGraphLabel(new FFSugi);\\
+g->addGraphLabel(new FFSpring);\\
+}
+
+\bigskip
+
+You can then use the layouter using one of the following methods:
+
+\begin{itemize}
+
+\item{\bf void FFLayoutLabel::layout()}
+
+The whole graph is layouted.
+
+\item{\bf void FFLayoutLabel::layout(AVLSet\verb|<|FFNode\verb|>|\& set)}
+
+Only the subgraph defined by the nodes in {\bf set} is layouted.
+
+\end{itemize}
+
+If you want to change the parameters of a layouter, you can
+either use the methods the layouters provide\footnote{see
+  sections \vref{ffsugi} and \vref{ffspring}}, or if you use {\bf
+  FFTclWindow} to display the graph, you can set the parameters
+at runtime using the inspector included in the library.
+
+If you use the class {\bf FFTclWindow} to display the graph, the
+new layouter is automatically added to its layout menu.
+
+\subsection{Writing layouters}
+\label{writing_layouters}
+
+The easiest way to write your own layouter is to subclass {\bf
+  FFLayoutLabel} and implement these methods:
+
+\begin{itemize}
+
+\item{\bf void FFLayoutLabel::layout()}
+
+To layout the whole graph.
+
+\item{\bf void
+    FFLayoutLabel::layout(AVLSet\verb|<|FFNode\verb|>|\& set)}
+
+To layout the subgraph defined by the nodes in {\bf set}.
+
+\end{itemize}
+
+If you use {\bf FFTclWindow} to display the graph, you only have
+to add your layouter to the graph using {\bf int
+  FFGraphClass::addGraphLabel(FFGraphLabel *)} and it will
+automatically be added to the layout menu of {\bf FFTclWindow}. If the
+menu is invoked, the method {\bf void FFLayoutLabel::layout()}
+is called. If more than one node is selected, {\bf void
+FFLayoutLabel::layout(AVLSet\verb|<|FFNode\verb|>|)} is called.
+
+That is all you basically have to do.  If you want the user to be
+able to set parameters at runtime the usual way to do this is
+to use an inspector. To use an inspector you have to overwrite
+the method
+
+\begin{itemize}
+\item{\bf BOOL FFLabelClass::isInspectable()}
+\end{itemize}
+
+to return {\bf YES}.  
+
+You then have to decide if you want to use your own inspector or
+if you want to use the inspector included in the library.  If you
+want to use the given inspector, you just have to implement the
+methods:
+
+\begin{itemize}
+
+\item {\bf string FFLabelClass::unparse()}\\
+  and \\
+  {\bf BOOL FFLabelClass::parse(String\&)}
+
+to read and write the layout parameters in string form.  
+ 
+\end{itemize}
+
+If you want to use your own inspector, you have to overwrite
+the method 
+
+\begin{itemize}
+\item{\bf BOOL FFGraphLabel::hasOwnInspector()}
+\end{itemize}
+
+to return {\bf YES}. You also have to write your own inspector
+class. You can do this  subclassing {\bf FFInspector}\footnote{See
+section \vref{writing_inspectors} for further details}.

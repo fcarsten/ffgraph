@@ -1,0 +1,338 @@
+#!/public/bin/pixmap-wish -f
+# Program: sugi
+# Tcl version: 7.3 (Tcl/Tk/XF)
+# Tk version: 3.6
+# XF version: 2.3
+#
+
+proc Sugi_SetupWindow {w} {
+  set tmplist [winfo children $w]
+  while {[llength $tmplist] != 0} {
+    switch [winfo class [lindex $tmplist 0]] {
+      Radiobutton {[lindex $tmplist 0] configure -relief raised
+	bind [lindex $tmplist 0] <1> {
+	  %W configure -relief sunken
+	}
+	bind [lindex $tmplist 0] <ButtonRelease> {
+	  %W configure -relief raised
+	}
+      }
+      Checkbutton {[lindex $tmplist 0] configure -relief raised
+	bind [lindex $tmplist 0] <1> {
+	  %W configure -relief sunken
+	}
+	bind [lindex $tmplist 0] <ButtonRelease> {
+	  %W configure -relief raised
+	}
+      }
+    }
+    set tmplist [concat $tmplist [winfo children [lindex $tmplist 0]]]
+    set tmplist [lreplace $tmplist 0 0]
+  }
+}
+
+
+global PVTLIBDIR
+source $PVTLIBDIR/tcl/xfmisc.tcl
+
+# procedure to show window .
+proc Sugi_MakeMiscButtons {} {
+  frame .middleframe.right
+  frame .middleframe.right.misc_buttons -relief ridge -bd 3
+  label .middleframe.right.misc_buttons.l -text "Parameters:" -anchor nw
+  frame .middleframe.right.misc_buttons.global -relief ridge -bd 2
+  label .middleframe.right.misc_buttons.global.l -text "Global:" -anchor nw
+  frame .middleframe.right.misc_buttons.global.left
+  checkbutton .middleframe.right.misc_buttons.global.left.startnode -text "Use startnode" -anchor nw \
+    -command {recall toggleDecycle} -variable {toggleDecycle}
+  checkbutton .middleframe.right.misc_buttons.global.left.endnode -text "Use end-nodes" -anchor nw \
+    -command {recall toggleEndNodes} -variable {toggleEndNodes}
+  checkbutton .middleframe.right.misc_buttons.global.left.grid -text "Use Grid" -anchor nw \
+    -command {recall useGrid} -variable {useGrid}
+  checkbutton .middleframe.right.misc_buttons.global.left.leafs_down -text "Leafs down" -anchor nw \
+    -command {recall leavesDown} -variable {leavesDown}
+  checkbutton .middleframe.right.misc_buttons.global.left.deterministic -text "Deterministic" -anchor nw \
+    -command {recall toggleDeterministic} -variable {deterministic}
+  
+  pack append .middleframe.right.misc_buttons.global.left \
+    .middleframe.right.misc_buttons.global.left.startnode {top frame nw expand fillx} \
+    .middleframe.right.misc_buttons.global.left.endnode {top frame nw expand fillx} \
+    .middleframe.right.misc_buttons.global.left.grid {top frame nw expand fillx} \
+    .middleframe.right.misc_buttons.global.left.leafs_down {top frame nw expand fillx} \
+    .middleframe.right.misc_buttons.global.left.deterministic {top frame nw expand fillx} 
+  
+  frame .middleframe.right.misc_buttons.global.right
+  radiobutton .middleframe.right.misc_buttons.global.right.3d -text "3D Layout" -anchor nw \
+    -command {recall set3D} -variable {dimension} -value {3}
+  radiobutton .middleframe.right.misc_buttons.global.right.2d -text "2D Layout" -anchor nw \
+    -command {recall set2D} -variable {dimension} -value {2}
+  radiobutton .middleframe.right.misc_buttons.global.right.horizontal -text "Horizontal Layout" -anchor nw \
+    -command {recall orientHorizontal} -variable {orientation} -value {horizontal}
+  radiobutton .middleframe.right.misc_buttons.global.right.vertical -text "Vertival Layout" -anchor nw \
+    -command {recall orientVertical} -variable {orientation} -value {vertical}
+  pack append .middleframe.right.misc_buttons.global.right \
+    .middleframe.right.misc_buttons.global.right.3d {top frame nw expand fillx} \
+    .middleframe.right.misc_buttons.global.right.2d {top frame nw expand fillx} \
+    .middleframe.right.misc_buttons.global.right.horizontal {top frame nw expand fillx} \
+    .middleframe.right.misc_buttons.global.right.vertical {top frame nw expand fillx} 
+
+  pack append .middleframe.right.misc_buttons.global \
+    .middleframe.right.misc_buttons.global.l {top frame nw expand fillx} \
+    .middleframe.right.misc_buttons.global.left {bottom frame nw expand fillx} \
+    .middleframe.right.misc_buttons.global.right {bottom frame nw expand fillx} 
+    
+  frame .middleframe.right.misc_buttons.local -relief ridge -bd 2
+  label .middleframe.right.misc_buttons.local.l -text "Local:" -anchor nw
+  checkbutton .middleframe.right.misc_buttons.local.keep_edgepoints -text "Keep edgepoints" -anchor nw \
+    -command {recall keepEdge} -variable {keepEdge}
+  pack append .middleframe.right.misc_buttons.local \
+    .middleframe.right.misc_buttons.local.l {top frame nw expand fillx} \
+    .middleframe.right.misc_buttons.local.keep_edgepoints {top frame nw expand fillx}
+  
+  pack append .middleframe.right.misc_buttons \
+    .middleframe.right.misc_buttons.l {top frame nw expand fillx} \
+    .middleframe.right.misc_buttons.global {top frame nw expand fillx} \
+    .middleframe.right.misc_buttons.local {top frame nw expand fillx} 
+  
+  pack append .middleframe.right \
+    .middleframe.right.misc_buttons {right frame n}
+    
+  pack append .middleframe \
+    .middleframe.right {right frame n}
+}
+
+proc Sugi_EntryInsert {entryName value} {
+  $entryName delete 0 end
+  $entryName insert 0 $value 
+}
+
+proc Sugi_MakePositionItems {} {
+  proc Sugi_MakeEntry {name text recall_text} {
+    frame $name
+    label $name.l -text $text -anchor nw
+    entry $name.e -width 8 -bg white
+    $name.e insert 0 "0"
+    bind $name.e <KeyPress> {
+      if {("[expr %N -48]" != "%A") && ("%A" != "\{\}") && ("%K" != "BackSpace") && ("%K" != "Delete")} {
+	break
+      }
+    }
+    bind $name.e <KeyRelease> "recall $recall_text \[%W get\]"
+    pack append $name $name.l {left} $name.e {right frame nw expand fillx}
+  }
+  proc Sugi_OffsetScaleTo {args} {
+    .topframe.position.scale.l configure -text "Edgepoint Offset: $args%"
+    recall edgePointOff $args
+  }
+  frame .topframe.position -relief ridge -bd 3
+  label .topframe.position.l -text "Positioning:" -anchor nw
+  frame .topframe.position.top
+  frame .topframe.position.top.offset -relief ridge -bd 2
+  label .topframe.position.top.offset.l -text "Offset" -anchor nw
+  Sugi_MakeEntry .topframe.position.top.offset.x "X:" "xoff"
+  Sugi_MakeEntry .topframe.position.top.offset.y "Y:" "yoff"
+  Sugi_MakeEntry .topframe.position.top.offset.z "Z:" "zoff"
+  pack append .topframe.position.top.offset \
+    .topframe.position.top.offset.l {top frame nw expand fillx} \
+    .topframe.position.top.offset.x {top frame nw expand fillx} \
+    .topframe.position.top.offset.y {top frame nw expand fillx} \
+    .topframe.position.top.offset.z {top frame nw expand fillx} 
+  frame .topframe.position.top.distance -relief ridge -bd 2
+  label .topframe.position.top.distance.l -text "Distance" -anchor nw
+  Sugi_MakeEntry .topframe.position.top.distance.x "X:" "xdist"
+  Sugi_MakeEntry .topframe.position.top.distance.y "Y:" "ydist"
+  Sugi_MakeEntry .topframe.position.top.distance.z "Z:" "zdist"
+  pack append .topframe.position.top.distance \
+    .topframe.position.top.distance.l {top frame nw expand fillx} \
+    .topframe.position.top.distance.x {top frame nw expand fillx} \
+    .topframe.position.top.distance.y {top frame nw expand fillx} \
+    .topframe.position.top.distance.z {top frame nw expand fillx} 
+  pack append .topframe.position.top \
+    .topframe.position.top.offset {left frame nw expand fillx} \
+    .topframe.position.top.distance {left frame nw expand fillx}
+  
+  frame .topframe.position.radiobuttons
+  label .topframe.position.radiobuttons.l -text "Use node size:" -anchor nw 
+  radiobutton .topframe.position.radiobuttons.no -text "No" -anchor nw -padx 3 \
+    -command {recall setPositionNo} -variable {position} -value {0}
+  radiobutton .topframe.position.radiobuttons.max -text "Max" -anchor nw -padx 3 \
+    -command {recall setPositionMax} -variable {position} -value {1}
+  radiobutton .topframe.position.radiobuttons.relative -text "Relative" -anchor nw -padx 3 \
+    -command {recall setPositionRelative} -variable {position} -value {2}
+  pack append .topframe.position.radiobuttons \
+    .topframe.position.radiobuttons.l {top frame nw expand fillx} \
+  .topframe.position.radiobuttons.no {left frame nw expand fillx} \
+  .topframe.position.radiobuttons.max {left frame nw expand fillx} \
+  .topframe.position.radiobuttons.relative {left frame nw expand fillx}
+  
+  frame .topframe.position.scale -relief ridge -bd 2
+  label .topframe.position.scale.l -text "Edgepoint Offset: " -anchor nw
+  scale .topframe.position.scale.scale \
+    -command {Sugi_OffsetScaleTo} \
+    -orient {horizontal} \
+    -relief {sunken} \
+    -length {250} \
+    -bd 1 \
+    -from {0} \
+    -showvalue {0} \
+    -width 10 \
+    -to {100}
+  pack append .topframe.position.scale \
+    .topframe.position.scale.l {top frame nw expand fillx} \
+    .topframe.position.scale.scale {top frame nw expand fillx}
+
+  pack append .topframe.position \
+    .topframe.position.l {top frame nw expand fillx} \
+    .topframe.position.top {top frame nw expand fillx} \
+    .topframe.position.radiobuttons {top frame nw} \
+    .topframe.position.scale  {top frame nw expand fillx} 
+    
+  pack append .topframe \
+    .topframe.position {left frame center expand fillx}
+
+}
+
+proc Sugi_MakeReduceItems {} {
+  frame .middleframe.left
+  proc Sugi_ReduceScaleTo {args} {
+    .middleframe.left.reduce_items.scale_l configure -text "Quality: $args"
+    recall redCrossIters $args
+  }
+  frame .middleframe.left.reduce_items -relief ridge -bd 3
+  label .middleframe.left.reduce_items.l -text "Reduce Crossing:" -anchor nw
+  frame .middleframe.left.reduce_items.radiobuttons
+  radiobutton .middleframe.left.reduce_items.radiobuttons.adjazenzmatrix -text "Adjazenzmatrix" -anchor nw \
+    -padx 3 -command {recall adjazenz} -variable {reduce} -value {adjazenzmatrix}
+  radiobutton .middleframe.left.reduce_items.radiobuttons.bubbling -text "Bubbling" -anchor nw \
+    -padx 3 -command {recall bubbling} -variable {reduce} -value {bubbling}
+  pack append .middleframe.left.reduce_items.radiobuttons \
+  .middleframe.left.reduce_items.radiobuttons.adjazenzmatrix {top frame nw expand fillx} \
+  .middleframe.left.reduce_items.radiobuttons.bubbling {top frame nw expand fillx}
+  
+  label .middleframe.left.reduce_items.scale_l -text "Quality: " -anchor nw
+  frame .middleframe.left.reduce_items.scale -bd 2 -relief ridge
+  frame .middleframe.left.reduce_items.scale.l
+  label .middleframe.left.reduce_items.scale.l.low -text "Low" -anchor nw
+  label .middleframe.left.reduce_items.scale.l.medium -text "Medium" -anchor center
+  label .middleframe.left.reduce_items.scale.l.high -text "High" -anchor ne
+  pack append .middleframe.left.reduce_items.scale.l \
+    .middleframe.left.reduce_items.scale.l.low {left frame center expand fillx} \
+    .middleframe.left.reduce_items.scale.l.medium {left frame center expand fillx} \
+    .middleframe.left.reduce_items.scale.l.high {left frame ne expand fillx} 
+  scale .middleframe.left.reduce_items.scale.scale \
+    -command {Sugi_ReduceScaleTo} \
+    -orient {horizontal} \
+    -relief {sunken} \
+    -length {100} \
+    -bd 1 \
+    -from {2} \
+    -showvalue {0} \
+    -width 10 \
+    -to {15}
+
+  pack append .middleframe.left.reduce_items.scale \
+    .middleframe.left.reduce_items.scale.l {top expand fillx} \
+    .middleframe.left.reduce_items.scale.scale {bottom} 
+  
+  pack append .middleframe.left.reduce_items \
+    .middleframe.left.reduce_items.l {top frame nw expand fillx} \
+    .middleframe.left.reduce_items.radiobuttons {top frame nw} \
+    .middleframe.left.reduce_items.scale_l {top frame nw fillx} \
+    .middleframe.left.reduce_items.scale {top frame nw fillx} 
+
+  pack append .middleframe.left \
+    .middleframe.left.reduce_items {top frame center expand  filly}
+    
+  pack append .middleframe \
+    .middleframe.left {left frame center filly}
+}
+
+
+proc Sugi_MakeActionButtons {} {
+  frame .middleframe.left.action_buttons 
+
+  frame .middleframe.left.action_buttons.intern
+  frame .middleframe.left.action_buttons.extern
+
+  button .middleframe.left.action_buttons.extern.ok -text "Just do it" \
+    -command {recall startLayout} -padx 2
+  button .middleframe.left.action_buttons.intern.help -text "Help" -state disabled
+  button .middleframe.left.action_buttons.extern.dismiss -text "Dismiss" \
+    -command {recall deleteWindow} -padx 2
+  button .middleframe.left.action_buttons.intern.save -text "Save" -state disabled
+  button .middleframe.left.action_buttons.intern.load -text "Load" -state disabled
+  pack append .middleframe.left.action_buttons.intern \
+    .middleframe.left.action_buttons.intern.help {top frame center expand fillx} \
+    .middleframe.left.action_buttons.intern.save {top frame center expand fillx} \
+    .middleframe.left.action_buttons.intern.load {top frame center expand fillx}
+    
+  pack append .middleframe.left.action_buttons.extern \
+    .middleframe.left.action_buttons.extern.ok {left frame center } \
+    .middleframe.left.action_buttons.extern.dismiss {right frame center }
+
+  pack append .middleframe.left.action_buttons \
+    .middleframe.left.action_buttons.intern {top frame center expand fillx} \
+    .middleframe.left.action_buttons.extern {bottom frame center expand fillx} 
+
+  pack append .middleframe.left \
+    .middleframe.left.action_buttons {bottom frame center}
+}
+
+proc ShowWindow. {args} {# xf ignore me 7
+
+  # Window manager configurations
+  global tk_version
+  wm positionfrom . program
+  wm sizefrom . program
+  #wm maxsize . 130 700
+  if {$tk_version >= 3.0} {
+    wm protocol . WM_DELETE_WINDOW { recall deleteWindow;}
+  }
+  wm title . {Sugiyama Inspector}
+
+  frame .topframe
+  frame .middleframe
+  Sugi_MakeMiscButtons
+  Sugi_MakePositionItems
+  Sugi_MakeReduceItems
+  Sugi_MakeActionButtons
+  pack append . \
+    .topframe {expand fillx} \
+    .middleframe {expand fillx} 
+
+  Sugi_SetupWindow .
+}
+
+
+
+
+# startup source
+StartupSrc
+
+# initialize global variables
+proc InitGlobals {} {
+  global position
+  set position 0
+  global reduce
+  set reduce adjazenzmatrix
+  global orientation
+  set orientation 1
+  global dimension
+  set dimension 2
+  global toggleDecycle
+  global toggleEndNodes
+  global useGrid
+  global leavesDown
+  global keepEdge
+  global toggleEndNodes
+  global deterministic
+}
+
+# initialize global variables
+InitGlobals
+
+# display/remove toplevel windows.
+option add *HighlightThickness 0
+option add *BorderWidth 2
+ShowWindow.
+.topframe.position.scale.scale set 5

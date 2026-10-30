@@ -1,0 +1,1310 @@
+
+\subsubsection{FFWindow}
+
+The class FFWindow is a general class that can execute tcl/tk scripts. It
+defines the following methods:
+
+\begin{itemize}
+
+\item{\bf FFWindow()}
+
+Creates a new instance of {\bf FFWindow}.
+
+\item{\bf int mapWindow()}
+
+Maps the window on the screen.
+
+\item{\bf int unmapWindow()}
+
+Unmaps the window from the screen.
+
+\item{\bf int withdraw()}
+
+Withdraws the window from the screen.
+
+\item{\bf int iconify()}
+
+Iconifies the Window.
+
+\item{\bf int deiconify()}
+
+Deiconifies the Window.
+
+\item{\bf virtual void update()}
+
+Does a graphic update on the window.
+
+\item{\bf   void setDisplay(const String\& disp)}
+  
+  Sets the display where the window should appear to {\bf disp}.
+  This method must be called before {\bf initFromFile(...)} to
+  have any effect.
+
+  void structureProc(XEvent);  
+  
+\item{\bf void initFromFile(const String\& file, int argc=0, char
+    **argv=NULL)}
+  
+  Executes the tcl files {\bf file}. {\bf argc} and {\bf argv}
+  are used as if they were given to the wish shell.
+
+\item{\bf virtual int setTitle(const String\& title)}
+
+Sets the title of the window to {\bf title}.
+
+
+\end{itemize}
+
+\subsubsection{FFGraphWindow}
+\label{ffgraphwindow}
+
+The class {\bf FFGraphWindow} is a subclass of {\bf FFGraphLabel}
+and is the superclass of all window labels. Window labels are
+used to display graphs. Usually you want to display a graph in a
+window on a screen. But you can also subclass {\bf FFGraphWindow}
+to print the graph on a printer or export it as an image or
+whatever. {\bf FFGraphWindow} is a virtual class, so no instance
+of this class can be created. {\bf FFGraphWindow} defines the
+following methods:
+
+\begin{itemize}
+
+\item{\bf FFGraphWindow()}
+
+Adds ":" followed by "FFGraphWindow" to the type of the label.
+
+\item{\bf void scaleXYZ(FFCoord dx, FFCoord dy, FFCoord dz) =
+    NULL}
+  
+  Should scale the coordinate system by {\bf dx} in x direction,
+  by {\bf dy} in y direction and by {\bf dz} in z direction.
+
+\item{\bf void rotateX(FFCoord dx) = NULL}
+  
+  Should rotate the coordinate system by {\bf dx} degrees around
+  the x axis.
+
+\item{\bf void rotateY(FFCoord dy) = NULL}
+  
+  Should rotate the coordinate system by {\bf dy} degrees around
+  the y axis.
+
+\item{\bf void rotateZ(FFCoord dz) = NULL}
+  
+  Should rotate the coordinate system by {\bf dz} degrees around
+  the z axis.
+
+\item{\bf void translate(FFCoord dx, FFCoord dy, FFCoord dz) = NULL}
+  
+  Should translate the coordinate system by {\bf dx} in x
+  direction, by {\bf dy} in y direction and by {\bf dz} in z
+  direction.
+        
+\item{\bf FFPoint proj(const FFPoint\& A) = NULL}
+  
+  Should convert the graph coordinate {\bf A} to the output
+  device coordinate system. The third coordinate of the result
+  should be usable by hidden-line algorithms.
+
+\item{\bf FFPoint unProj(const FFPoint\& A) = NULL}
+  
+  Should convert the output device coordinate {\bf A} back to the
+  graph coordinate system.
+
+\item{\bf FFPoint adjust(FFGraphicNode *A, FFPoint B) = NULL}
+  
+  Should return where an edge to {\bf A} with {\bf B} being the
+  last point of the edge before {\bf A} should end. E.g.  if you
+  display nodes as circles you might want the edge to stop at the
+  outskirts instead of going to the center of the circle.
+
+\item{\bf void setLabelOffset(int dx, int dy) = NULL}
+  
+  This method sets the relative position of the name of a node to
+  the position of the node.
+            
+\item{\bf void adjustWindowSize() = NULL}
+  
+  Should resize the window to display the whole graph.
+
+\item{\bf String addNode(FFGraphicNode *n) = NULL}
+  
+  Should add a graphic representation of node {\bf n}. The return
+  value must be a unique String by which the graphic
+  representation can be addressed.
+
+\item{\bf String addEdge(FFGraphicEdge *e) = NULL}
+  
+  Should add a graphic representation of edge {\bf e}. The return
+  value must be a unique String by which the graphic
+  representation can be addressed.
+
+\item{\bf String addLabel(FFGraphicNode *n) = NULL}
+  
+  Should add a graphic representation for the name of node {\bf
+    n}. The return value must be a unique String by which the
+  graphic representation can be addressed.
+
+\item{\bf String addLabel(FFGraphicEdge *e) = NULL}
+  
+  Should add a graphic representation for the name of edge {\bf
+    e}. The return value must be a unique String by which the
+  graphic representation can be addressed.
+  
+\item{\bf void changeColor(FFGraphicNode *n, String\& color) =
+    NULL}
+  
+  Should change the color of node {\bf n} to {\bf color}.
+  
+\item{\bf String changeToIcon(FFGraphicNode *n, String\& icon) =
+    NULL}
+  
+  Should change the representation of node {\bf n} to be
+  displayed as the icon that is stored in file {\bf icon}.
+
+\item{\bf String changeToCircle(FFGraphicNode *n) = NULL}
+  
+  Should change the representation of node {\bf n} to be
+  displayed as a graphical item like circles, boxes etc.
+
+\item{\bf String changeToWindow(FFGraphicNode *n) = NULL}
+  
+  This method is used to display nested graphs. The graphic
+  representation of {\bf n} should change to something that can
+  display a graph itself.
+
+\item{\bf void changeMask(FFGraphicNode *n, String\& mask) = NULL}
+  
+  If node {\bf n} is displayed as an icon, the icon should be
+  masked using the bitmap that is stored in file {\bf mask}.
+  
+\item{\bf void changeColor(FFGraphicEdge *e, String\& color) =
+    NULL}
+  
+  The color of edge {\bf e} should change to {\bf color}.
+  
+\item{\bf void changeLabel(FFGraphicNode *n, const String\& name)
+    = NULL}
+  
+  The name of node {\bf n} should be changed to {\bf name} in the
+  window.
+  
+\item{\bf void changeLabel(FFGraphicEdge *e, const String\& name)
+    = NULL}
+  
+  The name of edge {\bf e} should be changed to {\bf name} in the
+  window.
+
+\item{\bf FFPoint getRange(const FFGraphicNode *n) = NULL}
+  
+  Returns a point containing (width,height,depth) of the bounding
+  box of the node {\bf n}.
+
+\item{\bf void setSpline(FFGraphicEdge *e, BOOL spline) = NULL}
+  
+  Sets whether edge {\bf e} should be displayed as a spline ({\bf
+    spline == YES}) or not ({\bf spline == NO}).
+
+\item{\bf void remove(FFGraphicNode *n) = NULL}
+  
+  Should remove the graphic representation of node {\bf n} from
+  the screen.
+
+\item{\bf void remove(FFGraphicEdge *e) = NULL}
+  
+  Should remove the graphic representation of edge {\bf e} from
+  the screen.
+
+\item{\bf void removeLabel(FFGraphicNode *n) = NULL}
+  
+  Should remove the graphic representation of the name of node
+  {\bf n} from the screen.
+
+\item{\bf void removeLabel(FFGraphicEdge *e) = NULL}
+  
+  Should remove the graphic representation of the name of edge
+  {\bf e} from the screen.
+
+\item{\bf void updateGraph() = NULL}
+  
+  Should redraw the whole graph.
+
+\item{\bf void updateGraph(FFGraphicNode *n) = NULL}
+  
+  Should redraw node {\bf n}.
+
+\item{\bf void updateGraph(FFGraphicEdge *e) = NULL}
+  
+  Should redraw edge {\bf e}.
+
+\item{\bf void setCurrent(FFGraphicNode *n) = NULL}
+  
+  Should unselect all items and mark node {\bf n} as selected.
+
+\item{\bf void setCurrent(FFGraphicEdge *e) = NULL}
+  
+  Should unselect all items and mark edge {\bf e} as selected.
+
+\item{\bf void addToCurrent(FFGraphicNode *n) = NULL}
+  
+  Should unselect any selected edges and mark node {\bf n} as
+  selected.
+
+\item{\bf void selectIfNot(FFGraphicNode *n) = NULL}
+  
+  Should unselect any selected edges. If node {\bf n} is selected
+  unselect it, if it is not selected select it.
+
+\item{\bf void unsetCurrent() = NULL}
+  
+  Should unselect all selected items.
+  
+\item{\bf AVLSet\verb|<|FFGraphicNode *\verb|>|\& selectedNodes()
+    = NULL}
+  
+  Should return an AVLSet containing all selected nodes.
+
+\item{\bf BOOL isCurrent(FFGraphicNode *n) = NULL}
+  
+  Should return whether node {\bf n} is selected or not.
+  
+\item{\bf void unset(FFGraphicNode *n) = NULL}
+  
+  Should unselect node {\bf n}.
+
+\item{\bf void unset(FFGraphicEdge *e) = NULL}
+  
+  Should unselect edge {\bf e}.
+
+\item{\bf void updateInspector() = NULL}
+  
+  Should update the inspector, if the window has one.
+
+\item{\bf void sizeTo(int x, int y) = NULL}
+
+Should change the size of the window to ({\bf x}, {\bf y}).
+  
+\item{\bf void setUpdate(BOOL f) = NULL}
+
+Sets whether window updates shall be made.
+
+\item{\bf BOOL getUpdate() = NULL}
+
+Returns whether window updates are made.
+
+\item{\bf void update() = NULL}
+
+Forces a window update.
+
+\item{\bf int setTitle(const String\& s) = NULL}
+
+Set the title of the window to {\bf s}.
+
+\item{\bf void setBusy() = NULL}
+  
+  Should in some way indicate that the window is busy, e.g. by
+  changing the mouse cursor.
+
+\item{\bf void unsetBusy() = NULL}
+        
+  Should somehow indicate that the window is not busy, e.g. by
+  changing the mouse cursor.
+
+\item{\bf int mapWindow() = NULL}
+
+Should map the window to the display.
+
+\item{\bf int unmapWindow() = NULL}
+
+Should unmap the window from the display.
+
+\item{\bf int withdraw() = NULL}
+
+Should withdraw the window form the display.
+
+\item{\bf int iconify() = NULL}
+
+Should iconify the window.
+
+\item{\bf int deiconify() = NULL}
+
+Should deiconify the window.
+
+
+\end{itemize}
+
+\subsubsection{FFGraphicNode}
+\label{ffgraphicnode}
+
+As nodes do not contain graphic information, when {\bf
+  FFGraphClass::createGraphic(...)} is invoked the graph labels
+itself with the node label {\bf FFGraphicNode}. This label
+contains all the graphic information that is needed to display a
+node. {\bf FFGraphicNode} provides the following methods:
+
+\begin{itemize}
+
+\item{\bf FFGraphicNode()}
+  
+  Creates a new instance of {\bf FFGraphicNode}. You should never
+  have to call this method, as the graph creates this label
+  itself if it is needed.
+
+\item{\bf virtual void init(FFNode n)}
+  
+  This method is called internally by the graph to initialize
+  the label after it has been bound to a node. The label checks
+  if the graph has a window label and displays itself in the
+  window label if it finds one using the method {\bf
+    FFGraphWindow::addNode(...)}.
+
+\item{\bf virtual void event(labelEvent type, labelEventStruct *)}
+  
+  Whenever there is a structural change to the graph this method
+  is invoked. This method responds to the following events:
+
+  \begin{itemize}
+
+  \item{\bf NAME\_CHANGE}
+    
+    The name on the screen is changed according to the new name
+    of the node
+
+  \item{\bf ADD\_GRAPHLABEL}
+    
+    Checks if the new graph label is a window label and if yes,
+    it displays itself in the new window. As only one window
+    label may be assigned to a graph, it is assured that the node
+    is not already displayed in a window.
+
+  \item{\bf DEL\_GRAPHLABEL}
+    
+    If the graph label that is going to be deleted is the window
+    label the node is displayed in, the node is removed from the
+    window.
+
+  \end{itemize}
+
+\item{\bf inline FFCoord getx() const}
+
+  Returns the x coordinate of the node.
+
+\item{\bf inline FFCoord gety() const}
+
+  Returns the y coordinate of the node.
+
+\item{\bf inline FFCoord getz() const}
+
+  Returns the z coordinate of the node.
+
+\item{\bf inline const FFPoint\& getCoords() const}
+  
+  Returns a reference to the coordinates of the node. To change
+  the coordinates use one of the {\bf moveTo(...)} or {\bf
+    rmoveTo} methods.
+
+\item{\bf inline FFCoord getWidth()}
+
+  Returns the width of the label.
+
+\item{\bf inline FFCoord getHeight()}
+
+  Returns the height of the label.
+
+\item{\bf inline FFCoord getDepth()}
+
+  Returns the depth of the label.
+
+\item{\bf inline FFPoint\& getRange()}
+
+  Returns the range of the label.
+
+\item{\bf void setWidth(FFCoord w)}
+
+  Sets the width of the node to {\bf w}.
+
+\item{\bf void setHeight(FFCoord h)}
+
+  Sets the width of the node to {\bf h}.
+
+\item{\bf void setDepth(FFCoord d)}
+
+  Sets the width of the node to {\bf d}.
+
+\item{\bf inline void setRange(const FFPoint\& p)}
+
+  Sets the range of the node to {\bf p}.
+ 
+\item{\bf void changeToCircle()}
+  
+  Tells the node to display itself as a graphical item, like a
+  circle or a box etc. . This method calls the method {\bf
+    FFGraphWindow::changeToCircle(...)} to change the node. Which
+  graphical item is used depends on the implementation of the
+  window label.
+        
+\item{\bf void changeToWindow()}
+  
+  Tells the node to display itself as a window that may contain a
+  graph.  This method calls the method {\bf
+    FFGraphWindow::changeToWindow(...)}. The actual
+  implementation of how to display the window is left to the
+  window label.
+
+\item{\bf const String\& getNodeWindow() const}
+  
+  Returns the id of the window the node is displayed as, or "" if
+  the node is not displayed as a window.
+
+\item{\bf void changeToIcon(const String\& iconFile)}
+  
+  Tells the node to display itself as the icon that is defined in
+  {\bf iconFile}.  This method calls the method {\bf
+    FFGraphWindow::changeToIcon(...)}. The actual implementation
+  of how to display the icon is left to the window label.
+
+\item{\bf String\& getIcon()}
+
+  Returns the id of the icon the node is displayed as, or "" if
+  the node is not displayed as an icon.
+
+\item{\bf BOOL isScalable()}
+  
+  If the coordinate system of the window label is scaled, this
+  method returns if the graphical item the node is displayed as
+  should be affected by this. The method returns {\bf NO} for
+  icons and window and {\bf YES}  for other items.
+
+\item{\bf BOOL isCircle()}
+
+  Return whether the node is displayed as a graphical item.
+
+\item{\bf void setMask(const String\& maskFile)}
+  
+  Tells the node to be masked according to the mask defined in
+  {\bf maskFile}. This method calls the method {\bf
+    FFGraphWindow::setMask(...)}. 
+
+\item{\bf String\& getMask()}
+
+  Returns the id of the mask or "" if the node is not masked.
+
+\item{\bf const String\& getNodeWindow() const}
+  
+  Returns the id of the window the node is displayed as, or "" if
+  the node is not displayed as a window.
+
+\item{\bf const String\& getId() const}
+
+  Returns the id of the graphical representation of the node.
+
+\item{\bf const String\& getLabelId() const}
+  
+  Returns the id of the graphical representation of the name of
+  the node.
+
+\item{\bf void setName(const String\& s)}
+  
+  Sets the graphical representation of the name of the node to
+  {\bf s}.
+
+\item{\bf void setColor(const String\& c)}
+  
+  Sets the color of the node to {\bf c}. {\bf c} must be a color-name your
+  X11 server knows about (see your local rgb.txt), or specified in the
+  format \verb|#|rrggbb.
+  
+\item{\bf String getColor()}
+
+  Returns the color of the node.
+
+\item{\bf void setWindow(FFGraphWindow *w)}
+
+Displays the node in the window label {\bf }. You can use the special
+window label {\bf NULL} to hide a node.
+
+\item{\bf void moveTo(char *x, char *y, char *z="0")}
+  
+  Tells the node to move to the coordinates ({\bf x},{\bf y},
+  {\bf z}).
+
+\item{\bf void moveTo(const FFPoint\& p)}
+
+  Tells the node to move to the coordinate {\bf p}.
+
+\item{\bf void rmoveTo(char *x, char *y, char *z="0")}
+  
+  Tells the node to add ({\bf x},{\bf y},{\bf z}) to its current
+  position.
+
+\item{\bf void rmoveTo(const FFPoint\& p)}
+  
+  Tells the node to add {\bf p} to its current position.
+
+\item{\bf void updateGraphic()}
+
+  Tells the node to redisplay itself.
+
+\item{\bf inline FFNodeClass *getNode() \\
+ inline FFNodeClass *operator()() \\
+ inline FFNodeClass *operator-\verb|>|()}
+
+Returns the node the graphic node is bound to.
+
+\end{itemize}
+
+\subsubsection{FFGraphicEdge}
+\label{ffgraphicedge}
+
+As edges do not contain graphic information, when {\bf
+  FFGraphClass::createGraphic(...)} is invoked the graph labels
+itself with the edge label {\bf FFGraphicEdge}. This label
+contains all the graphic information that is needed to display an
+edge. {\bf FFGraphicEdge} provides the following methods:
+
+\begin{itemize}
+
+\item{\bf virtual void event(labelEvent type, labelEventStruct *)}
+    
+Whenever there is a structural change to the graph, this method is
+called. {\bf type} specifies the type of event that occurred. The
+method responds to the following methods:
+
+\begin{itemize}
+
+\item{\bf NAME\_CHANGE}
+
+Changes the name of the edge according to the new name.
+
+\item{\bf SOURCE\_CHANGE}
+
+Redisplays the edge with the new source node.
+
+\item{\bf TARGET\_CHANGE}
+
+Redisplays the edge with the new target node.
+
+\item{\bf REV\_EDGE}
+
+Redisplays the edge with the new direction.
+
+\item{\bf ADD\_GRAPHLABEL}
+
+Checks whether the new label is a graph window and if it is, the edge
+displays itself in the new window label. As there can only be one
+window label bound to a graph it is assured that the edge is not
+already displayed.
+
+\item{\bf DEL\_GRAPHLABEL}
+
+Checks whether the label that will be removed is a window label and
+if it is the edge removes itself from the window.
+
+\end{itemize}
+
+\item{\bf FFCoord dist(const FFPoint\& p1, const FFPoint\& p2)}
+
+Returns the distance between point {\bf p1} and {\bf p2}.
+
+\item{\bf FFCoord dist(const FFPoint\& P, const FFPoint\& A, 
+        const FFPoint\& B)}
+  
+Returns the distance between point {\bf P} and the line {\bf A} and
+{\bf B}.
+
+\item{\bf inline FFCoord getxAt(int p)}
+
+Returns the x coordinate of the edge point with number {\bf p}
+
+\item{\bf inline FFCoord getyAt(int p)}
+
+Returns the y coordinate of the edge point with number {\bf p}
+
+\item{\bf inline FFCoord getzAt(int p)}
+
+Returns the z coordinate of the edge point with number {\bf p}
+
+\item{\bf int getPointNear(const FFPoint\& p)}
+
+Returns the edge point that is nearest to point {\bf p}.
+
+\item{\bf BOOL addPointAt(int k, const FFPoint\& p)}
+
+Add an edge point as number {\bf k} and position {\bf p}. The number
+of all following edge points is increased by one.
+
+\item{\bf BOOL deletePointAt(int k)}
+
+Deletes the edge point with number {\bf k}.
+
+\item{\bf BOOL deletePointAt(const FFPoint\& p)}
+
+Deletes the point that is nearest to point {\bf p}.
+
+\item{\bf int anzPoints()}
+
+Returns the number of edge points.
+
+\item{\bf FFPoint\& getPointAt(int k)}
+
+Returns the point with number {\bf k}.
+
+\item{\bf const MPlex\verb|<|FFPoint\verb|>|\& getEdgePoints()}
+                        
+Returns a MPlex containing all edge points.
+
+\item{\bf String getId()}
+
+Returns the id of the graphical representation of the edge.
+
+\item{\bf String getLabelId()}
+
+Returns the id of the graphical representation of the name of the
+edge.
+
+\item{\bf void revert()}
+
+Reverts the edge in the window.
+
+\item{\bf void setName(const String\& s)}
+
+Sets the name of the edge in the window to {\bf s}.
+
+\item{\bf virtual void init(FFEdgeClass *)}
+
+Is called internally by the library to initialize the label. The label
+Checks whether a window label is bound to the graph and displays
+itself in the window if it find one.
+        
+\item{\bf void updateGraphic()}
+
+Redisplays the edge.
+  
+\item{\bf void toggleSpline()}
+
+Toggles whether the edge is displayed as a spline or not.
+
+\item{\bf void setColor(const String\& c)}
+
+Sets the color of the node to {\bf c}.
+
+\item{\bf String getColor()}
+
+Returns the color of the edge.
+
+\item{\bf void rmoveTo(const FFPoint\& p)}
+
+Adds {\bf p} to the positions of all edge points.
+
+\item{\bf void rmovePoint(int k, const FFPoint\& p)}
+
+Adds {\bf p} to the edge point with number {\bf k}.
+
+\item{\bf void movePoint(int k, const FFPoint\& p)}
+
+Moves the edge point with number {\bf k} to the position {\bf P}.
+
+\item{\bf inline FFEdgeClass *getEdge()\\
+ inline FFEdgeClass *operator()()\\
+ inline FFEdgeClass *operator\verb|->|()}
+
+Returns the edge the label is bound to.
+
+\end{itemize}
+
+\subsubsection{FFInspector}
+
+Graph labels may contain inspectors to display their content. The
+class {\bf FFInspector} defines a general interface for
+inspectors. The class defines the following methods:
+
+\begin{itemize}
+
+\item{\bf FFInspector(FFGraphLabel *g)}
+
+Creates a new instance of FFInspector and initializes it according to
+the graph-label {\bf g}.
+
+\item{\bf virtual void show()}
+
+Should display the inspector on the screen.
+
+\item{\bf virtual void hide()}
+
+Should remove the inspector from the screen.
+
+\item{\bf virtual void inspect() = NULL}
+
+Should display the content of the graph-label.
+
+\end{itemize}
+
+\subsubsection{FFTclInspector}
+
+{\bf FFTclInspector} is a superclass for all inspectors that use the
+tcl/tk widget set to display themselves. It implements the following
+methods.
+
+\begin{itemize}
+
+\item{\bf virtual void hide()}
+
+Calls a tk function to remove the inspector from the screen.
+
+\item{\bf virtual void show()}
+
+Calls a tk function to show the inspector on the screen and top it.
+
+\end{itemize}
+
+\subsubsection{FFSugiInsp}
+
+The class {\bf FFSugiInsp} is an inspector for the FFSugi
+layout-label. It enables you to change the parameters of the sugyjama
+layout algorithm.
+
+\begin{figure}[htb]
+\fbox{\epsfig{figure=sugiInsp.eps}}
+\caption{FFSugiInsp}
+\end{figure}
+\clearpage
+
+It implements the following methods:
+
+\begin{itemize}
+
+\item{\bf FFSugiInsp(FFGraphLabel *l)}
+
+Creates a new instance of the class {\bf FFSugiInsp} and initializes
+it with the sugiyama label {\bf l}.
+
+\item{\bf int recall(Tcl\_Interp *i, int k, char **c)}
+
+Is called by the tk library whenever the user changes any parameters
+in the window.
+
+\item{\bf void inspect()}
+
+Displays the contents of the sugiyama layout label in its window.
+
+\end{itemize}
+
+\subsubsection{FFSpringInsp}
+
+The class {\bf FFSpringInsp} is an inspector for the FFSpring
+layout-label. It enables you to change the parameters of the
+spring-embedder layout algorithm.
+
+\begin{figure}[htb]
+\mbox{\epsfig{figure=springInsp.eps}}
+\caption{FFSpringInsp}
+\end{figure}
+\clearpage
+
+It implements the following methods:
+
+\begin{itemize}
+
+\item{\bf FFSpringInsp(FFGraphLabel *l)}
+
+Creates a new instance of the class {\bf FFSpringInsp} and initializes
+it with the spring-embedder label {\bf l}.
+
+\item{\bf int recall(Tcl\_Interp *i, int k, char **c)}
+
+Is called by the tk library whenever the user changes any parameters
+in the window.
+
+\item{\bf void inspect()}
+
+Displays the contents of the spring-embedder layout label in its
+window.
+
+\end{itemize}
+
+\subsubsection{FFTclBasicWindow}
+
+The class {\bf FFTclBasicWindow} is a subclass of {\bf FFGraphWindow}
+and {\bf FFWindow}. It is the superclass for all window-labels that
+use the tcl/tk widget set to display graphs. The class provides the
+following methods:
+
+\begin{itemize}
+
+\item{\bf virtual void event(labelEvent type, labelEventStruct *)}
+
+This method is invoked whenever there is a structural change in the
+graph.  {\bf type} specifies which type of event occurred. The class
+responds to the following methods:
+
+\begin{itemize}
+
+\item{\bf DIRECTEDNESS\_CHANGE}
+
+The graph is redisplayed using arrowheads at edges if the graph is
+directed.
+
+\end{itemize}
+
+\item{\bf virtual void scaleXYZ(FFCoord x, FFCoord y, FFCoord z)}
+
+Scales the x-coordinate of the window coordinate system {\bf x} times,
+the y-coordinate {\bf y} times and the z-coordinate {\bf z} times. 
+
+\item{\bf virtual void rotateX(FFCoord x)}
+
+Scales the x-coordinate of the window coordinate system {\bf x} times.
+
+\item{\bf virtual void rotateY(FFCoord y)}
+
+Scales the y-coordinate of the window coordinate system {\bf y} times.
+
+\item{\bf virtual void rotateZ(FFCoord z)}
+
+Scales the z-coordinate of the window coordinate system {\bf z} times.
+
+\item{\bf virtual void translate(FFCoord x, FFCoord y, FFCoord z)}
+
+Translates the window coordinate system by ({\bf x},{\bf y},{\bf z}).
+        
+\item{\bf virtual FFPoint adjust(FFGraphicNode *A, FFPoint B)}
+  
+{\bf B} is the last edge point of an edge before it reaches {\bf A}.
+
+The result of the method is the position where the edge should meet
+{\bf A}.
+
+\item{\bf virtual BOOL hasOwnInspector() const}
+
+Return {\bf NO}.
+
+\item{\bf virtual void init(const FFGraph\& g)}
+
+Initializes the window label with graph {\bf g}. The  layout labels
+{\bf FFSugi} and {\bf FFSpring} are added to the graph.
+
+\item{\bf virtual void adjustWindowSize()}
+
+Adjusts the size of the canvas the graph is displayed in to be able
+to display the whole graph.
+
+\item{\bf virtual void setLabelOffset(int x, int y)}
+  
+Sets the relative position of the name of a node to the position of the
+node.
+
+\item{\bf virtual String addNode(FFGraphicNode *n)}
+
+Adds a graphical representation for the node label {\bf n} and returns
+a unique id.
+
+\item{\bf virtual String addEdge(FFGraphicEdge *e)}
+
+Adds a graphical representation for the edge label {\bf e} and returns
+a unique id.
+
+\item{\bf virtual String addLabel(FFGraphicNode *n)}
+
+Adds a graphical representation for node {\bf n}.
+
+\item{\bf virtual String addLabel(FFGraphicEdge *e)}
+
+Adds a graphical representation for edge {\bf e}.
+
+\item{\bf virtual void changeColor(FFGraphicNode *n, String\& color)}
+
+Changes the color of node {\bf n} to {\bf color}.
+
+\item{\bf virtual String changeToIcon(FFGraphicNode *n, 
+        String\& iconFile)}
+
+Displays node {\bf n} as the icon defined in {\bf iconFile}. Supported
+graphic types are {\bf gif}, {\bf ppm}, {\bf xbm} and {\bf xpm}. {\bf
+iconFile} must be located in the according sub-directory of the icon
+directory you specified when installing the library. If e.g. {\bf
+iconFile} is name.xxx there must be two files,
+ICON\_LIBDIR/xxx/nameN.xxx and ICON\_LIBDIR/xxx/nameS.xxx where
+nameN.xxx contains the icon for the node if it is not selected and
+nameS.xxx contains the icon for the node if it is selected.
+
+\item{\bf virtual String changeToCircle(FFGraphicNode *n)}
+
+Displays node {\bf n} as a circle.
+
+\item{\bf virtual String changeToWindow(FFGraphicNode *n)}
+
+Displays node {\bf n} as a sub-window which may display another graph.
+
+\item{\bf virtual void changeMask(FFGraphicNode *n, String\& maskFile)}
+
+If node {\bf n} is displayed as an icon and the graphic type of the
+icon is {\bf xpm} or {\bf xbm}, the icon is masked according to the
+bitmap defined in {\bf maskFile}. {\bf maskFile} must be located in
+the xbm subdirectory of the icon-directory you specified when
+installing the library.
+
+\item{\bf virtual void changeColor(FFGraphicEdge *e, String\& color)}
+
+Changes the color of edge {\bf e} to {\bf color}.
+
+\item{\bf virtual void changeLabel(FFGraphicNode *n, const 
+        String\& name)}
+
+Changes the graphical representation of the name of node {\bf n} to
+display the string {\bf name}.
+
+\item{\bf virtual void changeLabel(FFGraphicEdge *n, const 
+        String\& name)}
+
+Changes the graphical representation of the name of edge {\bf e} to
+display the string {\bf name}.
+
+\item{\bf virtual void remove(FFGraphicNode *n)}
+
+Removes the node {\bf n} from the window.
+
+\item{\bf virtual void remove(FFGraphicEdge *e)}
+
+Removes the edge {\bf e} from the window.
+
+\item{\bf virtual void removeLabel(FFGraphicNode *n)}
+
+Removes the graphical representation of the name of node {\bf n} from
+the window.
+
+\item{\bf virtual void removeLabel(FFGraphicEdge *e)}
+
+Removes the graphical representation of the name of edge {\bf e} from
+the window.
+
+\item{\bf virtual void updateGraph()}
+
+Redisplays the whole graph.
+
+\item{\bf virtual void updateGraph(FFGraphicNode *n)}
+
+Redisplays node {\bf n}.
+
+\item{\bf virtual void updateGraph(FFGraphicEdge *e)}
+
+Redisplays edge {\bf e}.
+
+\item{\bf virtual void setSpline(FFGraphicEdge *e, BOOL flag)}
+
+If {\bf flag == YES} edge {\bf e} is displayed as a spline. If {\bf
+flag == NO} the edge is displayed as lines.
+  
+\item{\bf virtual void setCurrent(FFGraphicNode *n)}
+
+Unselects any selected items and selects node {\bf n}.
+
+\item{\bf virtual void setCurrent(FFGraphicEdge *e)}
+
+Unselects all selected items and selects edge {\bf e}.
+
+\item{\bf virtual void addToCurrent(FFGraphicNode *n)}
+
+Unselects all selected edges and selects node {\bf n}.
+
+\item{\bf virtual void selectIfNot(FFGraphicNode *n)}
+
+Unselects node {\bf n} if it is selected or call {\bf addToCurrent(n)}
+if is not selected.
+
+\item{\bf virtual void unsetCurrent()}
+
+Unselects any selected items.
+
+\item{\bf virtual BOOL isCurrent(FFGraphicNode *n)}
+
+Returns whether node {\bf n} is selected.
+
+\item{\bf virtual AVLSet\verb|<|FFGraphicNode *\verb|>|\& 
+        selectedNodes()}
+
+Returns a reference to the set containing all selected nodes.
+
+\item{\bf virtual void unset(FFGraphicNode *n)}
+
+If node {\bf n} is selected, it is unselected.
+
+\item{\bf virtual void unset(FFGraphicEdge *e)}
+
+If edge {\bf e} is selected, it is unselected.
+
+\item{\bf virtual int recall(Tcl\_Interp *i, int k, char **c)}
+
+This method is called by the tk library whenever the user does any
+input in the window.
+
+\item{\bf const Tcl\_Interp *getInterp()}
+
+Returns the tk interpreter the class uses.
+
+\item{\bf virtual void sizeTo(int w, int h)}
+
+Resizes the window to width {\bf w} and height {\bf h}.
+
+\item{\bf FFPoint getRange(const FFGraphicNode *n)}
+
+Returns the range of the bounding box of {\bf n}.
+  
+\item{\bf virtual void setUpdate(BOOL f)}
+
+Sets whether graphic updates should be made in the window.
+
+\item{\bf virtual BOOL getUpdate()}
+
+Returns whether graphic updates are made in the window.
+
+\item{\bf virtual void update()}
+
+Forces a graphic update in the window.
+  
+\item{\bf virtual int setTitle(const String\& s)}
+
+Sets the title of the window to {\bf s}.
+
+\item{\bf virtual void setBusy()}
+
+Changes the mouse cursor to display a watch.
+
+\item{\bf virtual void unsetBusy()}
+
+Changes the mouse cursor to display an arrow,
+
+\item{\bf virtual int mapWindow()}
+
+Maps the window to the screen.
+
+\item{\bf virtual int unmapWindow()}
+
+Unmaps the window from the screen.
+
+\item{\bf virtual int withdraw()}
+
+Withdraws the window from the screen.
+
+\item{\bf virtual int iconify()}
+
+Iconifies the window.
+
+\item{\bf virtual int deiconify()}
+
+Deiconifies the window.
+
+\item{\bf String fsBox(String message= String("Select File:"), 
+               String type= String("*"), String name=String(""))}
+
+Displays a file-selector box. {\bf message} contain the title of the
+box, {\bf type} contains an extension filter and {\bf name} may
+contain a directory or file that should be preselected.
+
+\item{\bf FFTclBasicWindow()}
+
+Creates a new instance of class {\bf FFTclBasicWindow}. You usually
+do not use this class directly, but a subclass of this class.
+
+\end{itemize}
+
+\subsubsection{FFTclWindow}
+
+The class {\bf FFTclWindow} is a subclass of {\bf FFTclBasicWindow}
+and is able to display a graph in a window on the screen using the
+tcl/tk widget library. The class contains an inspector of the class
+{\bf FFTclGraphInsp} to display the content of the labels bound to the
+graph. {\bf FFTclWindow} provides the following methods:
+
+\begin{itemize}
+
+\item{\bf FFTclWindow()}
+
+Creates a new instance of the class {\bf FFTclWindow}. This instance
+may be bound to a graph using the {\bf
+FFGraphClass::createGraphic(FFGraphWIndow *)} method to display the
+graph on the screen.
+
+\item{\bf virtual void init(const FFGraph\& g)}
+
+Initializes the window with graph {\bf g} and puts a window 
+displaying {\bf g} on the screen.
+
+\item{\bf virtual void event(labelEvent type, labelEventStruct *)}
+
+This method is invoked from the library if there is any structural
+change to the graph. {\bf type} specifies the type of change. The
+method responds to the following event types:
+
+\begin{itemize}
+
+\item{\bf NAME\_CHANGE}
+
+Sets the title of the window according to the new name of the graph.
+
+\item{\bf ADD\_NODELABEL\\
+        DEL\_NODELABEL\\
+        ADD\_EDGELABEL\\
+        DEL\_EDGELABEL} 
+
+Updates the inspector.
+
+\end{itemize}
+
+\item{\bf virtual int recall(Tcl\_Interp *i, int k, char **c)}
+
+This method is invoked from the tcl/tk library whenever the user makes
+any input in the window.
+
+\item{\bf virtual int exportSelection(int , char*, int)}
+
+This method is invoked by the tcl/tk library. It exports the graph as
+a string containing the graph in sgraph format.
+
+\item{\bf virtual int getSelection(char* str)}
+
+This method is invoked when the user does a copy or paste. It builds a
+string containing the current graph in sgraph format.
+
+%  virtual void setCurrent(FFGraphicNode *);
+%  virtual void setCurrent(FFGraphicEdge *);
+%  virtual void addToCurrent(FFGraphicNode *);
+
+\item{\bf virtual void updateInspector()}
+
+Updates the inspector.
+
+\item{\bf virtual void showInspector()}
+
+Brings the inspector on the screen.
+  
+\end{itemize}
+
+\subsubsection{FFTclSubWindow}
+
+This class can display a graph in a node which is displayed as a
+window in the {\bf FFTclWindow} window label. The class provides 
+the following methods:
+
+\begin{itemize}
+
+\item{\bf virtual FFGraphLabel *proto() const}
+
+Returns a new instance of {\bf FFTclSubWindow}. This method is used
+internally by the library.
+  
+\item{\bf virtual int recall(Tcl\_Interp *i, int k, char **c)}
+
+This method is called by the tcl/tk library whenever the user triggers
+an event in the sub-window.
+
+\item{\bf virtual void init(const FFGraph\& g)}
+
+Initializes the class with graph {\bf g}.
+       
+\item{\bf FFTclSubWindow(FFNode dad= NULL, Tcl\_Interp *i=NULL,
+        Tk\_Window win=0, String\& w=String(""), String\&
+        id=String(""))}
+
+Creates a new instance of {\bf FFTclSubWindow}. {\bf dad} is the node
+the subgraph of this window is bound to. {\bf i} and {\bf win} are the
+tcl interpreter and the window where the subgraph should be displayed
+in.  q{\bf w} is the name of the canvas widget where the subgraph
+should be displayed in and {\bf id} is the tk item id of the sub-graph
+window.
+
+\end{itemize}
+
+\subsubsection{FFPoint}
+
+The class {\bf FFPoint} implements 3 dimensional vectors to store
+coordinates. The class actually contains 4 dimensions where the fourth
+dimension is necessary to be able to do translations with linear
+operators. The class defines the usual operations expected for
+numeric data-types. It also defines {\bf FF\_EPSILON} to 0.000000001. If the
+distance between two {\bf FFPoints} is smaller than {\bf FF\_EPSILON} they are
+considered to be equal. You can access a single dimension by reading
+the member variable v\verb|[]|. Methods without description do what
+you would expect them to do.
+
+\begin{itemize}
+
+\item{\bf FFPoint()}
+
+Create a new instance and initializes it with (0,0,0).
+
+\item{\bf FFPoint(const FFPoint\& p)}
+\item{\bf FFPoint(FFCoord nx, FFCoord ny, FFCoord nz=0.0)}
+
+\item{\bf BOOL operator == (const FFPoint\& p) const}
+
+Returns {\bf YES} if the distance between the points is smaller than
+{\bf FF\_EPSILON}.
+
+\item{\bf FFPoint operator-() const}
+
+\item{\bf FFPoint operator + (const FFPoint\& p) const}
+\item{\bf FFCoord operator * (const FFPoint\& p) const}
+\item{\bf FFPoint operator * (FFCoord i) const}
+\item{\bf FFPoint operator / (FFCoord i) const}
+
+\item{\bf void operator -= (const FFPoint\& p)}
+\item{\bf void operator += (const FFPoint\& p)}
+\item{\bf void operator *= (FFCoord i)}
+\item{\bf void operator /= (FFCoord i)}
+
+\item{\bf FFPoint\& operator = (const FFPoint\& v)}
+\item{\bf char * operator()() const}
+
+Returns an ASCII representation of the point.
+
+\item{\bf FFCoord abs() const}
+
+Returns the absolute value of the point.
+
+\item{\bf FFCoord abs2D() const}
+
+Returns the absolute value of the first two dimensions of the point.
+
+\end{itemize}
+
+\subsubsection{FFMatrix}
+
+The class {\bf FFMatrix} implements a 3x3 Matrix. It is actually a 4x4
+Matrix, but the fourth dimension is used to be able to do translations
+with linear operators. The class implements the methods you expect
+from a numeric data-type. You can access a row by reading
+the member variable row\verb|[]|. Methods without description do what
+you would expect them to do.
+
+\begin{itemize}
+
+\item{\bf FFMatrix()}
+
+Creates a 0-Matrix.
+
+\item{\bf FFMatrix(const FFPoint\&, const FFPoint\&, 
+        const FFPoint\&, const FFPoint\&)}
+    
+\item{\bf BOOL operator == (const FFMatrix\&) const}
+
+\item{\bf FFMatrix operator-() const}
+\item{\bf friend FFMatrix operator - (const FFMatrix\&, const 
+        FFMatrix\&)}
+
+\item{\bf FFMatrix operator + (const FFMatrix\&) const}
+\item{\bf FFMatrix operator* (const FFMatrix\&) const}
+\item{\bf FFMatrix operator* (FFCoord) const}
+\item{\bf FFPoint operator* (const FFPoint\&) const}
+\item{\bf FFMatrix operator / (FFCoord) const}
+
+\item{\bf void operator -= (const FFMatrix\&)}
+\item{\bf void operator += (const FFMatrix\&)}
+\item{\bf void operator *= (FFCoord)}
+\item{\bf void operator *= (const FFMatrix\&)}
+\item{\bf void operator /= (FFCoord)}
+
+\item{\bf char * operator()() const}
+
+Returns an ASCII representation of the Matrix.
+
+\end{itemize}

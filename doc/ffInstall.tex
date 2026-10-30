@@ -1,0 +1,154 @@
+The library has already been successfully installed on the following
+platforms:
+
+\begin{itemize}
+
+\item Solaris 2.4 using gcc 2.6.8, tcl 7.3 and tk 3.6
+
+\item Linux 1.2.13 using gcc 2.7.0. tcl 7.4 and tk 4.0
+
+\item Sinix, using the Sinix C++ compiler and the motif widget set
+(although I have never seen this one myself up to now)
+
+\end{itemize}
+
+To install the library you need the following programs and libraries
+installed on your system:
+
+\begin{itemize}
+
+\item g++ version 2.6.3 or higher.
+\item libg++ according to the compiler.
+\item X11R5 or higher
+
+\end{itemize}
+
+either
+
+\begin{itemize}
+
+\item tcl 7.4 and tk 4.0 (recommended)
+
+\end{itemize}
+
+or
+
+\begin{itemize}
+
+\item tcl 7.3 and tk 3.6 optional with the tkPixmap
+  extension. (will no longer be supported)
+
+\end{itemize}
+
+If you want to compile the .y and .l files you
+need\footnote{Precompiled .cc and .h files are included in the
+  distribution}:
+
+\begin{itemize}
+\item bison++ 1.21-8 
+\item flex++\footnote{The {\it real} flex++, not the one from the
+    flex distribution !!!} 2.3.8-7
+\end{itemize}
+
+If you want to change some of the configure files you also need:
+
+\begin{itemize}
+\item autoconf
+\item autoheader
+\end{itemize}
+
+If you want to be able to use Xpm images you also need the
+
+\begin{itemize}
+
+\item Xpm library (recommended)
+
+\end{itemize}
+
+To install the library do the following:
+
+\begin{enumerate}
+  
+\item You might want to edit the top section of {\tt
+./include/ffgraph/ffGlobdefs.h.in}.  
+
+\item Type {\tt ./configure}. You may want to pass some options
+  like {\tt --prefix=/usr/local} to configure.
+
+\item {\tt make dependall} (optional, but recommended)
+\item {\tt make}
+\item {\tt make install}
+\item {\tt make cleanall} (if you want to save disk-space)
+\item If all worked fine, stand up and pat yourself on the
+  shoulder
+
+\end{enumerate}
+
+{\bf Troubleshooting:}
+
+If something went wrong, maybe one of the following could help:
+
+\begin{itemize}
+
+\item 
+
+Error:
+
+{\bf make: Warning: Can't find `Makefile.dependencies'}
+
+Solution:
+
+Somehow a dependencies file got lost. This can happen if you interrupt
+{\bf make} at a wrong moment. Go to the corresponding directory and
+type {\bf touch Makefile.dependencies}.
+
+\item 
+
+Error:
+
+{\bf gcc: tk.h: No such file or directory}
+
+Solution:
+
+The tcl/tk header files are not where the library expects them. Add
+the directory to {\bf INCLUDES} in {\bf Makefile.head.common.in} and
+rerun {\bf configure}.
+
+\item
+
+Error:
+
+{\bf ld: fatal: library -lxxx: not found}
+
+Solution:
+
+The library xxx ist not where the ffgraph library expected it. Add the
+apropriate directory to {\bf LDFLAGS} in {\bf Makefile.head.common.in} and
+rerun {\bf configure}.
+
+\item
+
+Error:
+
+Any other error
+
+Solution:
+
+\begin{itemize}
+\item Find the error, fix it and send a patch to {\bf
+friedric{@}fmi.uni-passau.de}
+
+\item Send a bug report to {\bf
+friedric{@}fmi.uni-passau.de} containing:
+
+\begin{itemize}
+\item Kind of computer you use
+\item Kind and version of operating system you use
+\item Kind and version of compiler you use
+\item Version of ffgraph library you use
+\item Detailed description of the error, including a description of
+how to reproduce it.
+
+\end{itemize}
+\end{itemize}
+\end{itemize}

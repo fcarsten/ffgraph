@@ -1,0 +1,495 @@
+\subsubsection{FFLabelClass}
+
+The class {\bf FFLabelClass} is the superclass of all labels and
+defines some methods that all labels must provide. For details on
+what the methods should do in a label, see section
+\vref{writing_labels}. The methods
+{\bf FFLabelClass} defines are:
+
+\begin{itemize}
+
+\item{\bf void \_setType(const String\& s)}
+
+Appends ":" followed by {\bf s} to the type. Should be called in
+the constructor of each label.
+
+\item{\bf virtual BOOL parse(const String\& str)}
+
+Does nothing. Returns {\bf YES}.
+
+\item{\bf virtual String unparse()}
+  
+Does nothing. Returns "".
+
+\item{\bf virtual const String\& type() const}
+
+Returns a reference to the type of the label.
+
+\item{\bf virtual String baseType() const}
+
+Returns the part after the last ":" in the type of the label.
+
+\item{\bf virtual BOOL isSaveable() const}
+
+Returns {\bf NO}. 
+
+\item{\bf virtual BOOL shouldCopy() const}
+
+Returns {\bf YES}.
+
+\item{\bf virtual BOOL isInspectable() const}
+
+Returns {\bf NO}.
+  
+\item{\bf virtual BOOL compare(const FFLabelClass*) const}
+
+Returns {\bf NO}.
+
+\item{\bf virtual void event(labelEvent, labelEventStruct *) }
+
+Does nothing.
+
+\item{\bf virtual void assign(const FFLabelClass*)}
+
+Does nothing.
+
+\end{itemize}
+
+\subsubsection{FFGraphLabel}
+
+The class {\bf FFGraphLabel} is a subclass of {\bf FFLabelClass}.
+{\bf FFGraphLabel} is the superclass for all graph labels. It
+defines the following methods:
+
+\begin{itemize}
+  
+\item{\bf FFGraphLabel()}
+
+Appends "FFGraphLabel" to the type.
+
+\item{\bf virtual void init(const FFGraph\& g)}
+  
+  Tells the label that it is bound to graph {\bf g}. The member
+  variable {\bf graph} is set to {\bf g}.
+
+\item{\bf virtual FFGraphLabel *proto() const = NULL}
+
+This method must be implemented by subclasses to reproduce itself.
+
+\item{\bf virtual BOOL hasOwnInspector() const}
+
+Returns {\bf YES} if the member variable {\bf inspector != NULL}.
+ 
+\item{\bf virtual void showInspector()}
+  
+  If the graph label has an inspector, the methods {\bf
+    FFInspector::show()} and {\bf FFInspector::inspect()} are
+  invoked.
+
+\item{\bf virtual void updateInspector()}
+  
+  If the graph label has an inspector, the method {\bf
+    FFInspector::inspect()} is invoked.
+
+\item{\bf virtual FFGraph getGraph()}
+  
+  Returns the member variable {\bf graph} which usually contains
+  the graph, the label is bound to.
+
+\item{\bf virtual \~FFGraphLabel()}
+
+If the label has an inspector, the inspector is freed.
+
+\end{itemize}
+
+\subsubsection{FFNodeLabel}
+
+The class {\bf FFNodeLabel} is a subclass of {\bf FFLabelClass}. 
+{\bf FFNodeLabel} is the superclass for all node labels. It defines
+the following methods:
+
+\begin{itemize}
+
+\item{\bf FFNodeLabel()}
+
+Appends ":" followed by "FFNodeLabel" to the type. 
+
+\item{\bf virtual void init( FFNodeClass *n)}
+
+Sets the member variable {\bf node} to {\bf n}. This method
+is used by the library to tell a label to which node it is
+bound.
+
+\item{\bf virtual FFNodeLabel *proto() const = NULL}
+
+Must be implemented by subclasses to reproduce themselves.
+
+\item{\bf virtual \~FFNodeLabel()}
+
+Does nothing.
+
+\end{itemize}
+
+\subsubsection{FFEdgeLabel}
+
+The class {\bf FFEdgeLabel} is a subclass of {\bf FFLabelClass}. 
+{\bf FFEdgeLabel} is the superclass for all edge labels. It defines
+the following methods:
+
+\begin{itemize}
+
+\item{\bf FFEdgeLabel()}
+
+Appends ":" followed by "FFEdgeLabel" to the type of the label.
+
+\item{\bf virtual void init( FFEdgeClass *e)}
+
+Sets the member variable {\bf edge} to {\bf e}. This method is used
+by the library to tell it to which edge it is bound.
+
+\item{\bf virtual FFEdgeLabel *proto() const = NULL}
+
+Must be implemented by subclasses to reproduce themselves.
+
+\item{\bf virtual \~FFEdgeLabel()}
+
+Does nothing.
+
+\end{itemize}
+
+\subsubsection{FFSubGraphLabel}
+
+The class {\bf FFSubGraphLabel} is a subclass of {\bf
+  FFNodeLabel}. {\bf FFSubGraphLabel} implements nested graphs.
+This means a {\bf FFSubGraphLabel} contains a graph itself.
+The classes {\bf FFTclWindow} and {\bf FFTclSubWindow} support
+the display of nested graphs.
+
+\begin{itemize}
+
+\item{\bf virtual BOOL parse(const String\& s)}
+
+{\bf s} should contain the file name of a sgraph file. The
+graph from the file is load into the graph the label contains.
+
+\item{\bf virtual String unparse()}
+
+Returns the filename of the graph which the label contains.
+
+\item{\bf virtual BOOL isInspectable() const}
+
+Returns YES.
+    
+\item{\bf FFSubGraphLabel()}
+
+Adds ":" followed by "FFSubGraphLabel" to the type of the label.
+
+\item{\bf virtual BOOL isSaveable() const}
+
+Returns YES.
+
+\end{itemize}
+
+\subsubsection{FFLayoutLabel}
+
+The class {\bf FFLayout} is a subclass of {\bf FFGraphLabel} and
+is the superclass for all labels that do any layout in the
+distribution. The class does not actually do anything, but is
+designed to define a common interface for all layout labels.
+See section \vref{writing_layouters} for more information. The class
+defines the following methods:
+
+\begin{itemize}
+
+\item{\bf FFLayoutLabel()}
+
+Adds ":" followed by "FFLayoutLabel" to the type of the label.
+
+\item{\bf virtual void layout(AVLSet \verb|<|FFNodeClass
+    *\verb|>|\&)}
+
+Does nothing.
+
+\item{\bf virtual void layout()}
+
+Does nothing.
+
+\end{itemize}
+
+\subsubsection{FFSugi}
+\label{ffsugi}
+
+The class {\bf FFSugi} is a subclass of {\bf FFLayoutLabel} and
+implements a Sugiyama layout algorithm. The class defines the
+following methods:
+
+\begin{itemize}
+
+\item{\bf FFSugi ()}
+
+Creates a new instance of the {\bf FFSugi} class.
+
+\item{\bf virtual void init(const FFGraph\& g)}
+
+Used internally by the library to initialize the label.   
+
+\item{\bf virtual BOOL isInspectable() const}
+
+Returns YES.
+
+\item{\bf virtual FFGraphLabel* proto() const}
+
+Returns a new new instance of {\bf FFSugi}.
+  
+\item{\bf BOOL getUseStartNode ()}
+
+Returns whether start-node information is used for the layout.
+
+\item{\bf void setUseStartNode (BOOL flag)}
+
+Sets whether start-node information should be used for the layout.
+
+\item{\bf BOOL getKeepEdgePoints ()}
+
+Returns whether edge points are kept in a local layout.
+
+\item{\bf void setKeepEdgePoints (BOOL)}
+
+Sets whether edge points should be kept during a local layout.
+ 
+\item{\bf BOOL getUseGrid ()}
+
+Returns whether a grid should be used to position nodes and edges.
+
+\item{\bf void setUseGrid (BOOL)}
+
+Sets whether a grid should be used to position nodes and edges.
+ 
+\item{\bf BOOL getLeavesDown ()}
+
+Returns whether leaves should be put on the lowest level.
+
+\item{\bf void setLeavesDown (BOOL)}
+  
+Sets whether leaves should be put on the lowest level.
+
+\item{\bf int getCrossingAlg ()}
+
+Returns what algorithm is used to reduce crossings.
+
+\item{\bf BOOL setCrossingAlg (int alg)}
+  
+  Specifies that algorithm {\bf alg} should be used to reduce
+  crossings.
+
+\item{\bf int getIteration1 ()}
+  
+  Returns the number of iterations for the reduce crossings
+  algorithm.
+
+\item{\bf BOOL setIteration1 (int n)}
+  
+  Sets the number of iterations for the reduce crossings
+  algorithm to {\bf n}.
+
+\item{\bf FFCoord getxoff ()}
+  
+  Returns the lowest x coordinate the graph will have after a
+  layout.
+
+\item{\bf BOOL setxoff (FFCoord x)}
+  
+  Sets the lowest x-coordinate the graph may have after a layout
+  to {\bf x}.
+
+\item{\bf FFCoord getyoff ()}
+
+  Returns the lowest y coordinate the graph will have after a
+  layout.
+
+\item{\bf BOOL setyoff (FFCoord y)}
+
+  Sets the lowest y-coordinate the graph may have after a layout
+  to {\bf y}.
+
+\item{\bf FFCoord getzoff ()}
+
+  Returns the lowest z coordinate the graph will have after a
+  layout.
+
+\item{\bf BOOL setzoff (FFCoord z)}
+  
+  Sets the lowest z-coordinate the graph may have after a layout
+  to {\bf z}.
+
+\item{\bf FFCoord getxDistance ()}
+  
+  Returns the distance the nodes will have on the x-coordinate
+  after a layout.
+
+\item{\bf BOOL setxDistance (FFCoord x)}
+
+  Sets the distance the nodes will have on the x-coordinate
+  after a layout to {\bf x}.
+
+\item{\bf FFCoord getyDistance ()}
+  
+  Returns the distance the nodes will have on the y-coordinate
+  after a layout.
+
+\item{\bf BOOL setyDistance (FFCoord)}
+
+  Sets the distance the nodes will have on the y-coordinate
+  after a layout to {\bf y}.
+
+\item{\bf FFCoord getzDistance ()}
+  
+  Returns the distance the nodes will have on the z-coordinate
+  after a layout.
+
+\item{\bf BOOL setzDistance (FFCoord z)}
+
+  Sets the distance the nodes will have on the z-coordinate
+  after a layout to {\bf z}.
+  
+\item{\bf FFCoord getDummyOffset ()}
+  
+  Returns the percentage of the distance of edge points relative
+  to the distance of nodes.
+
+\item{\bf void setDummyOffset (FFCoord p)}
+  
+  Sets the percentage of the distance of edge points relative to
+  the distance of nodes to {\bf p}.
+  
+\item{\bf int getDimension ()}
+
+  Returns the number of dimensions the graph should be layouted in.
+  May return 2 or 3.
+
+\item{\bf void setDimension (int i)}
+  
+  Sets the number of dimensions the graph should be layouted to
+  {\bf i}. {\bf i} must be 2 or 3.
+
+\item{\bf void layout (AVLSet \verb|<|FFNodeClass *\verb|>|\& set)}
+  
+  Does a local layout on the subgraph defined by the nodes in
+  {\bf set} and the edges between the nodes in the set.
+
+\item{\bf void layout ()}
+  
+  Does a sugiyama layout on the graph.
+
+\end{itemize}
+
+\subsubsection{FFSpring}
+\label{ffspring}
+
+The class {\bf FFSpring} is a subclass of {\bf FFLayoutLabel} and
+implements a spring-embedder layout algorithm. The class defines the
+following methods:
+
+\begin{itemize}
+
+\item{\bf  FFSpring ()}
+
+Creates a new instance of the {\bf FFSpring} class.
+
+\item{\bf virtual void init(const FFGraph\& g)}
+
+Used internally by the library to initialize the label.   
+
+\item{\bf  virtual FFGraphLabel* proto() const}
+
+Returns a new new instance of {\bf FFSpring}.
+  
+\item{\bf  virtual BOOL isInspectable() const}
+
+Returns YES.
+
+\item{\bf  BOOL    getAnimation ()}
+
+Returns whether the layout should be animated.
+
+\item{\bf  void    setAnimation (BOOL)}
+
+Sets if the layout should be animated.
+
+\item{\bf  BOOL    getUseEdgeWeight ()}
+
+Returns whether the weight of edges should be used.
+
+\item{\bf  void    setUseEdgeWeight (BOOL)}
+
+Sets whether the weight of edges should be used.
+
+\item{\bf  int     getMaxIteration ()}
+
+Returns the maximum number of iterations.
+
+\item{\bf  BOOL    setMaxIteration (int n)}
+
+Sets the maximum number of iterations to {\bf n}.
+
+\item{\bf  int     getAnimationIntervals ()}
+
+Returns the number of iterations before displaying a result.
+
+\item{\bf  BOOL    setAnimationIntervals (int n)}
+
+Sets the number of iterations before displaying a result to {\bf n}.
+
+\item{\bf  FFCoord getOptDistance ()}
+
+Returns the optimal distance between two nodes.
+
+\item{\bf  BOOL    setOptDistance (FFCoord x)}
+  
+  Sets the optimal distance between two nodes to {\bf x}. Returns
+  {\bf YES}, if x is a valid distance.
+
+\item{\bf  FFCoord getxoff ()}
+
+  Returns the lowest possible x-coordinate.
+
+\item{\bf  BOOL    setxoff (FFCoord x)}
+  
+  Sets the lowest possible x-coordinate to {\bf x}.
+
+\item{\bf  FFCoord getyoff ()}
+
+  Returns the lowest possible y-coordinate.
+
+\item{\bf  BOOL    setyoff (FFCoord)}
+
+  Sets the lowest possible y-coordinate to {\bf y}.
+
+\item{\bf  FFCoord getzoff ()}
+
+  Returns the lowest possible z-coordinate.
+
+\item{\bf  BOOL    setzoff (FFCoord)}
+
+  Sets the lowest possible z-coordinate to {\bf z}.
+
+\item{\bf  BOOL    getDimension ()}
+  
+  Returns {\bf YES} if 3 dimensions are used and {\bf NO} if 2
+  dimensions are used.
+
+\item{\bf  void    setDimension (BOOL flag)}
+
+  If {\bf flag == YES} 3 dimensions are used for layout. If {\bf flag == NO},
+  2 dimensions are used.
+  
+\item{\bf  void    layout (AVLSet\verb|<|FFNodeClass *\verb|>|\& set)}
+  
+  Does a local layout for the subgraph defined by the nodes in
+  {\bf set} and the edges between nodes in {\bf set}.
+
+\item{\bf  void    layout ()}
+  
+  Does a layout of the whole graph.
+
+\end{itemize}

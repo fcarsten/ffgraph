@@ -1,0 +1,139 @@
+# -*- makefile -*-
+#aenderung auf dem Branch
+#
+# generated at 30.01.1995 by Andreas Holzmann
+#
+
+### Start of Directory configuration section. ###
+
+include Makefile.head.common
+
+pvtdir = .
+srcdir = @srcdir@
+VPATH = @srcdir@
+
+CCC = @CXX@
+CPP = @CPP@
+RANLIB = @RANLIB@
+
+DEFS = 
+
+CCFLAGS = @CXXFLAGS@
+LDFLAGS	= @LDFLAGS@
+
+LDFLAGS_GRAPHIC = -L. -L./fgraph -L./fgraphic -L./flayout -L./container
+
+LIBS_GRAPHIC	=  -lFFGraph -lFFGraphic \
+	-lFFlayout -lFFcontainer -ltk -ltcl -lX11 -lm -lg++ @LIBS@
+
+### End of Directory configuration section. ###
+
+srcs = ffmain.cc 
+objs = $(srcs:.cc=.o)
+
+# all: ffgraph
+all: ffgraph
+.PHONY:	all
+
+subdirs_fgraph:
+	@cd fgraph; $(MAKE) lib
+	@cd fgraphic; $(MAKE) lib
+	@cd flayout; $(MAKE) lib
+	@cd container; $(MAKE) lib
+.PHONY:	subdirs_fgraph
+
+ffgraph: subdirs_fgraph $(objs)
+	$(CCC) -o $@ $(objs) $(LDFLAGS_GRAPHIC) $(LIBS_GRAPHIC)
+
+pure: subdirs_fgraph $(objs)
+	purify -best-effort -g++=yes -chain-length=8\
+		g++ -o ffgraph.pure $(objs) $(LDFLAGS_GRAPHIC) $(LIBS_GRAPHIC)
+
+install: ffgraph
+	@echo Making directories
+	@$(INSTALL_DIR) $(bindir)
+	@echo Installing ffgraph        
+	@$(INSTALL_PROGRAM) ffgraph $(bindir)      
+	@ln -s $(bindir)/ffgraph $(bindir)/ffgraph3D
+        
+install.lib: subdirs_fgraph
+	@echo Making directories
+	@$(INSTALL_DIR) $(libdir) $(includedir) $(runtimedir)
+	@echo Installing libraries        
+	@for name in `find . -name \*.a -print` ; do \
+	$(INSTALL_DATA) $$name $(libdir) ; done 
+	@$(RANLIB) $(libdir)/*.a 
+	@echo Installing include files       
+	@for name in include/ffgraph/*.h ; do \
+	$(INSTALL_DATA) $$name $(includedir) ; done
+	@echo Installing runtime files       
+	@$(CP) -r lib/ffgraph $(libdir)
+      
+doc:
+	@cd doc; $(MAKE)
+.PHONEY: doc 
+
+shortinc:
+	@echo building shortinc
+	@chmod 755 contrib/shortinc
+          
+dependall: shortinc
+	@cd fgraph; $(MAKE) depend
+	@cd fgraphic; $(MAKE) depend
+	@cd flayout; $(MAKE) depend
+	@cd container; $(MAKE) dependall
+	@$(MAKE) depend
+
+dep depend: shortinc
+	$(MAKE) dependimpl
+.PHONY: dep depend
+
+clean:
+	rm -fr ffgraph *.o \#* core tmp*
+.PHONY: clean
+
+distclean: clean
+	rm -fr Makefile.dependencies config.cache *~ *%
+	touch Makefile.dependencies
+.PHONY: distclean
+
+realclean: distclean
+	rm -fr Makefile config.cache config.status config.log
+.PHONY: realclean
+
+cleanall:
+	@cd fgraphic; $(MAKE) cleanall
+	@cd fgraph; $(MAKE) cleanall
+	@cd flayout; $(MAKE) cleanall
+	@cd container; $(MAKE) cleanall
+	@cd doc; $(MAKE) clean
+	@$(MAKE) clean
+.PHONY: cleanall
+
+
+distcleanall:
+	@cd fgraphic; $(MAKE) distcleanall
+	@cd fgraph; $(MAKE) distcleanall
+	@cd flayout; $(MAKE) distcleanall
+	@cd container; $(MAKE) distcleanall
+	@cd doc; $(MAKE) distclean
+	@$(MAKE) distclean
+.PHONY: distcleanall
+
+realcleanall: 
+	@cd fgraphic; $(MAKE) realcleanall
+	@cd fgraph; $(MAKE) realcleanall
+	@cd flayout; $(MAKE) realcleanall
+	@cd container; $(MAKE) realcleanall
+	@cd doc; $(MAKE) realclean
+	@$(MAKE) realclean
+.PHONY: realcleanall
+
+tags:
+	etags `find . -name \*.cc -print -o -name \*.h -print -o -name \*.c -print`
+.PHONY: tags
+
+%.o     : %.cc
+	$(CCC) -c $(CCFLAGS) $(INCLUDES) $(DEFS) $<
+
+include $(pvtdir)/Makefile.tail.common

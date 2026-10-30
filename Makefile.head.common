@@ -1,0 +1,35 @@
+# Generated automatically from Makefile.head.common.in by configure.
+CC = gcc
+CCC = c++
+CPP = gcc -E
+FLEX   = @LEX@
+BISON  = @YACC@
+FLEXXX = flex++
+BISONXX = bison++
+RANLIB = ranlib
+TAR = @TAR@
+GENCLASS = genclass
+PREPEND = prepend
+MV     = /bin/mv
+CP     = /bin/cp
+
+prefix = /usr/local
+INSTALL = ./install-sh -c
+INSTALL_DIR = mkinstalldirs
+INSTALL_DATA = ${INSTALL} -m 644
+INSTALL_PROGRAM = ${INSTALL}
+
+bindir = $(prefix)/bin
+libdir = $(prefix)/lib
+includedir = $(prefix)/include/ffgraph
+infodir = $(prefix)/info
+mandir  = $(prefix)/man
+runtimedir = $(prefix)/lib/ffgraph
+
+CFLAGS = -g -O -pipe -Wall -Wno-unused
+CCFLAGS = -g -O2 -Wall -Wextra -Wno-unused-parameter -std=gnu++17
+LDFLAGS	= 
+
+INCLUDES = -I../include -Iinclude -I.. -I. $(shell pkg-config --cflags tk 2>/dev/null)
+ 
+STD_INCLUDES = $(shell pkg-config --cflags tk 2>/dev/null)

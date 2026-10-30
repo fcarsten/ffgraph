@@ -1,0 +1,1070 @@
+#include <strstream.h>
+#include <string.h>
+#include <assert.h>
+
+#include <ffgraph/FFSpqr.h>
+#include <ffgraph/FFGraphClass.h>
+#include <ffgraph/FFGraphWindow.h>
+#include <ffgraph/FFTclWindow.h>
+#include <ffgraph/FFGraphicEdge.h>
+#include <ffgraph/FFLayoutLabel.h>
+#include <ffgraph/FFTIEdgeLabel.h>
+#include <ffgraph/FFTINodeLabel.h>
+#include <ffgraph/FFTIGraphLabel.h>
+#include <container/VOHSet.h>
+#include <container/AVLSet.h>
+#include <ffgraph/FFSpqrNodeLabel.h>
+#include <ffgraph/FFSugi.h>
+
+#define SPQR_DEBUG
+
+FFSpqr::FFSpqr () : spqr(YES)
+{
+ _setType(ffSpqrType);
+ spqrNodeIndex = spqr->addNodeLabel(new FFSpqrNodeLabel);
+}
+
+
+FFSpqr::~FFSpqr ()
+{
+ tiNodeIndex=-1;
+ tiEdgeIndex=-1;
+}
+
+void FFSpqr::init(const FFGraph& g)
+{ 
+ FFLayoutLabel::init(g);
+ tiEdgeIndex= graph->getEdgeLabelIndex(ffTIEdgeLabel);
+ tiNodeIndex= graph->getNodeLabelIndex(ffTINodeLabel);
+ inspector = NULL;
+#ifdef SPQR_DEBUG
+ spqr->setName("SPQR Debug Window");
+ spqr->createGraphic(new FFTclWindow);
+ spqr->addGraphLabel(new FFSugi);
+#endif
+}
+
+void FFSpqr::layout ()
+{
+ cerr << "Starting Layout" << endl;
+ 
+ if((tiEdgeIndex= graph->getEdgeLabelIndex(ffTIEdgeLabel)) == -1)
+  {
+   graph->addGraphLabel(new FFTIGraphLabel);
+   if((tiEdgeIndex= graph->getEdgeLabelIndex(ffTIEdgeLabel)) == -1)
+    return;
+  }
+
+ if((tiNodeIndex= graph->getNodeLabelIndex(ffTINodeLabel)) == -1)
+  return;
+ 
+ spqr->clear();
+ 
+ FFNode tNode = NULL;
+ FFNode sNode = NULL;
+ FFEdge stEdge = NULL;
+ 
+ FFSet<FFEdge> alleKanten;
+ alleKanten |= graph->allEdges();
+ int k=0;
+ for(Pix i =alleKanten.first(); i!= NULL; alleKanten.next(i))
+  {
+   alleKanten(i)->setValue(k++);
+  }
+ 
+ // Looking for s and t node
+
+ const FFSet<FFNode>& alleKnoten = graph->allNodes();
+ for(Pix i=alleKnoten.first(); i!=NULL; alleKnoten.next(i))
+  {
+   sNode= alleKnoten(i);
+   
+   if(tiLabel(sNode)->getDfsNum() == 1)
+    {
+     const FFSet<FFEdge>& zu= sNode->transToSucc();
+
+     for(Pix j=zu.first(); j!= NULL; zu.next(j))
+      {
+       tNode = zu(j)->target();
+       if(tiLabel(tNode)->getDfsNum() == 0)
+        {
+         alleKanten.del(zu(j));
+         stEdge = zu(j);
+         break;
+        }
+      }
+     break;
+    }
+  }
+ 
+ if((sNode == NULL) || (tNode == NULL))
+  return;
+ 
+ int maxST= tiLabel(tNode)->getSTNum();
+ FFNode *done = new FFNode [maxST+1];
+ propAllocNode = new FFNode [maxST+1];
+ for(int ki=0; ki< maxST+1; ki++)
+  propAllocNode[ki]= NULL;
+ 
+ // correspNode = new FFNode[graph->allEdges().length()];
+ 
+ for(Pix i =alleKnoten.first(); i!= NULL; alleKnoten.next(i))
+  {
+   FFNode tmpN= alleKnoten(i);
+   tmpN->setValue(tiLabel(tmpN)->getSTNum());
+   done[tmpN->getValue()]= tmpN;
+  }
+
+ FFNode firstN = addQNode(sNode, tNode);
+ 
+ firstN->setName("s/t");
+ // spqr->setStartNode(firstN);
+ 
+ propAllocNode[tiLabel(tNode)->getSTNum()] = firstN;
+ propAllocNode[tiLabel(sNode)->getSTNum()] = firstN;
+ // correspNode[stEdge->getValue()] = firstN;
+ 
+ done[tiLabel(tNode)->getSTNum()]= NULL;
+ done[tiLabel(sNode)->getSTNum()] = NULL;
+ int lowNotDone=1;
+ 
+ while(1)
+  {
+   while((done[lowNotDone] == NULL) && (lowNotDone < maxST))
+    lowNotDone ++;
+   
+   if(lowNotDone >= maxST)
+    break;
+   
+   FFNode aktuN = done[lowNotDone];
+   const FFSet<FFEdge>& von= aktuN->transFromPred();
+   
+   FFEdge fromFather= von(von.first());
+   FFNode father = fromFather->source();
+    
+   alleKanten.del(fromFather);
+
+   SLList<FFNode> pfad;
+   FFNode sink= _markPath(done, alleKanten, aktuN, pfad);
+
+   if(testEdge(father, sink))
+    {
+     FFNode tmpN =insertEdge(father, sink);
+     if(tmpN != NULL)
+      while(pfad.length() != 0)
+       {
+        tmpN = insertNode(pfad.front(), tmpN);
+        pfad.remove_front();
+       }
+     else
+      {
+       cerr << "Couldn't insert Edge" << endl;
+#ifdef SPQR_DEBUG
+       fromFather->getGraphicEdge()->setColor("green");
+#endif
+       showOrder();
+       return;
+      }
+    }
+   else
+    {
+     cerr << "Graph is not planar" << endl;
+     break;
+    }
+  }
+ 
+ for(Pix i= alleKanten.first(); i != NULL; alleKanten.next(i))
+  {
+   FFEdge tmpE=alleKanten(i);
+   if((propAllocNode[tiLabel(tmpE->source())->getSTNum()] != NULL) &&
+      (propAllocNode[tiLabel(tmpE->target())->getSTNum()] != NULL))
+    {
+     if(insertEdge(tmpE->source(), tmpE->target()) == NULL)
+      {
+#ifdef SPQR_DEBUG
+       alleKanten(i)->getGraphicEdge()->setColor("green");
+#endif
+       showOrder();
+       return;
+      }
+    }
+  }
+
+ showOrder();
+ 
+ delete [] propAllocNode;
+ // delete [] correspNode;
+ delete [] done;
+}
+
+
+//
+// !!! May only be called from FFSpqr::layout as tiNodeLabel and tiEdgeLabel
+//     must be set correctly
+//
+
+FFNode FFSpqr::_markPath(FFNode done[], FFSet<FFEdge>& allE, 
+                       FFNode startN, SLList<FFNode>& pfad)
+{
+ FFNode aktuN = startN;
+ 
+ cerr << "Marking Path" << endl;
+ 
+ while(done[tiLabel(aktuN)->getSTNum()] != NULL)
+  {
+   done[tiLabel(aktuN)->getSTNum()] = NULL;
+   pfad.append(aktuN);
+   FFEdge tmpE= (aktuN->transToSucc())(aktuN->transToSucc().first());
+   allE.del(tmpE);
+   aktuN= tmpE->target();
+  }
+ return aktuN;
+}
+
+FFNode FFSpqr::addQNode(FFNode a, FFNode b)
+{
+ cerr << "Adding Q-Node" << endl;
+ 
+ FFNode firstN = spqr->addNode();
+ spqrLabel(firstN)->setSpqrType(Q_NODE);
+ spqrLabel(firstN)->setFirst(a);
+ spqrLabel(firstN)->setSecond(b);
+ return firstN;
+}
+
+FFNode FFSpqr::addSNode()
+{
+ cerr << "Adding S-Node" << endl;
+ FFNode newS= spqr->addNode();
+ newS->setName("S");
+ spqrLabel(newS)->setSpqrType(S_NODE);
+ 
+ return newS;
+}
+
+FFNode FFSpqr::addPNode()
+{
+ cerr << "Adding P-Node" << endl;
+
+ FFNode newP= spqr->addNode();
+ newP->setName("P");
+ spqrLabel(newP)->setSpqrType(P_NODE);
+ return newP;
+}
+
+FFNode FFSpqr::addRNode()
+{
+ cerr << "Adding R-Node" << endl;
+ FFNode newR= spqr->addNode();
+ newR->setName("R");
+ spqrLabel(newR)->setSpqrType(R_NODE);
+ return newR;
+}
+
+FFEdge FFSpqr::getFatherEdge(FFNode knoten)
+{
+ if(knoten->transFromPred().length() == 0)
+  return NULL;
+ return((knoten->transFromPred())(knoten->transFromPred().first()));
+}
+
+
+FFNode FFSpqr::_preliminaryTransformationS(FFNode my, FFEdge lambda1,
+                                         FFEdge lambda2)
+{
+ cerr << "Preliminary S transformation" << endl;
+ 
+ const DLList<FFEdge>& nach= spqrLabel(my)->edgeToSucc();
+ if(((nach.front() == lambda1) || (nach.front() == lambda2)) &&
+    ((nach.rear() == lambda1) || (nach.rear() == lambda2)))
+  return my;
+ 
+ 
+ FFNode newS= addSNode();
+ FFEdge sourceE=NULL;
+ FFEdge sinkE=NULL;
+ 
+ for(Pix i=nach.first(); i!= NULL; nach.next(i))
+  {
+   FFEdge tmpE=nach(i);
+   
+   if((tmpE == lambda1) || (tmpE == lambda2))
+    {
+     if(sourceE == NULL)
+      sourceE= tmpE;
+     else
+      {
+       sinkE= tmpE;
+       break;
+      }
+    }
+  }
+
+ assert(sourceE != NULL);
+ assert(sinkE != NULL);
+ 
+ transformSS(my, newS, sourceE->target(), sinkE->target());
+ return newS;
+}
+
+FFNode FFSpqr::_preliminaryTransformationP(FFNode my, FFEdge lambda1,
+                                         FFEdge lambda2)
+{
+ cerr << "Preliminary P transformation" << endl;
+ FFNode newP= addPNode();
+ transformAnyP(my, newP, lambda1->target(), lambda2->target());
+ 
+ return newP;
+}
+
+void FFSpqr::_collectSuccessors(FFNode n, FFSet<FFNode>& menge)
+{
+ cerr << "Collecting successors" << endl;
+ 
+ if(spqrLabel(n)->getSpqrType() == Q_NODE)
+  {
+   menge.add(spqrLabel(n)->getFirst());
+   menge.add(spqrLabel(n)->getSecond());   
+  }
+ 
+ const FFSet<FFEdge>& nach= n->transToSucc();
+ for(Pix i=nach.first(); i!= NULL; nach.next(i))
+  {
+   _collectSuccessors(nach(i)->target(), menge);
+  }
+}
+
+
+FFNode FFSpqr::insertEdge(FFNode source, FFNode sink)
+{
+ cerr << "Inserting Edge" << endl;
+ 
+ FFNode propSource= propAllocNode[tiLabel(source)->getSTNum()];
+ FFNode propSink= propAllocNode[tiLabel(sink)->getSTNum()];
+ FFEdge lambda1, lambda2;
+
+ assert(propSource != NULL);
+ assert(propSink != NULL);
+
+ FFNode my= leastCommonAncestor(propSource, propSink, lambda1, lambda2);
+
+ SpqrType myType= spqrLabel(my)->getSpqrType();
+ 
+ //
+ // Wir fangen gerade an und haben nur einen Q-Knoten von s nach t
+ //
+ 
+ if(spqr->allNodes().length() == 1)
+  {
+   FFNode newP= addPNode();
+   
+   FFNode newQ= addQNode(spqrLabel(my)->getFirst(),
+                         spqrLabel(my)->getSecond());
+   
+   spqr->addEdge(newP, my);
+   spqr->addEdge(newP, newQ);
+   
+   propAllocNode[tiLabel(source)->getSTNum()]= newP;
+   propAllocNode[tiLabel(sink)->getSTNum()]= newP;
+   
+   return newQ;
+  }
+ 
+ if((my->transToSucc().length() >2) && (my != propSource) &&
+    (my != propSink))
+  {
+   cerr << "Should do preliminary transformation now" << endl;
+   if(myType == S_NODE)
+    my = _preliminaryTransformationS(my, lambda1, lambda2);
+   else if(myType == P_NODE)
+    my = _preliminaryTransformationP(my, lambda1, lambda2);
+  }
+ 
+
+ FFNode newQ = NULL;
+ 
+ if(tiLabel(source)->getSTNum() < tiLabel(sink)->getSTNum())
+  newQ = addQNode(source, sink);
+ else
+  newQ = addQNode(sink, source);
+
+ if(propSource == propSink)
+  { // Kante zwischen 2 Knoten mit gleichem propAllocNode
+
+   if(myType == P_NODE)
+    {
+     spqr->addEdge(propSink, newQ);
+    }
+   else if(myType == S_NODE)
+    {
+     insertSP(my, source, sink, newQ);
+    }
+   else if(myType == R_NODE)
+    {
+     cerr << "Can't handle case: same alloc node is R-Node" << endl;
+     return NULL;
+    }
+   return newQ;
+  }
+ else // Mindestens ein propAllocNode != my
+  {
+   BOOL myNotProp=NO;
+   if(my == propSink)
+    {
+     cerr << "My is propSink." << endl;
+     if(tryPoleChain(propSink, propSource, source, sink, newQ, YES))
+      return newQ;
+    }
+   else if (my == propSource)
+    {
+     cerr << "My is propSource." << endl;
+     if(tryPoleChain(propSource, propSink, source, sink, newQ, NO))
+      return newQ;
+    }
+   else
+     myNotProp=YES;
+   
+   FFNode wanderer = propSource;
+   
+   for(int i = 1; i<= 2; i++)
+    {
+     while(wanderer != my)
+      {
+       cerr << "Can't wander around!" << endl;
+#ifdef SPQR_DEBUG
+       propSink->getGraphicNode()->setColor("green");
+       propSource->getGraphicNode()->setColor("green");
+       my->getGraphicNode()->setColor("red");
+#endif
+       return NULL;
+      }
+     wanderer= propSink;
+    }
+
+   if(myNotProp == YES)
+    {
+    }
+   else // Einer der propAllocNodes ist my
+    {
+     
+    }
+  }
+ 
+ cerr << "Couldn't insert edge" << endl;
+ 
+ return newQ;
+}
+
+
+BOOL FFSpqr::tryPoleChain(FFNode my, FFNode ny, FFNode source, 
+                       FFNode sink, FFNode newQ, BOOL sinkIsMy)
+{
+ cerr << "Trying pole chain" << endl;
+ if(spqrLabel(ny)->getSpqrType() == R_NODE)
+  return NO;
+
+ FFNode testN=ny;
+ 
+ if(spqrLabel(ny)->getSpqrType() == Q_NODE)
+  testN = getFatherEdge(testN)->source();
+
+ while(testN != my)
+  {
+   if(spqrLabel(testN)->getSpqrType() == S_NODE)
+    {
+     FFNode tmpN= NULL;
+     if(sinkIsMy == YES)
+      {
+       cerr << "Looking for sink" << endl;
+       tmpN= sink;
+      }
+     else
+      {
+       cerr << "Looking for source" << endl;
+       tmpN= source;
+      }
+     
+     FFNode tmpN1=spqrLabel(testN)->getFirst();
+     FFNode tmpN2=spqrLabel(testN)->getSecond();
+     
+     assert(tmpN1);
+     assert(tmpN2);
+     
+     cerr << tmpN->getName() << " : " << tmpN1->getName() << " : "
+          << tmpN2->getName() << endl;
+      
+     if((tmpN1 != tmpN) && (tmpN2 != tmpN))
+      return NO;
+    }
+   else if(spqrLabel(testN)->getSpqrType() != P_NODE)
+    {
+     return NO;
+    }
+   testN = getFatherEdge(testN)->source();
+  }
+ 
+ FFNode newP= addPNode();
+
+ if(spqrLabel(ny)->getSpqrType() == S_NODE)
+  {
+   FFNode newS=addSNode();
+   FFEdge newE= NULL;
+   
+   if(sinkIsMy == YES)
+    {
+     FFNode tmpN=spqrLabel(ny)->edgeToSucc().rear()->target();
+     newE=transformSS(ny, newS, source, spqrLabel(tmpN)->getSecond());
+    }
+   
+   else
+    {
+     FFNode tmpN=spqrLabel(ny)->edgeToSucc().front()->target();
+     newE=transformSS(ny, newS, spqrLabel(tmpN)->getFirst(), sink);
+    }
+   
+   newE->setTarget(newP);
+   spqr->addEdge(newP, newS);
+  }
+ else // Is a Q - Node
+  {
+   FFEdge tmpE=  getFatherEdge(ny);
+   tmpE->setTarget(newP);
+   spqr->addEdge(newP, ny);
+  }
+ 
+ spqr->addEdge(newP, newQ);
+ return YES;
+}
+
+void FFSpqr::setTarget(FFEdge e, FFNode n2)
+{
+ FFNode n1=e->getTarget();
+
+ if(n2 == n1)
+  {
+   cerr << "Trying to set target reflexiv edge to spqr tree" << endl;
+   return NULL;
+  }
+ 
+ FFSpqrNodeLabel *nl1= spqrLabel(n1);
+ FFSpqrNodeLabel *nl2= spqrLabel(n2);
+ switch(nl1->getSpqrType())
+  {
+  case P_NODE:
+   // fallthrough
+  case S_NODE:
+   {
+    if((nl1->getFirst() != nl2->getFirst()) ||
+       (nl1->getSecond() != nl2->getSecond()))
+     {
+      cerr << "Trying to insert incompatible node under P-Node" << endl;
+     }
+    break;
+   }
+  case R_NODE:
+   {
+    cerr << "Can't handle R-Nodes" << endl;
+    break;
+   }
+  case Q_NODE:
+   {
+    cerr << "Q-Nodes can't have successors!!!" << endl;
+    break;
+   }
+  default:
+   {
+    cerr << "Trying to set target for Edge with unknown node type" << endl;
+    break;
+   }
+  }
+ e->setTarget(n2);
+ _updatePoles(n2);
+ _updatePoles(e->getSource());
+}
+
+void FFSpqr::setSource(FFEdge e, FFNode n1)
+{
+ FFNode n2=e->getTarget();
+
+ if(n2 == n1)
+  {
+   cerr << "Trying to insert reflexiv edge to spqr tree" << endl;
+   return NULL;
+  }
+ 
+ FFSpqrNodeLabel *nl1= spqrLabel(n1);
+ FFSpqrNodeLabel *nl2= spqrLabel(n2);
+ switch(nl1->getSpqrType())
+  {
+  case S_NODE:
+   {
+    _insertEdgeToSNode(e, n1);
+   }
+  case P_NODE:
+   {
+    if((nl1->getFirst() != nl2->getFirst()) ||
+       (nl1->getSecond() != nl2->getSecond()))
+     {
+      cerr << "Trying to insert incompatible node under P-Node" << endl;
+     }
+    break;
+   }
+  case R_NODE:
+   {
+    cerr << "Can't hand R-Nodes" << endl;
+    break;
+   }
+  case Q_NODE:
+   {
+    cerr << "Q-Nodes can't have successors!!!" << endl;
+    break;
+   }
+  default:
+   {
+    cerr << "Trying to set target for Edge with unknown node type" << endl;
+    break;
+   }
+  }
+
+ e->setSource(n1);
+ _updatePoles(n1);
+}
+
+
+FFEdge FFSpqr::addEdge(FFNode n1, FFNode n2)
+{
+ if(n1 == n2)
+  {
+   cerr << "Trying to insert reflexiv edge to spqr tree" << endl;
+   return NULL;
+  }
+ FFEdge newE=NULL;
+ 
+ FFSpqrNodeLabel *nl1= spqrLabel(n1);
+ FFSpqrNodeLabel *nl2= spqrLabel(n2);
+ 
+ switch(nl1->getSpqrType())
+  {
+  case P_NODE:
+   {
+    if((nl1->getFirst() != nl2->getFirst()) ||
+       (nl1->getSecond() != nl2->getSecond()))
+     {
+      cerr << "Trying to insert incompatible node under P-Node" << endl;
+     }
+    newE= spqr->addEdge(n1,n2);
+    break;
+   }
+  case R_NODE:
+   {
+    cerr << "Can't hand R-Nodes" << endl;
+    break;
+   }
+  case Q_NODE:
+   {
+    cerr << "Q-Nodes can't have successors!!!" << endl;
+    break;
+   }
+  case S_NODE:
+   {
+    newE= spqr->addEdge(n1,n2);
+    _insertEdgeToSNode(newE, n1);
+    break;
+   }
+  default:
+   {
+    cerr << "Trying to add Edge to unknown node type" << endl;
+    break;
+   }
+  }
+ _updatePoles(n2);
+ _updatePoles(n1);
+ 
+ return newE;
+}
+
+void FFSpqr::_updatePoles(FFNode n)
+{
+ FFSpqrNodeLabel *nl= spqrLabel(n);
+ 
+ switch(nl->getSpqrType())
+  {
+  case P_NODE:
+   {
+    FFNode tmpN= n->transToSucc()(n->transToSucc().first());
+    FFSpqrNodeLabel *tmpNL= spqrLabel(tmpN);
+    
+    nl->setFirst() = tmpNL->getFirst();
+    nl->setSecond() = tmpNL->getSecond();
+    break;
+   }
+  case R_NODE:
+   {
+    cerr << "Can't hand R-Nodes" << endl;
+    break;
+   }
+  case Q_NODE:
+   {
+    cerr << "Q-Nodes can't have successors!!!" << endl;
+    break;
+   }
+  case S_NODE:
+   {
+    FFNode tmpN= tiLabel(n)->edgeToSucc().front();
+    FFSpqrNodeLabel *tmpNL= spqrLabel(tmpN);
+    nl->setFirst() = tmpNL->getFirst();
+
+    tmpN= tiLabel(n)->edgeToSucc().rear();
+    tmpNL= spqrLabel(tmpN);
+    nl->setSecond() = tmpNL->getSecond();
+    break;
+   }
+  default:
+   {
+    cerr << "Trying to add Edge to unknown node type" << endl;
+    break;
+   }
+  }
+}
+
+void FFSpqr::_insertEdgeToSNode(FFEdge e, FFNode n)
+{
+ FFSpqrNodeLabel *nl1= spqrLabel(n);
+ FFSpqrNodeLabel *nl2= spqrLabel(e->target());
+
+ if(nl1->getSpqrType() != S_NODE)
+  {
+   cerr << "FFSpqr::_insertEdgeToSNode without S node!" << endl;
+   return;
+  }
+ 
+ FFNode zweiter=nl2->getSecond();
+    
+ const DLList<FFEdge>& nach= nl1->edgeToSucc();
+
+ for(Pix i=nach.first(); i!= NULL; nach.next(i))
+  {
+   FFEdge tmpE=nach(i);
+   FFNode tmpN=spqrLabel(tmpE->target())->getFirst();
+   
+   if(tiLabel(tmpN)->getSTNum() == tiLabel(zweiter)->getSTNum())
+    {
+     nl1->insertBefore(i, e);
+     return;
+    }
+   else if(tiLabel(tmpN)->getSTNum() > tiLabel(zweiter)->getSTNum())
+    {
+     cerr << "Adding inconsistent edge to S-Node" << endl;
+     nl1->insertBefore(i, e);
+     return;
+    }
+  }
+ nl1->append(e);
+}
+
+//
+// Adds newQ parallel to the part between l1 and l2 of S-Node my
+//
+
+void FFSpqr::insertSP(FFNode my, FFNode source, FFNode sink, FFNode newQ)
+{
+ cerr << "Inserting SP" << endl;
+
+ if(spqrLabel(my)->getSpqrType() != S_NODE)
+  {
+   cerr << "MY NOT A S NODE!!!" << endl;
+   assert(0);
+  }
+
+ FFNode newS= addSNode();
+ FFNode newP= addPNode();
+
+ FFEdge newE=transform(my, newS, source, sink);
+ newE->setTarget(newP); // No update of propAllocNodes as P cannot be one
+  
+ spqr->addEdge(newP, newQ);
+ spqr->addEdge(newP, newS);
+}
+
+FFEdge FFSpqr::transform(FFNode top, FFNode newN,
+                         FFNode source, FFNode sink)
+{
+ cerr << "Transform" << endl;
+ 
+ SpqrType st1= spqrLabel(top)->getSpqrType();
+ SpqrType st2= spqrLabel(newN)->getSpqrType();
+ FFEdge newE=NULL;
+ 
+ if((st1 == S_NODE) && (st2 == S_NODE))
+   newE= transformSS( top,  newN,  source,  sink);
+ else if((st1 == P_NODE) || (st2 == P_NODE))
+   newE= transformAnyP( top,  newN,  source,  sink);
+ else
+  cerr << "Can't transform" << endl;
+  
+ return newE;
+}
+
+FFEdge FFSpqr::transformAnyP(FFNode top, FFNode newN,
+                             FFNode source, FFNode sink)
+{
+ cerr << "Transform any P" << endl;
+
+ if(spqrLabel(top)->getSpqrType() == S_NODE)
+  {
+   const DLList<FFEdge>& nach= spqrLabel(top)->edgeToSucc();
+
+   Pix i=nach.first();
+   while(spqrLabel(nach(i)->target())->getFirst() != source)
+    {
+     nach.next(i);
+     assert(i != NULL);
+    }
+   while(spqrLabel(nach(i)->target())->getSecond() != sink)
+    {
+     nach(i)->setSource(newN);
+     if(spqrLabel(newN)->getSpqrType() == S_NODE)
+      {
+       cerr << "Error calling transform with two S Nodes" << endl;
+       // spqrLabel(newN)->append(nach(i));
+      }
+     spqrLabel(top)->del(i);
+     assert(i != NULL);
+    }
+
+   nach(i)->setSource(newN);
+   if(spqrLabel(newN)->getSpqrType() == S_NODE)
+    {
+     cerr << "Error calling transform with two S Nodes" << endl;
+     // spqrLabel(newN)->append(nach(i));
+    }
+   
+   spqrLabel(top)->del(i);
+  }
+ else // top is no S node
+  {
+   const FFSet<FFEdge>& nach= top->transToSucc();
+   FFEdge sourceE=NULL;
+   FFEdge sinkE=NULL;
+   
+   for(Pix i= nach.first(); i!= NULL; nach.next(i))
+    {
+     FFEdge tmpE= nach(i);
+     if(tmpE->target() == sink)
+       sinkE= tmpE;
+     else if(tmpE->target() == source)
+       sourceE= tmpE;
+     
+     sourceE->setSource(newN);
+     sinkE->setSource(newN);
+     if(spqrLabel(newN)->getSpqrType() == S_NODE)
+      {
+       spqrLabel(newN)->append(sourceE);
+       spqrLabel(newN)->append(sinkE);
+      }
+    }
+  }
+
+ return spqr->addEdge(top, newN);
+}
+
+void FFSpqr::showOrder()
+{
+ const FFSet<FFNode>& knoten=spqr->allNodes();
+ for(Pix i=knoten.first(); i!= NULL; knoten.next(i))
+  {
+   FFNode tmpN=knoten(i);
+   if(spqrLabel(tmpN)->getSpqrType() == S_NODE)
+    {
+     int k=1;
+     const DLList<FFEdge>& nach= spqrLabel(tmpN)->edgeToSucc();
+     for(Pix j=nach.first(); j!=NULL; nach.next(j))
+      {
+       FFNode tmpN2= nach(j)->target();
+       tmpN2->setName(tmpN2->getName() + "("+dec(k++)+")");
+      }
+     tmpN->setName(tmpN->getName() + "("+dec(nach.length())+")");
+    }
+  }
+}
+
+
+FFEdge FFSpqr::transformSS(FFNode top, FFNode newN, 
+                         FFNode source, FFNode sink)
+{
+ cerr << "Transform SS" << endl;
+
+ FFSet<FFNode> toMove;
+ FFSet<FFNode> toStay;
+ 
+ assert(source!=NULL);
+ assert(sink!=NULL);
+ 
+ const DLList<FFEdge>& nach= spqrLabel(top)->edgeToSucc();
+ Pix i=nach.first();
+ 
+ while(spqrLabel(nach(i)->target())->getFirst() != source)
+  {
+   _collectSuccessors(nach(i)->target(), toStay);
+   nach.next(i);
+   assert(i!=NULL);
+  }
+ while(spqrLabel(nach(i)->target())->getSecond() != sink)
+  {
+   FFEdge tmpE=nach(i);
+   _collectSuccessors(tmpE->target(), toMove);
+   tmpE->setSource(newN);
+   spqrLabel(newN)->append(tmpE);
+   
+   spqrLabel(top)->del(i);
+   assert(i!=NULL);
+  }
+ 
+ _collectSuccessors(nach(i)->target(), toMove);
+ nach(i)->setSource(newN);
+ 
+ spqrLabel(newN)->append(nach(i));
+ FFEdge resultEdge=spqr->addEdge(top, newN);
+ 
+ spqrLabel(top)->insertBefore(i, resultEdge);
+ spqrLabel(top)->del(i);
+ 
+ while(i != NULL)
+  {
+   _collectSuccessors(nach(i)->target(), toStay);
+   nach.next(i);
+  }
+
+ // 
+ // Anpassen der proper allocation nodes
+ //
+ 
+ for(Pix j=toMove.first(); j!=NULL; toMove.next(j))
+  {
+   FFNode tmpN=toMove(j);
+   int tmpST= tiLabel(tmpN)->getSTNum();
+   
+   if((propAllocNode[tmpST] == top) && (!toStay.contains(tmpN)))
+    {
+     propAllocNode[tmpST]= newN;
+    }
+  }
+ 
+ return resultEdge;
+ 
+}
+
+FFNode FFSpqr::leastCommonAncestor(FFNode n1, FFNode n2, 
+                                   FFEdge& l1, FFEdge& l2)
+{
+ cerr << "Least common ancestor" << endl;
+
+ if(n1 == n2)
+  {
+   l1=NULL;
+   l2=NULL;
+   return n1;
+  }
+ 
+ DLList<FFNode> pfad1;
+ DLList<FFNode> pfad2;
+ pfad1.clear();
+ pfad2.clear();
+ 
+ FFEdge aktuE = getFatherEdge(n1);
+ pfad1.append(n1);
+ cerr << "   " << n1->getName()<< "(" << n1 << ") ";
+ 
+ while(aktuE != NULL)
+  {
+   cerr << "   " << aktuE->source()->getName()<< "(" << aktuE->source() << ") ";
+   pfad1.prepend(aktuE->source());
+   aktuE = getFatherEdge(aktuE->source());
+  }
+ 
+ aktuE = getFatherEdge(n2);
+ cerr << endl << "   " << n2->getName()<< "(" << n2 << ") ";
+ pfad2.append(n2);
+ 
+ while(aktuE != NULL)
+  {
+   FFNode tmpN=aktuE->source();
+   cerr << "   " << tmpN->getName() << "(" << tmpN << ") ";
+   pfad2.prepend(tmpN);
+   aktuE = getFatherEdge(tmpN);
+  }
+ cerr << endl;
+ 
+ FFNode aktuNode= NULL;
+
+ do
+  {
+   FFNode tmpN2=pfad2.front();
+   FFNode tmpN1=pfad1.front();
+   cerr << "Comparing " << tmpN1 << " and " << tmpN2 << endl;
+
+   if(tmpN1 != tmpN2)
+    {
+     cerr << "Compare failed" << endl;
+     break;
+    }
+
+   aktuNode=tmpN1;
+
+   pfad1.del_front();
+   pfad2.del_front();
+  }
+ while((!pfad1.empty()) && (!pfad2.empty()));
+ 
+ if(!pfad1.empty())
+  l1= getFatherEdge(pfad1.front());
+ else 
+  l1=NULL;
+ 
+ if(!pfad2.empty())
+  l2= getFatherEdge(pfad2.front());
+ else
+  l2=NULL;
+ 
+ cerr << "  Returning: " << aktuNode << endl;
+ return aktuNode;
+}
+
+FFNode FFSpqr::insertNode(FFNode neu, FFNode target)
+{
+ cerr << "Insert Node" << endl;
+
+ FFEdge vonKante = getFatherEdge(target);
+ assert(vonKante != NULL);
+ FFNode father= vonKante->source();
+ 
+ FFNode tmpN=spqrLabel(target)->getSecond();
+ FFNode result= addQNode(neu, tmpN);
+ 
+ if(spqrLabel(father)->getSpqrType() == S_NODE)
+  {
+   FFEdge neuK= spqr->addEdge(father, result);
+   spqrLabel(father)->insertAfter(vonKante, neuK);
+  }
+ else
+  {
+   FFNode newS= addSNode();
+   
+   vonKante->setTarget(newS);
+   
+   FFEdge tmpE= spqr->addEdge(newS, target);
+   spqrLabel(newS)->insertAfter(NULL, tmpE);
+   FFEdge tmpE2= spqr->addEdge(newS, result);
+   spqrLabel(newS)->insertAfter(tmpE, tmpE2);
+   
+  }
+
+ spqrLabel(target)->setSecond(neu);
+ 
+ FFEdge tmpE= getFatherEdge(result);
+ assert(tmpE != NULL);
+ 
+ propAllocNode[tiLabel(neu)->getSTNum()] = tmpE->source();
+
+ return result;
+}

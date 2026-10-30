@@ -1,0 +1,287 @@
+To display a graph you can bind a graphic context to a graph.
+Graphic contexts are C++ classes which are subclasses of {\bf
+  FFGraphWindow} which is a subclass of {\bf FFGraphLabel}. How
+the graph is displayed depends on the graphic context you use.
+This may range from a window on the screen to an output to a
+printer. When a graphic context is bound to a graph, the graph is
+automatically labeled with the node label {\bf FFGraphicNode} and
+the edge label {\bf FFGraphicEdge} which contain graphic
+information like coordinates, colors, etc. If you just want the
+graphic information but do not want to actually display the graph,
+e.g. to do some layouting, you can use the special graphic
+context {\bf NULL}.
+
+The library contains the class {\bf FFTclWindow} which is able to
+display 2 and 3 dimensional graphs. 
+
+\begin{figure}[htb]
+\fbox{\epsfig{figure=icons.eps,clip=}}
+\caption{Graph containing icons}
+\end{figure}
+
+It is also able to display nested graphs:
+
+\clearpage
+
+\begin{figure}[H]
+\hspace*{-3cm}
+\fbox{\epsfig{figure=g5.eps,clip=}}
+\caption{Graph containing a subgraph}
+\end{figure}
+\clearpage
+\subsection{Using graphic contexts} 
+\label{using_graphic}
+
+
+To assign a graphic context to a graph you should use the method \\
+
+\begin{itemize}
+\item{\bf void FFGraphClass::createGraphic(FFGraphWindow *window)}. \\
+\end{itemize}
+
+E.g. to display a graph using the graphic context {\bf FFTclWindow} you 
+could write: 
+
+\bigskip
+
+\begin{verbatim}
+FFGraph g;
+g->createGraphic(new FFTclWindow);
+\end{verbatim}
+
+\bigskip
+
+If you want to use graphic information without actually
+displaying the graph, you can call createGraphic with {\bf window
+  == NULL}.
+
+If a graphic context is assigned to a graph, it can be retrieved
+using the method\\
+
+\begin{itemize}
+\item{\bf FFGraphWindow *FFGraphClass::getWindow()}\\
+\end{itemize}
+
+At the moment only one subclass of {\bf FFGraphWindow} can be assigned
+to a graph. If you no longer want to display the graph, you can use the
+method\\
+
+\begin{itemize}
+\item{\bf void FFGraphClass::removeGraphic()}\\
+\end{itemize}
+
+which removes the graph-window label and the labels {\bf FFGraphicNode}
+and {\bf FFGraphicEdge}. The labels are freed using the {\bf delete}
+operator. If you do not want the graph window label to be freed, e.g. to
+use it for another graph, you can use the method\\
+
+\begin{itemize}
+\item{\bf FFGraphWindow *FFGraphClass::leaveWindow()}\\
+\end{itemize}
+
+\subsection{Writing graphic contexts}
+\label{writing_graphic}
+
+To write your own graphic context, you can either write a new one from
+scratch, or subclass an existing one and only overwrite the methods you
+want to change. Graphic contexts are designed to be able to display 3
+dimensional graphs. If you do not want to display 3D graphs, just
+implement the appropriate methods to ignore 3D information.  A graphic
+context must be a subclass of {\bf FFGraphWindow} and must implement all
+methods {\bf FFGraphWindow} defines.  See section \vref{ffgraphwindow}
+for details on what methods you have to implement. When {\bf
+  FFGraphClass::createGraphic(...)} is invoked with your window label as
+argument, the graph labels itself with the node label {\bf
+  FFGraphicNode} and the edge label {\bf FFGraphicEdge}. You should use
+these labels to store and get the graphic information you need to
+display the graph. See sections \vref{ffgraphicnode} and
+\vref{ffgraphicedge} for further information on how to use these labels.
+
+The easiest way to write your own graphic context is to subclass {\bf
+FFTclWindow}. Of course by doing so you also decide to use the Tcl/Tk
+widget library. As this library is very ({\em VERY}) slow it might
+be the easiest way but not necessarily the best. Anyway it is a good
+starting point and I use Tcl/Tk myself. 
+
+Ok, let's assume you decided to implement your graphic context based
+on {\bf FFTclWindow}. Of course you can now overload each method and
+write a completely new tcl script, but most probably 90\% of the
+window are suitable for your purposes anyway. Usually you only want to
+change the events, add a menu, change some controls, etc. Therefore I
+added some support for doing exactly this. This part will tell you
+how to buid a class that behaves exaclty like {\em FFTclWindow}. Using
+this class as basis you then will learn what possibilities you have to
+change the look and behavior. For many things a simple mechanism is
+provided. If you intend to do something which is not within the scope
+of the existing mechanism you might have to rewrite bigger parts of
+the standard tcl script. You can also drop me a note and if I think
+it's a good idea it will probably be a feature in the next version.
+
+As I noted before the Tcl graphic contexts merely are Tcl interpreters
+which execute a Tcl script which implements the functionality of the
+window. Consequently there are basicly two points where you can change
+the behavior of a Tcl graphic context. The first is the C++ source
+code of your subclass and the second is the Tcl-script for your class.
+ 
+The simplest possible graphic context might look like this:
+
+{\tt
+
+class MyWindow: public FFTclWindow
+\{
+public:
+ virtual FFGraphLabel *proto() const \{return new MyWindow;\}
+\};
+}
+
+This context will look and behave exactly like FFTclWindow. You now
+can overload methods and so change the behavior of the Window. As the
+most of the graphic part is defined in the Tcl-script you won't be
+able to change much of it in the C++ file. So what you have to do is to tell
+your class to use your onw Tcl-script and of course you have to write
+one. As you can reuse much of the existing Tcl-stuff this is not much
+work as well. 
+
+First you have to set the Membervariable {\em tclFileName} to point to
+your Tcl-script. A good place to do this is the constructor of your
+class. If you want to use your own icons, you should set {\em
+iconLibDir} as well:
+
+\begin{verbatim}
+MyWindow::MyWindow()
+{
+
+ // Set the Scriptname
+ 
+ String tmpS;
+ 
+ if(getenv("FF_LIBDIR") == NULL)
+  tmpS=String(FF_LIBDIR);
+ else
+  tmpS=String(getenv("FF_LIBDIR"));
+ 
+ tclFileName =tmpS + "/tcl/myscript.tcl";
+
+ // Set the icon location     
+
+ if(getenv("FF_ICONDIR") == NULL)
+  tmpS=String(FF_LIBDIR) + "/icons/";
+ else
+  tmpS=String(getenv("FF_ICONDIR"));
+
+ iconLibDir = tmpS;
+}
+\end{verbatim}
+
+The script itself can be as simple as:
+
+\begin{verbatim}
+#!/public/bin/wish -f
+
+global FF_LIBDIR
+source $FF_LIBDIR/tcl/xfmisc.tcl
+source $FF_LIBDIR/tcl/fileselect.tcl
+source $FF_LIBDIR/tcl/stdGraph.tcl
+
+ShowWindow.
+\end{verbatim}
+
+
+Again you have a class which does look and behave exactly like
+FFTclWindow. We now have a Tcl script and a C++ class, but how does
+communication take place? 
+
+Tcl functions can be called from C++ using the C functions descibed in
+the Tcl/Tk manual like {\em Tcl_VarEval} etc. The interpreter you have
+to supply is stored in the member variable {\em interp}.
+
+If the tcl command {\em recall} is called the method
+{FFTclBasicWindow::recall(Tcl_Interp *i, int c, char **v)} is
+invoked. {\em recall} can have an arbitrary number of arguments. {\em
+c} is the number of arguments and {\em v} is a vector containing the
+arguments. If you want to add your own commands or change the way
+existing commands are handled you can overload the method {\en
+recall}:
+
+\begin{verbatim}
+int MyWindow::recall(Tcl_Interp *i, int c, char **v)
+{
+ String command(v[1]); // v[0] == ``recall''
+
+ if( command == myNewCommand)
+  {
+    doSomething();
+    return TCL_OK;
+  }
+ else if (command == commandIWantToHandleDifferent)
+  {
+    doSomethingElse();
+    return TCL_OK;
+  }
+ else
+  return FFTclWindow::recall(i,c,v);
+
+ return TCL_OK;
+}
+\end{verbatim}
+
+You now know what you can do on the C++ side to change the
+behavior. The next part will deal with the question what you can do on
+the Tcl side.
+
+A graph window as defined in {\em stdGraph.tcl} consists of four
+parts. The first is the main menu which is at the top of the window.
+Then comes a toolbar which is not visible in {\em FFTclWindow}. Next
+is the area where the rotation and scalation scales are located. At
+the bottom of the window is the graph canvas. Each of these parts can
+be modified.
+
+\begin{itemize}
+
+\item Changing the main menu.
+
+If you want to add menu entries you can do so by overloading the tcl
+function {\em addUserMenus \{frameArg\}}. {\em frameArg} contains the
+name of the menubar frame. In this function you can create new
+menubuttons and append them to the frame.
+
+There is currently no way to avoid menu entries you don't want. The
+only way to do this is to rewrite the Tcl function {\em
+buildMainMenu}. This function is expected to create the frame {\em
+.frame1} and build the menu in this frame.
+
+\item Changing the Toolbar
+
+The toolbar can be modified by rewriting the Tcl function {\em
+buildToolBar}. This function is expected to create the frame {\em
+.toolFrame} and build whatever it wants inside this frame.
+
+\item Changing the usage box
+
+The usage box is shown if the user activates the {\em help} menu. The
+help box is a toplevel window. The window is passed to the Tcl function
+{\em addUserUsage\{windowName\}}. You can overwrite this function and
+put you help information in this window.
+
+\item Changing the scale area
+
+The scale area can be modified by rewriting the Tcl function {\em 
+buildButtonFrame}. This function is expected to create the frame {\em
+.frame2}. The function is free to build whatever it wants inside.
+
+\item Changing the canvas area
+
+You are not intened to change the look of this area. At least in the
+current release. What you can easily change is the way the canvas
+reacts on certain events. Events are interactions by the user like
+pressing a key, moving the mouse etc. There are three different kinds
+of events. Events can be bound to the canvas, to nodes and to edges. 
+Usually events are associated with the canvas. If a node or an edge is
+selected the event is associated with the node or edge. 
+
+You can overload the functions {\em addUserLineBindings}, {\em
+addUserNodeBindings} and {\em addUserCanvasBindings} to add events you
+want to react on. You can delete an event by redfining it to do
+nothing. 
+
+\end{itemize}

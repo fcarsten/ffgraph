@@ -1,0 +1,23 @@
+Primary Errors:
+
+- Show-label switch can get confused (fixed)
+
+- Move TclFileName downwards in class hierarchy
+
+- Memory allocated is not freed. (although much better now)
+
+- Empty names are visible. (fixed)
+
+- Text is not printed when doing postscript export. (fixed)
+
+Secondary Errors:
+
+- The 3D routines are in an experimental state. This will most probably
+  not change until someone will give me a computer with powerful 3D
+  facilities.
+
+- Subwindow handling is somewhat buggy due to limitations in the tk
+  library and the ffgraph source.
+
+- Some of the graphs in the demographs directory may not work, as icons
+are not included in the distribution or paths to subgraphs may be wrong.

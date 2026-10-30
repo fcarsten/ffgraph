@@ -1,0 +1,659 @@
+
+The user can bind his/her own C++ classes to graphs. These classes are
+called labels. You can bind your labels to graphs, nodes, and
+edges using graph-labels, node-labels or edge-labels. If you bind a
+node-label or an edge-label to a graph, a prototype of the label is
+bound to every node or edge in the graph and will be bound to
+every node or edge that will be added to the graph in the future.
+There are 4 basic label classes included in the library. {\bf
+  FFGraphLabel}, {\bf FFNodeLabel} and {\bf FFEdgeLabel} which
+are all subclasses of {\bf FFLabelClass}. All graph-labels are
+subclasses of {\bf FFGraphLabel}, {\bf FFNodeLabel} for nodes and
+{\bf FFEdgeLabel} for edges. When a graph is loaded or saved the
+content of the labels may be loaded or saved as well. Whether a
+label is saved/loaded depends on the implementation of the label.
+It is even possible that only the labels of certain nodes or
+edges are saved/loaded. When a graph is copied the contents of
+the labels may be copied as well. Whether a label is copied
+depends on the implementation of the label. Either all or no
+labels of a certain type are copied.  Labels get informed of any
+structural changes to the graph by events that are sent to the
+labels. A label assigned to a graph must have a unique type. Only
+one label class of each type can be assigned to a certain graph.
+The type is determined by the result of the method {\bf const
+  String\& FFLabelClass::type() const} which each label class
+provides. The type may not correspond to the C++ type in any
+way. The type of a label usually consists of an arbitrary string
+preceded by the type of its superclass. The two strings are
+separated by ":".
+
+\subsection{Using labels}  
+\label{using_labels}
+
+Labels are subclasses of the classes {\bf FFGraphClass}, {\bf
+FFNodeClass} or {\bf FFEdgeClass} which are subclasses of the class
+{\bf FFLabelClass}. The library contains methods to add, access and
+delete labels from graphs. 
+
+To add labels to a graph use the methods
+
+\begin{itemize}
+
+\item{\bf  FFGraphClass::addGraphLabel(FFGraphLabel *label)}
+
+\item{\bf FFGraphClass::addNodeLabel(FFNodeLabel *label)}
+
+\item{\bf FFGraphClass::addEdgeLabel(FFEdgeLabel *label)}
+
+\end{itemize}
+
+{\bf label} must be created using the {\bf new}
+operator\footnote{Unless the manual of a certain label says
+  anything else}. After calling one of these methods {\bf label}
+belongs to the graph library and will usually be freed by it
+using the {\bf delete} operator. Copies of node-labels and
+edge-labels will automatically be assigned to every node and edge
+in the graph and to all nodes and edges that will be added to the
+graph in the future.
+
+The return value of these methods is the index of the added
+label. This index is local to a graph and may differ from graph
+to graph. You can access a label through its type or its index.
+Access through index is recommended as it is much
+faster\footnote{index: $O(1)$, type: $O(|labels|)$}. To access a label by
+its index or type you can use one of the following methods:
+
+\begin{itemize}
+
+\item{\bf FFGraphLabel *FFGraphClass::getGraphLabel(int i)}
+  
+  Returns the graph label with index {\bf i}, or {\bf NULL} if
+  the graph has no label with index {\bf i}.
+  
+\item{\bf FFGraphLabel *FFGraphClass::getGraphLabel(const
+    String\& type, AVLSet\verb|<|FFGraphLabel *\verb|>|
+    *set=NULL)}
+  
+  If {\bf set} {\bf == NULL} the label with type {\bf type} is
+  returned, or {\bf NULL} if the graph has no graph label of type
+  {\bf type}.
+  
+  If {\bf set} {\bf != NULL} all labels that contain {\bf type
+    }in their type are added to {\bf set}. The first label found
+  is returned. If no graph label-type contains {\bf type}, {\bf
+    NULL} is returned.
+  
+\item{\bf const MPlex\verb|<|FFGraphLabel *\verb|>|\&
+    FFGraphClass::getGraphLabels() const}
+  
+  Returns a MPlex containing all graph labels.
+  
+\item{\bf const MPlex\verb|<|FFNodeLabel *\verb|>|\&
+    FFGraphClass::getNodeLabels() const}
+  
+  Returns a MPlex containing the prototypes of all node labels.
+  
+\item{\bf const MPlex\verb|<|FFEdgeLabel *\verb|>|\&
+    FFGraphClass::getEdgeLabels() const}
+
+  Returns a MPlex containing the prototypes of all edge labels.
+
+\item{\bf FFNodeLabel *FFNodeClass::getLabel(int i)}
+  
+  Returns the node label with index {\bf i} or {\bf NULL} if the
+  node has no label with index {\bf i}.
+
+\item{\bf const MPlex\verb|<|FFNodeLabel *\verb|>|
+*FFNodeClass::getLabels() const}
+
+Returns a MPlex containing all labels bound to the node.
+
+\item{\bf FFEdgeLabel *FFEdgeClass::getLabel(int i)}
+  
+  Returns the edge label with index {\bf i} or {\bf NULL} if the
+  edge has edge label with index {\bf i}.
+
+\item{\bf const MPlex\verb|<|FFEdgeLabel *\verb|>|
+*FFEdgeClass::getLabels() const}
+
+Returns a MPlex containing all labels bound to the node.
+
+\end{itemize}
+
+If you did not store the index you got by adding a label, you can
+retrieve its index by using one of the following methods:
+
+\begin{itemize}
+  
+\item{\bf int FFGraphClass::getGraphLabelIndex(const String\&
+    type, AVLSet\verb|<|int\verb|>|*set=NULL) const}
+
+If {\bf set == NULL} the index of the graph label with type {\bf
+  type} is returned or {\bf -1}, if the graph has no graph label
+of type {\bf type}.
+
+If {\bf set != NULL} the indexes of all graph labels that contain
+{\bf type }in their type are added to {\bf set}. The first index
+found is returned. If no graph label type contains {\bf type},
+{\bf -1} is returned.
+
+\item{\bf int FFGraphClass::getNodeLabelIndex(const String\& type,
+AVLSet\verb|<|int\verb|>|*set=NULL) const}
+
+If {\bf set == NULL} the index of the node label with type {\bf
+  type} is returned or {\bf -1}, if the graph has no node label
+of type {\bf type}.
+
+If {\bf set != NULL} the indexes of all node labels that contain
+{\bf type }in their type are added to {\bf set}. The first index
+found is returned. If no node label type contains {\bf type},
+{\bf -1} is returned.
+
+\item{\bf int FFGraphClass::getEdgeLabelIndex(const String\&
+    type, AVLSet\verb|<|int\verb|>|*set=NULL) const}
+
+If {\bf set == NULL} the index of the edge label with type {\bf
+  type} is returned or {\bf -1}, if the graph has no edge label
+of type {\bf type}.
+
+If {\bf set != NULL} the indexes of all edge labels that contain
+{\bf type }in their type are added to {\bf set}. The first index
+found is returned. If no edge label type contains {\bf type},
+{\bf -1} is returned.
+
+\item{\bf int FFNodeClass::getLabelIndex(const String\& type,
+    AVLSet\verb|<|int\verb|>|*set=NULL) const}
+
+If {\bf set == NULL} the index of the node label with type {\bf
+  type} is returned or {\bf -1}, if the node has no node label of
+type {\bf type}.
+
+If {\bf set != NULL} the indexes of all node labels that contain
+{\bf type }in their type are added to {\bf set}. The first index
+found is returned. If no node label type contains {\bf type},
+{\bf -1} is returned.
+
+\item{\bf int FFEdgeClass::getLabelIndex(const String\& type,
+    AVLSet\verb|<|int\verb|>|*set=NULL) const}
+
+If {\bf set == NULL} the index of the edge label with type {\bf
+  type} is returned or {\bf -1}, if the edge has no edge label of
+type {\bf type}.
+
+If {\bf set != NULL} the indexes of all edge labels that contain
+{\bf type }in their type are added to {\bf set}. The first index
+found is returned. If no edge label type contains {\bf type},
+{\bf -1} is returned.
+
+\end{itemize}
+
+If you want to change a label, you can get the label using one of
+the above methods and change the label by calling its methods.
+
+If you want to assign the contents of one label to another, you
+can either
+
+\begin{itemize}
+  
+\item Get the label and call the method {\bf void
+    FFLabelClass::assign(const FFLabelClass*)} which every label
+  provides. Of course you cannot be sure that the implementation
+  of this method really does anything at all.
+
+
+\end{itemize}
+
+or
+
+\begin{itemize}
+
+\item
+Use one of the following methods:
+
+\begin{itemize}
+  
+\item{\bf void FFGraphClass::assignGraphLabel(const FFGraphLabel
+    *label, int i=-1)}
+
+calls the method {\bf void FFLabelClass::assign(const
+  FFLabelClass*)} of the graph label with index {\bf i} and
+argument {\bf label}. If {\bf i} == -1 the graph checks whether it is
+labeled with a label of the same type as {\bf label} and calls
+{\bf assign} if it finds one.
+
+\item{\bf void FFGraphClass::assignGraphLabel(const
+MPlex\verb|<|FFGraphLabel *\verb|>|\& set)}
+        
+For each label in {\bf set} the graph checks if it is labeled
+with a label of the same type. If it finds one, the method {\bf void
+  FFLabelClass::assign(const FFLabelClass*)} is called
+with the label from {\bf set} as argument.
+
+\item{\bf void FFGraphClass::setGraphLabel(FFGraphLabel *label,
+    int index=-1, BOOL doFree=YES)}
+  
+  Replaces the graph label of index {\bf index} with {\bf label}.  If
+  {\bf doFree == YES} the old label is deleted using the {\bf delete}
+  operator.  If {\bf index == -1} the graphs checks whether it is
+  labeled with a label of the same type as {\bf label} and does the
+  replacement if it finds one. After calling this method {\bf label}
+  belongs to the graph and will be freed by the graph using the {\bf
+    delete} operator when it is no longer needed.
+
+\item{\bf void FFGraphClass::setGraphLabel(const
+    MPlex\verb|<|FFGraphLabel *\verb|>|\& set, BOOL doFree=YES)}
+
+For each label in {\bf set} the method replaces the graph label
+of the same type with the label from {\bf set}. If {\bf doFree ==
+  YES} the old label is deleted using the {\bf delete} operator.
+After calling this method all labels of {\bf set} belong to the
+graph and will eventually be freed by the graph using the {\bf
+  delete} operator.
+
+\item Use one of the corresponding methods for {\bf FFNodeClass} and
+  {\bf FFEdgeClass}.
+
+\end{itemize}
+
+\end{itemize}
+
+If you no longer need a label, you can remove it from the graph
+using one of the following methods:
+
+\begin{itemize}
+  
+\item{\bf void FFGraphClass::delGraphLabel(int index, BOOL
+    doFree=YES) \\
+    void FFGraphClass::delGraphLabel(const String\& type,
+    BOOL doFree=YES)}
+  
+  Deletes the graph label with index {\bf index} or type {\bf
+    type} from the graph. If {\bf doFree == YES} the label is
+  freed using the {\bf delete} operator.
+  
+\item{\bf void FFGraphClass::delEdgeLabel(int index, BOOL
+    doFree=YES) \\
+    void FFGraphClass::delEdgeLabel(const String\& type,
+    BOOL doFree=YES)}
+  
+  Deletes the edge labels with index {\bf index} or type {\bf
+    type} from all edges of the graph. If {\bf doFree == YES} the
+  labels are freed using the {\bf delete} operator.
+  
+\item{\bf void FFGraphClass::delNodeLabel(int index, BOOL
+    doFree=YES) \\
+    void FFGraphClass::delNodeLabel(const String\& type,
+    BOOL doFree=YES)}
+  
+  Deletes the node labels with index {\bf index} or type {\bf
+    type} from all nodes of the graph. If {\bf doFree == YES} the
+  labels are freed using the {\bf delete} operator.
+
+\end{itemize}
+
+Graph-labels can contain an inspector to display their
+content. Inspectors are subclasses of {\bf FFInspector}. The kind of
+information displayed by the inspector depends on the implementation
+of the inspector. E.g. the inspector contained in {\bf FFTclWindow}
+displays the result of the {\bf String FFLabelClass::unparse()} method
+for graph, node or edge labels.
+
+To determine whether a label has its own inspector, you can use the
+method:
+
+\begin{itemize}
+
+\item{\bf BOOL FFGraphLabel::hasOwnInspector()}
+
+\end{itemize}
+
+To display an inspector you can use the method:
+
+\begin{itemize}
+
+\item{\bf void FFGraphLabel::showInspector()}
+
+\end{itemize}
+
+To update the display of the inspector you can use the method:
+
+\begin{itemize}
+
+\item{\bf void FFGraphLabel::updateInspector()}
+
+\end{itemize}
+
+\subsection{Writing labels}
+\label{writing_labels}
+
+If you want to use your own label, you have to write a subclass
+of {\bf FFGraphLabel}, {\bf FFNodeLabel} or {\bf FFEdgeLabel}
+with any additional data and methods you want. You then can add
+it to the graph using one of the {\bf add...Label(...)} methods.
+Labels get informed when the structure of the graph is changed.
+To overwrite the method {\bf void event(labelEvent,
+  labelEventStruct *)} is the easiest way to respond to these
+changes to the graph. To enable the library to handle your label
+you must implement some additional methods. The methods you must
+implement are:
+
+\begin{itemize}
+  
+\item Write a constructor for your class. In the constructor you
+  have to call the method {\bf void FFLabelClass::\_setType(const
+    String\& s)} with an arbitrary String {\bf s}. {\bf s} must
+  not contain ":" and must be unique. Using the C++ type of the
+  label class often is a good choice.
+
+\item Depending on what kind of label you are writing, one of 
+
+\begin{itemize}
+
+\item{\bf FFGraphLabel *YourLabelClass::proto()}
+
+\item{\bf FFNodeLabel *YourLabelClass::proto()}
+
+\item{\bf FFEdgeLabel *YourLabelClass::proto()}
+
+\end{itemize}
+
+This method must return a new instance of your label class. The
+new instance should be allocated using the {\bf new} operator. This
+method is needed to assign labels to nodes, edges and copies of
+graphs.
+
+If you e.g. write a graph label usually writing something like
+
+\bigskip
+
+\begin{verbatim}
+FFGraphLabel *YourLabelClass::proto()
+{
+  return new YourLabelClass;
+}
+\end{verbatim}
+
+\bigskip
+
+is sufficient. 
+
+\end{itemize}
+
+There are also some methods you might want to overwrite, but you
+do not have to:
+
+\begin{itemize}
+
+\item{\bf BOOL FFLabelClass::isSaveable() const}
+  
+  If this method returns {\bf YES} the result of the method {\bf
+    String FFLabelClass::unparse()} is stored in a file when a
+  graph is saved. When a graph is loaded the method {\bf BOOL
+    FFLabelClass::parse()} is called with the string saved
+  before.
+  
+  If this method returns {\bf NO} the label is not stored in the
+  file.  The results of the method may differ between two nodes
+  or edges in the graph for the same label.
+
+This method defaults to return {\bf NO}.
+
+\item{\bf BOOL shouldCopy() const}
+  
+  If a graph gets copied and this method returns {\bf YES} the
+  new graph is labeled with the label as well. The {\bf assign}
+  method is called for the label in the new graph with this label
+  as argument. For node and edge labels {\bf assign} is called
+  for labels in the corresponding node or edge in the new graph.
+
+This method defaults to return {\bf YES}.
+
+\item{\bf BOOL isInspectable() const}
+  
+  Inspector classes are used to display the contents of
+  a label on screen. Usually the result of calling the method
+  {\bf String FFLabelClass::unparse()} is displayed. If this
+  method returns {\bf YES} it can be displayed by an inspector.
+
+This method defaults to return {\bf NO}.
+
+\item{\bf BOOL compare(const FFLabelClass *label) const}
+
+This method should return if {\bf label} is equal to this label. 
+
+\item{\bf void assign(const FFLabelClass *label)}
+
+  This method should assign the content of {\bf label} to {\bf this}.
+
+\item{\bf BOOL parse(const String\& str)}
+  
+  This method should be able to initialize itself according to
+  {\bf str}. {\bf str} is usually the result of a previous call
+  to {\bf String FFLabelClass::unparse()}. This method is e.g.
+  called when a graph is loaded from a file or by an inspector
+  to display the content of the label.  The method should return
+  whether it could successfully parse {\bf str}.
+
+\item{\bf String unparse()}
+  
+  This method should return the content of the label as a {\bf
+    String}. An instance of the label class should be able to
+  initialize itself if the result of invoking {\bf unparse()} is
+  passed to {\bf BOOL parse(const String\& str)}. This method is
+  e.g. called when a graph is saved to a file or by an
+  inspector.
+
+\item{\bf void event(labelEvent kind, labelEventStruct *data)}
+  
+  Whenever there is a structural change to the graph, the {\bf
+    event} method is invoked. {\bf kind} specifies the kind of
+  event that happened and the union {\bf data} contains some
+  additional information that varies between different kinds of
+  events. {\bf event} is not always invoked in all labels, but
+  there are some events that are e.g. only invoked in graph
+  labels etc.
+
+{\bf labelEventStruct} is defined as follows:
+
+\bigskip
+
+\begin{verbatim}
+union {
+  FFNode node;
+  FFEdge edge;
+  int index;
+} labelEventStruct;
+\end{verbatim}
+
+\bigskip
+
+The following kinds of events may occur:
+
+\begin{itemize}
+
+\item{\bf ADD\_NODE}
+  
+  Is invoked after a new node has been added to the graph. {\bf
+    data\verb|->|node} contains the new node.
+  
+  Is delivered to all graph labels and to all node labels,
+  including the new node.
+
+\item{\bf ADD\_EDGE}
+  
+  Is invoked after a new edge has been added to the graph. {\bf
+    data\verb|->|edge} contains the new edge.
+  
+  Is delivered to all graph labels and to all edge labels,
+  including the new edge.
+
+\item{\bf DEL\_NODE}
+  
+  Is invoked before a node is removed from the graph. {\bf
+    data\verb|->|node} contains the node that will be removed.
+  
+  Is delivered to all graph labels and to all node labels,
+  including the node that will be deleted.
+
+\item{\bf DEL\_EDGE}
+  
+  Is invoked before an edge is removed from the graph. {\bf
+    data\verb|->|edge} contains the edge that will be removed.
+  
+  Is delivered to all graph labels and to all edge labels,
+  including the edge that will be deleted.
+
+\item{\bf DEL\_GRAPH}
+  
+  Is invoked before a graph is deleted.
+  
+  Is delivered to all graph labels.
+
+\item{\bf REV\_EDGE}
+  
+  Is invoked after the direction of an edge has changed.
+  
+  Is delivered to all labels of this edge. {\bf
+    data\verb|->|edge} contains the edge that has been reverted.
+
+\item{\bf SET\_STARTNODE}
+  
+  Is invoked after a node has been marked as being a start-node.
+  
+  Is delivered to all graph labels and to all labels of the new
+  start-node.  {\bf data\verb|->|node} contains the new start-node.
+
+\item{\bf DEL\_STARTNODE}
+  
+  Is invoked before a node will be marked as no longer being a
+  start-node.
+  
+  Is delivered to all graph labels and to all labels of the
+  former start-node.  {\bf data\verb|->|node} contains the former
+  start-node.
+
+\item{\bf SET\_ENDNODE}
+  
+  Is invoked after a node has been marked as being an end-node.
+  
+  Is delivered to all graph labels and to all labels of the new
+  end-node.  {\bf data\verb|->|node} contains the new end-node.
+
+\item{\bf DEL\_ENDNODE}
+  
+  Is invoked before a node will be marked as no longer being an
+  end-node.
+  
+  Is delivered to all graph labels and to all labels of the
+  former end-node.  {\bf data\verb|->|node} contains the former
+  end-node.
+
+\item{\bf NAME\_CHANGE}
+  
+  Is invoked after the name of a graph, node or edge has changed.
+  
+  Is delivered to either all graph labels, all node labels for
+  the node which changed or all edge labels for the edge which
+  changes. {\bf data} contains the according node or edge.
+
+\item{\bf ADD\_NODELABEL}
+  
+  Is invoked after a new node label has been added to the graph.
+  
+  Is delivered to all graph labels and to all node labels.  {\bf
+    data\verb|->|index} contains the index of the new label.
+
+\item{\bf ADD\_EDGELABEL}
+  
+  Is invoked after a new edge label has been added to the graph.
+  
+  Is delivered to all graph labels and to all edge labels.  {\bf
+    data\verb|->|index} contains the index of the new label.
+
+\item{\bf ADD\_GRAPHLABEL}
+  
+  Is invoked after a new graph label has been added to the graph.
+  
+  Is delivered to all graph labels, to all edge labels, and to all
+  node labels.  {\bf data\verb|->|index} contains the index of
+  the new label.
+
+\item{\bf DEL\_NODELABEL}
+  
+  Is invoked before a node label will be removed from the graph.
+  
+  Is delivered to all graph labels and to all node labels,
+  including the one that will be removed.  {\bf
+    data\verb|->|index} contains the index of the label that will
+  be removed.
+
+\item{\bf DEL\_EDGELABEL}
+  
+  Is invoked before an edge label will be removed from the graph.
+  
+  Is delivered to all graph labels and to all edge labels,
+  including the one that will be removed.  {\bf
+    data\verb|->|index} contains the index of the label that will
+  be removed.
+
+\item{\bf DEL\_GRAPHLABEL}
+  
+  Is invoked before an graph label will be removed from the
+  graph.
+  
+  Is delivered to all graph labels, to all node labels, and to all
+  edge labels, including the one that will be removed. {\bf
+    data\verb|->|index} contains the index of the label that will
+  be removed.
+
+\item{\bf SOURCE\_CHANGE}
+  
+  Is invoked after the source node of an edge changed.
+  
+  Is delivered to all labels of the edge that changed. {\bf
+    data\verb|->|edge} contains the edge that changed.
+
+\item{\bf TARGET\_CHANGE}
+  
+  Is invoked after the source node of an edge changed.
+  
+  Is delivered to all labels of the edge that changed. {\bf
+    data\verb|->|edge} contains the edge that changed.
+
+\item{\bf DIRECTEDNESS\_CHANGE}
+  
+  Is invoked after the directedness of the graph changed.
+  
+  Is delivered to all graph labels, to all node labels, and to all
+  edge labels.
+
+\end{itemize}
+
+\end{itemize}
+
+If you write a graph label and want to provide an inspector for the
+label you have to assgin the inspector to the {\bf inspector}
+member variable. This is usually done in the constructor of the label.
+The label must be passed to the constructor of the inspector.
+
+The following methods check if the member variable {\bf inspector !=
+NULL} to determine their behaviour or return value:
+
+\begin{itemize}
+
+\item{\bf BOOL FFGraphLabel::hasOwnInspector()}
+
+Returns {\bf YES} to indicate that the the label has its own
+interpreter if {\bf inspector != NULL}
+
+\item{\bf void FFGraphLabel::showInspector()}
+
+Displays the inspector on the screen if {\bf inspector !=
+NULL}. Usually by calling the method {\bf void FFInspector::show()}.
+
+\item{\bf void FFGraphLabel::updateInspector()}
+
+Updates the display of the inspector if {\bf inspector !=
+NULL}. Usually by calling {\bf void FFInspector::inspect()}
+
+\end{itemize}

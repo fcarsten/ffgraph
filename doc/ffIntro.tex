@@ -1,0 +1,73 @@
+ffgraph is a C++ class library to create, manipulate and display
+directed graphs. It was developed in the context of the
+\meta{}\cite{meta:95} project to visualize the various data structures
+used in this project.
+
+There already exist many graph-tools, so the question arises why to
+write a new one instead of using an existing one. Many of the existing
+ones are programs like GraphEd\cite{GraphEd:Himsolt-90b} or the VCG
+tool\cite{sander:94} so you can use them to display your data, but you
+have to implement a graph data structure in your program anyway. If you
+use external programs to display your graphs it is often impossible to
+dynamically change the graph in your program and update the display, or
+to manipulate it graphically and pass the update back to your
+program. On the other hand existing graph libraries, like
+LEDA\cite{naeher:94} offer a powerful graph data structure, but have
+less powerful means for displaying the data. Other tools are specialised
+on a small subset of graphs, like dataflow graphs etc., and are thus not
+usable for us. So we decided to write a graph library on our own, which
+offers you a graph data structure and powerful means to display it.
+
+Graphs consist of a set of nodes and a set of
+edges, where edges have exactly one target and one source. Access
+to the library is provided through the classes described in this
+paper. Graphs can be loaded and saved in a slightly extended
+sgraph\cite{Sgraph:Himsolt-93a} file format\footnote{Compare
+  section \vref{sgraph_file_format}}. The main purpose of this
+library is not speed or the ability to handle huge graphs, but to
+give an easy to use and save interface, the possibility to bind
+user specific data to graphs, nodes, and edges and to provide a
+powerful and flexible mechanism to display graphs. 
+
+The library allows the user to bind semantic labels to graphs, nodes,
+and edges. Labels are C++ classes which may contain any user specific
+methods or data and get informed of any changes to the structure of
+the graph. Some labels are included in the distribution to give an
+example on how to use labels\footnote{E.g. there is a label
+implementing nested graphs included in the distribution.}.  
+
+Special graph labels which are subclasses of {\bf FFGraphWindow} may be
+assigned to a graph in order to display it in up to 3 dimensions. The
+user may provide his/her own window labels to display the graph the way
+it best suits his/her demands. The distribution contains window labels
+which display 2 or 3 dimensional graphs using the tcl/tk\cite{Tcl:Oust}
+widget library for X11 systems\footnote{See classes {\bf
+FFTclBasicWindow}, {\bf FFTclWindow} and {\bf FFTclSubWindow}}.
+
+To display the contents of labels, inspectors are used. The class {\bf
+FFTclWindow} contains an inspector that allows one to inspect the
+content of a label or to invoke the inspector of a label if the label
+has an inspector on its own.
+
+A special interface is provided for labels that implement layout
+algorithms. Two layout labels implementing a 3 dimensional
+spring-embedder and a sugiyama layout algorithm\footnote{Written by Falk
+Schreiber (schreibe{@}fmi.uni-passau.de)} are included in the
+distribution.
+
+A graph editor is included in the distribution to give an example
+of how to use the library.
+
+There are several standard template container classes like sets,
+maps, etc. included in the distribution. These classes are naively
+modified and debugged versions of the libg++ container classes
+and are to be replaced soon by more efficient implementations and in some
+cases by better types of containers. For more information on how
+to use the container classes see the libg++ documentation.
+
+The library also contains a slightly modified version of a Xpm
+extension to tk 4.0 by Mark Crimmins (markcrim{@}umich.edu) which
+is based on a work by Harald Albrecht
+(albrecht{@}igpm.rwth-aachen.de).
+
+\newpage

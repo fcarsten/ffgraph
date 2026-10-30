@@ -1,0 +1,16 @@
+#!@PERL@
+
+$line = '';
+while (<>) {
+    chop;
+    if (/(.*)\\$/) {
+	$line .= $1;
+    } else {
+	$line .= $_;
+	$line =~ s/ +/ /g;
+	$line = join (' ', grep (!/^\//, split (/[ \t]/, $line)));
+	$line =~ s/ / \\\n /g;
+	print "$line\n" if $line =~ /:.*[^ ]/;
+	$line = '';
+    }	
+}

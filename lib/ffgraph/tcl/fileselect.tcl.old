@@ -1,0 +1,643 @@
+#!/usr/bin/wish -f
+proc FileSelectorBox_MessageBox {message title ok_but {cancel_but ""}} {
+  ##############
+  # Procedure  : FileSelectorBox_MessageBox
+  # Description: shows a little messagebox 
+  # Arguments  : message: message to show
+  #              title: the title of the messagebox
+  #              ok_but: text for the ok-button
+  #              cancle_but: text for the cancel-button
+  # Returns    : 1 if ok-button is hit
+  #              0 else
+  # Sideeffects: the author is not familiar to any strange sideeffects 
+  #              (shit happens)
+  ##############
+  global htmessagebox
+  set htmessagebox -1
+  toplevel .htmessagebox
+  wm title .htmessagebox $title
+  wm resizable .htmessagebox 0 0
+  wm protocol .htmessagebox WM_DELETE_WINDOW "set htmessagebox 0"
+  message .htmessagebox.m -text $message \
+    -aspect 10000 -relief ridge -bd 3 \
+    -justify center -padx 40 -pady 20
+  button .htmessagebox.ok \
+    -text $ok_but -command "set htmessagebox 1" \
+    -highlightthickness 0
+  pack append .htmessagebox \
+    .htmessagebox.m {top fillx} \
+    .htmessagebox.ok {left expand fillx} 
+
+  if {$cancel_but != ""} {
+    button .htmessagebox.cancel \
+      -text $cancel_but -command "set htmessagebox 0" \
+      -highlightthickness 0
+    pack append .htmessagebox \
+      .htmessagebox.cancel {left expand fillx}
+  }
+  wm iconify .htmessagebox
+  update
+  set x [expr [winfo screenwidth .]/2 - [winfo width .htmessagebox]/2]
+  set y [expr [winfo screenheight .]/2 - [winfo height .htmessagebox]/2]
+  wm geometry .htmessagebox +$x+$y
+  update
+  wm deiconify .htmessagebox
+  while {$htmessagebox == "-1"} {
+    update
+  }
+  destroy .htmessagebox
+  return $htmessagebox
+  
+}
+
+proc FileSelectorBox_PopUpMenuButton {name text menu} {
+  frame $name -relief raised -bd 3 
+  label $name.l -text $text -relief flat -pady 0
+
+  frame $name.knopf  -width 14 -height 6 -relief raised -bd 2
+  pack append $name \
+    $name.l {left frame w} \
+    $name.knopf {right frame w padx 4}
+  proc FileSelectorBox_GetMenuEntries {menu} {
+    set result ""
+    for {set i 0} {$i <= [$menu index end]} {incr i} {
+      lappend result [$menu entrycget $i -label]
+    }
+    return $result
+  }
+  proc FileSelectorBox_IsEqual {a b} {if {$a == $b} {return 1} {return 0}}
+  foreach i [list $name $name.l $name.knopf] {
+    bind $i <1> "
+      set tmpnum 0
+      foreach j \[FileSelectorBox_GetMenuEntries $menu\] \{
+        if \{\[FileSelectorBox_IsEqual \[set j\] \[$name.l cget -text\]\]\} \{set result \[set tmpnum\]\} \{incr tmpnum\}
+      \}
+$menu post \[expr %X -\[winfo width $menu\]/2\] \
+ 	\[expr %Y - %y - \[$menu yposition \[set result\]\]\]
+       after 50 \"grab $menu\"
+       focus $menu
+    "
+    bind $i <ButtonRelease-1> "$menu unpost"
+  }
+}
+
+proc FileSelectorBox_GetDirContens_Dir {dir pattern} {
+  set tmp_list ""
+  foreach i [glob -nocomplain $dir/$pattern] {
+    if {[file isdirectory $dir/[file tail $i]] == "1"} {
+      lappend tmp_list "[file tail $i]/"
+    }
+  }
+  set tmp_list [lsort $tmp_list]
+  return $tmp_list
+}
+
+proc FileSelectorBox_GetDirContens_File {dir pattern} {
+  set tmp_list ""
+  foreach i [glob -nocomplain $dir/$pattern] {
+    if {[file isfile $dir/[file tail $i]] == "1"} {
+      lappend tmp_list "[file tail $i]"
+    }
+  }
+  set tmp_list [lsort $tmp_list]
+  return $tmp_list
+}
+
+proc FileSelectorBox_FillListbox {listbox list} {
+  $listbox delete 0 end
+  foreach i $list {
+    $listbox insert end $i
+  }
+}
+
+proc FileSelectorBox_FillEntry {entry text} {
+  $entry delete 0 end
+  $entry insert 0 $text
+  set tmp [$entry  xview]
+  set tmp [expr [lindex $tmp 1] - [lindex $tmp 0]]
+  $entry xview moveto $tmp
+}
+
+proc FileSelectorBox_SetColorsForWin {w} {
+  ##############
+  # Procedure  : setColorsForWin
+  # Description: sets the colors for the window "w" and all its child-windows
+  # Arguments  : w: window
+  # Returns    : none
+  # Sideeffects: the author is not familiar to any strange sideeffects 
+  #              (shit happens)
+  ##############
+  $w configure -bg #dddddd
+  set tmplist [winfo children $w]
+  while {[llength $tmplist] != 0} {
+    switch [winfo class [lindex $tmplist 0]] {
+      Listbox {[lindex $tmplist 0] configure -bg #ebebeb\
+		 -highlightthickness 0 \
+		 -borderwidth 2 -relief ridge -selectmode browse
+      }
+      Scrollbar {[lindex $tmplist 0] configure -bg #9f9f9f \
+		   -activebackground #c6c6c6 \
+		   -highlightthickness 0 \
+		   -borderwidth 1 -relief ridge
+      }
+      Entry {[lindex $tmplist 0] configure -bg #ebebeb \
+	       -highlightthickness 0 -bd 1
+      }
+      Checkbutton {[lindex $tmplist 0] configure -bg #ebebeb \
+		     -activebackground #c6c6c6 \
+		     -highlightthickness 0 \
+		     -relief raised -bd 2 \
+		     -padx 5 -pady 1
+	bind [lindex $tmplist 0] <1> {
+	  %W configure -relief sunken
+	}
+	bind [lindex $tmplist 0] <ButtonRelease> {
+	  %W configure -relief raised
+	}
+      }
+      Button {[lindex $tmplist 0] configure -bg #ebebeb \
+		-activebackground #c6c6c6 \
+		-highlightthickness 0 -relief raised -bd 2
+      }
+      default {[lindex $tmplist 0] configure -bg #ebebeb
+      }
+    }
+    set tmplist [concat $tmplist [winfo children [lindex $tmplist 0]]]
+    set tmplist [lreplace $tmplist 0 0]
+  }
+}
+
+proc FileSelectorBox_Makeyview {listbox s n {u units}} {
+}
+
+proc FileSelectorBox_MakeListboxAll {name {title ""}} {
+  ##############
+  # Procedure  : MakeListboxAll
+  # Description: creates a listbox with the assoziated scrollbars
+  # Arguments  : name: name of the frame of the listbox
+  #              title: optional title of the listbox if it is empty
+  #                     the title label will not be added
+  # Returns    : none
+  # Sideeffects: the author is not familiar to any strange sideeffects 
+  #              (shit happens)
+  ##############
+  frame $name
+
+  if {$title != ""} {
+    label $name.l -text $title -anchor nw
+    pack append $name $name.l {top frame nw}
+  }
+  
+  scrollbar $name.vert_scroll \
+    -command "$name.li yview"
+  
+  scrollbar $name.horz_scroll \
+    -command "$name.li xview" \
+    -orient horizontal \
+    -width 10
+  listbox $name.li \
+    -width 1 \
+    -height 1 \
+    -xscrollcommand "$name.horz_scroll set"\
+    -yscrollcommand "$name.vert_scroll set"
+
+  pack append $name \
+    $name.vert_scroll {right frame center filly} \
+    $name.horz_scroll {bottom frame center fillx}  \
+    $name.li {top frame center expand fill} 
+}
+
+proc FileSelectorBox_MakeEntryAll {name {title ""}} {
+  ##############
+  # Procedure  : MakeEntryAll
+  # Description: creates an entry with the assoziated scrollbars
+  # Arguments  : name: name of the frame of the entry
+  #              title: optional title of the entry if it is empty
+  #                     the title label will not be added
+  # Returns    : none
+  # Sideeffects: the author is not familiar to any strange sideeffects 
+  #              (shit happens)
+  ##############
+  frame $name -relief ridge -borderwidth 2
+  
+  if {$title != ""} {
+    label $name.l -text $title -anchor nw -pady 0
+    pack append $name $name.l {top frame nw}
+  }
+  scrollbar $name.horz_scrollbar \
+    -command "$name.e xview" \
+    -orient {horizontal} \
+    -relief  {sunken}
+  
+  entry $name.e \
+    -relief {sunken} \
+    -xscrollcommand "$name.horz_scrollbar set"
+  pack append $name \
+    $name.e {top frame center expand fillx} \
+    $name.horz_scrollbar {bottom frame center expand fillx} 
+}
+
+
+proc FileSelectorBox_SetListboxes {num} {
+  global fileselect
+  if {($num >= 0) && ($num < $fileselect(maxlayers))} {
+    set fileselect(cur_num) $num
+    .fileselect.choose.horz_scrollbar set $fileselect(maxlayers) 2 $num $num
+    FileSelectorBox_FillListbox .fileselect.choose.l1.li $fileselect(layer_$num)
+    FileSelectorBox_FillListbox .fileselect.choose.l2.li $fileselect(layer_[expr $num +1])
+    FileSelectorBox_FillEntry .fileselect.choose.current.e  $fileselect(dir_[expr $num + 1])
+  }
+}
+
+proc FileSelectorBox_SetDirs {state} {
+  global fileselect
+  switch $state {
+    Root {}
+    Home {}
+    Current {}
+  }
+ .fileselect.misc.begin_dir configure -text $state 
+}
+
+proc FileSelectorBox_Rescan {} {
+  global fileselect
+  set tmpN $fileselect(maxlayers)
+  set fileselect(pattern) [.fileselect.misc.right.pattern.e get]
+  .fileselect.misc.right.pattern.l configure -text "Pattern:  [.fileselect.misc.right.pattern.e get]"
+  set fileselect(layer_$tmpN) \
+    [FileSelectorBox_GetDirContens_Dir $fileselect(dir_$tmpN) *]
+  set tmp_list [FileSelectorBox_GetDirContens_File $fileselect(dir_$tmpN) $fileselect(pattern)]
+  
+  foreach j $tmp_list {
+    lappend fileselect(layer_$tmpN) "$j"
+  }
+  FileSelectorBox_SetListboxes [expr $tmpN-1]
+}
+
+proc FileSelectorBox_MakeItems {} {
+  global fileselect
+  frame .fileselect.choose -bd 3 -relief ridge
+  FileSelectorBox_MakeEntryAll .fileselect.choose.current "Current File:"
+  bind .fileselect.choose.current <Enter> {
+    global fileselect
+    set fileselect(search_l) ""
+    set fileselect(search_n) 0
+    set fileselect(focus_to_entry) 1
+    focus %W.e
+  }
+  bind .fileselect.choose.current <Leave> {
+    global fileselect
+    set fileselect(search_l) ""
+    set fileselect(search_n) 0
+    set fileselect(focus_to_entry) 0
+    focus .fileselect
+  }
+  .fileselect.choose.current.horz_scrollbar configure -width 10
+  FileSelectorBox_MakeListboxAll .fileselect.choose.l1 " "
+  FileSelectorBox_MakeListboxAll .fileselect.choose.l2 " "
+
+  bind .fileselect <Control-s> {
+    global fileselect
+    set fileselect(search_l) ""
+    set fileselect(search_n) 0
+    if {$fileselect(maxlayers) > 0} {
+      set listbox .fileselect.choose.l2.li
+    } {
+      set listbox .fileselect.choose.l1.li
+    }
+    $listbox see 0
+    $listbox selection clear 0 end
+    $listbox selection set 0
+  }
+  bind .fileselect <Return> {
+    global fileselect
+    if {$fileselect(focus_to_entry) == "0"} {
+      if {$fileselect(search_n) != "0"} {
+	set new_str [$listbox get $fileselect(search_n)]
+	FileSelectorBox_FillEntry .fileselect.choose.current.e  $fileselect(dir_[expr $fileselect(cur_num)+1])/$new_str
+      }
+      set fileselect(state) ok
+    }
+    break
+  }
+  bind .fileselect <1> {
+    global fileselect
+    set fileselect(search_l) ""
+    set fileselect(search_n) 0
+  }
+
+  bind .fileselect <KeyPress> {
+    global fileselect
+    if {$fileselect(maxlayers) > 0} {
+      set listbox %W.choose.l2.li
+    } {
+      set listbox %W.choose.l1.li
+    }
+    if {($fileselect(focus_to_entry) == "0") && (("%A" != "{}") || ("%K" == "BackSpace") || ("%K" == "Tab"))} {
+      set not_found 1
+      if {"%K" == "BackSpace"} {
+	set new_str [string range $fileselect(search_l) 0 [expr [string length $fileselect(search_l)] -2]]
+	set fileselect(search_n) 0
+	FileSelectorBox_FillEntry .fileselect.choose.current.e  $fileselect(dir_[expr $fileselect(cur_num)+1])/$new_str
+      } elseif {"%K" == "Tab"} {
+	if {$fileselect(search_l) != ""} {
+	  set new_str [$listbox get $fileselect(search_n)]
+	}
+      } else {
+	set new_str "$fileselect(search_l)%A"
+      }
+      if {$new_str == ""} {
+	set fileselect(search_l) $new_str
+	set fileselect(search_n) 0
+	$listbox see 0
+	$listbox selection clear 0 end
+	$listbox selection set 0
+      } {
+	for {set i $fileselect(search_n)} {$i <= [$listbox size]} {incr i} {
+	  if {[string first $new_str [$listbox get $i]] == "0"} {
+	    set fileselect(search_l) $new_str
+	    set fileselect(search_n) $i
+	    $listbox see $i 
+	    $listbox selection clear 0 end
+	    $listbox selection set $i
+	    FileSelectorBox_FillEntry .fileselect.choose.current.e  $fileselect(dir_[expr $fileselect(cur_num)+1])/$new_str
+	    set i [$listbox size]
+	    set not_found 0
+	  }
+	}
+	if {$not_found} {
+	  bell
+	}
+      }
+    }
+    break
+  }
+  
+  bind .fileselect.choose.l1.li <ButtonRelease-1> {
+    global fileselect
+    set fileselect(search_l) ""
+    set fileselect(search_n) 0
+    if {[string first "/" [%W get anchor]] != -1} {
+      if {$fileselect(dir_$fileselect(cur_num)) != "/"} {
+	set tmpdir $fileselect(dir_$fileselect(cur_num))/[string range [%W get anchor] 0 [expr [string first "/" [%W get anchor]]-1]]
+      } {
+	set tmpdir /[string range [%W get anchor] 0 [expr [string first "/" [%W get anchor]]-1]]
+      }
+      set fileselect(layer_[expr $fileselect(cur_num)+1]) \
+	[FileSelectorBox_GetDirContens_Dir $tmpdir *]
+      set fileselect(maxlayers) [expr $fileselect(cur_num)+1]
+      set tmp_list [FileSelectorBox_GetDirContens_File $tmpdir $fileselect(pattern)]
+      foreach j $tmp_list {
+	lappend fileselect(layer_[expr $fileselect(cur_num)+1]) "$j"
+      }
+      .fileselect.choose.horz_scrollbar set $fileselect(maxlayers) 2 $fileselect(cur_num) $fileselect(cur_num)
+      FileSelectorBox_FillListbox .fileselect.choose.l2.li $fileselect(layer_[expr $fileselect(cur_num)+1])
+      FileSelectorBox_FillEntry .fileselect.choose.current.e  $tmpdir
+      set fileselect(dir_[expr $fileselect(cur_num) + 1]) $tmpdir
+      set found 0
+      foreach j [FileSelectorBox_GetMenuEntries .fileselect.menu_begin_dir] {if {$j == $tmpdir} {set found 1}}
+      if {$found == "0"} {
+	.fileselect.menu_begin_dir add command \
+	  -command "FileSelectorBox_GetDirStruct $tmpdir $fileselect(pattern);.fileselect.misc.left.begin_dir.l configure -text \"Magic one\"" \
+	  -underline -1 -label "$tmpdir"
+      }
+    } {
+      if {$fileselect(dir_$fileselect(cur_num)) != "/"} {
+	FileSelectorBox_FillEntry .fileselect.choose.current.e $fileselect(dir_$fileselect(cur_num))/[%W get anchor]
+      } {
+	FileSelectorBox_FillEntry .fileselect.choose.current.e /[%W get anchor]
+      }
+    }
+  }
+
+  bind .fileselect.choose.l2.li <ButtonRelease-1> {
+    global fileselect
+    set fileselect(search_l) ""
+    set fileselect(search_n) 0
+    set fileselect(cur_num) [expr $fileselect(cur_num) + 1]
+    if {[string first "/" [%W get anchor]] != -1} {
+      if {$fileselect(dir_$fileselect(cur_num)) != "/"} {
+	set tmpdir $fileselect(dir_$fileselect(cur_num))/[string range [%W get anchor] 0 [expr [string first "/" [%W get anchor]]-1]]
+      } {
+	set tmpdir /[string range [%W get anchor] 0 [expr [string first "/" [%W get anchor]]-1]]
+      }
+      set fileselect(layer_[expr $fileselect(cur_num)+1]) \
+	[FileSelectorBox_GetDirContens_Dir $tmpdir *]
+      set fileselect(maxlayers) [expr $fileselect(cur_num)+1]
+      set tmp_list [FileSelectorBox_GetDirContens_File $tmpdir $fileselect(pattern)]
+      foreach j $tmp_list {
+	lappend fileselect(layer_[expr $fileselect(cur_num)+1]) "$j"
+      }
+      set fileselect(dir_[expr $fileselect(cur_num) + 1]) $tmpdir
+      FileSelectorBox_SetListboxes $fileselect(cur_num)
+      FileSelectorBox_FillEntry .fileselect.choose.current.e $tmpdir
+      set found 0
+      foreach j [FileSelectorBox_GetMenuEntries .fileselect.menu_begin_dir] {if {$j == $tmpdir} {set found 1}}
+      if {$found == "0"} {
+	.fileselect.menu_begin_dir add command \
+	  -command "FileSelectorBox_GetDirStruct $tmpdir $fileselect(pattern);.fileselect.misc.left.begin_dir.l configure -text \"Magic one\"" \
+	  -underline -1 -label "$tmpdir"
+      }
+    } {
+      if {$fileselect(dir_$fileselect(cur_num)) != "/"} {
+	FileSelectorBox_FillEntry .fileselect.choose.current.e $fileselect(dir_$fileselect(cur_num))/[%W get anchor]
+      } {
+	FileSelectorBox_FillEntry .fileselect.choose.current.e /[%W get anchor]
+      }
+      set fileselect(cur_num) [expr $fileselect(cur_num) - 1]
+    }
+  }
+  bind .fileselect.choose.l1.li <Double-1> {
+    global fileselect
+    if {[string first "/" [%W get anchor]] == -1} {
+      set fileselect(state) ok
+    }
+  }
+
+  bind .fileselect.choose.l2.li <Double-1> {
+    global fileselect
+    if {[string first "/" [%W get anchor]] == -1} {
+      set fileselect(state) ok
+    }
+  }
+
+
+
+  scrollbar .fileselect.choose.horz_scrollbar -orient horizontal \
+    -command {FileSelectorBox_SetListboxes}
+  pack append .fileselect.choose \
+    .fileselect.choose.current {top fillx pady 4} \
+    .fileselect.choose.horz_scrollbar {bottom fillx pady 10} \
+    .fileselect.choose.l1 {left expand fill} \
+    .fileselect.choose.l2 {left expand fill} 
+  
+  frame .fileselect.action 
+  button .fileselect.action.ok -text "Ok" -command {set fileselect(state) ok} -pady 0
+  button .fileselect.action.dismiss -text "Dismiss" -command "set fileselect(state) dismiss"  -pady 0
+
+  pack append .fileselect.action \
+    .fileselect.action.ok {left frame center expand fillx padx 5} \
+    .fileselect.action.dismiss {left frame center expand fillx padx 5}
+
+  menu .fileselect.menu_begin_dir -tearoff 0 -relief raised -bd 2
+  .fileselect.menu_begin_dir add command \
+    -command {FileSelectorBox_GetDirStruct "~" $fileselect(pattern); \
+		.fileselect.misc.left.begin_dir.l configure -text Home}  \
+    -underline -1 -label "Home"
+  .fileselect.menu_begin_dir add command \
+    -command {FileSelectorBox_GetDirStruct "/" $fileselect(pattern); \
+		.fileselect.misc.left.begin_dir.l configure -text Root} \
+    -underline -1 -label "Root"
+  .fileselect.menu_begin_dir add command \
+    -command {FileSelectorBox_GetDirStruct $fileselect(start_dir) $fileselect(pattern); \
+		.fileselect.misc.left.begin_dir.l configure -text Current} \
+    -underline -1 -label "Current"
+  .fileselect.menu_begin_dir post 0 0
+  .fileselect.menu_begin_dir unpost
+
+  frame .fileselect.misc
+  frame .fileselect.misc.left 
+  
+  checkbutton .fileselect.misc.left.dots -command FileSelectorBox_Dots \
+    -variable fileselect(dots) -text "Show all Files" -pady 1 -state disabled
+  button .fileselect.misc.left.expand -text "Expand"  -pady 0 -command {
+    global fileselect
+    set tmp [pwd]
+    cd $fileselect(cur_dir)
+    FileSelectorBox_GetDirStruct [pwd] $fileselect(pattern)
+    cd $tmp
+  }
+
+  FileSelectorBox_PopUpMenuButton .fileselect.misc.left.begin_dir Current ".fileselect.menu_begin_dir"
+  pack append .fileselect.misc.left \
+    .fileselect.misc.left.dots {top frame w expand filly pady 0} \
+    .fileselect.misc.left.begin_dir {top frame w expand filly fillx pady 0} \
+    .fileselect.misc.left.expand  {top frame w expand filly fillx pady 0} 
+
+  frame .fileselect.misc.right
+  FileSelectorBox_MakeEntryAll .fileselect.misc.right.pattern "Pattern:"
+  bind .fileselect.misc.right.pattern <Enter> {global fileselect; set fileselect(focus_to_entry) 1; focus %W.e}
+  bind .fileselect.misc.right.pattern <Leave> {global fileselect; set fileselect(focus_to_entry) 0; focus .fileselect}
+  .fileselect.misc.right.pattern.horz_scrollbar configure -width 10
+  bind .fileselect.misc.right.pattern.e <Return> {FileSelectorBox_Rescan}
+  button .fileselect.misc.right.rescan -text "Rescan" -command FileSelectorBox_Rescan  -pady 0 
+
+  pack append .fileselect.misc.right \
+      .fileselect.misc.right.pattern {top expand fillx} \
+      .fileselect.misc.right.rescan {top frame center expand fillx} 
+
+  pack append .fileselect.misc \
+    .fileselect.misc.right {right expand fillx} \
+    .fileselect.misc.left {left filly frame w} 
+
+  pack append .fileselect \
+    .fileselect.choose {top frame center expand fill padx 4} \
+    .fileselect.misc {top frame center fillx pady 15} \
+    .fileselect.action {top frame center fillx}
+}
+
+proc FileSelectorBox_GetDirStruct {dir_name pattern} {
+  global fileselect
+  set fileselect(cur_dir) $dir_name
+  set cur_path $dir_name
+
+  FileSelectorBox_FillEntry .fileselect.choose.current.e $fileselect(cur_dir)
+  
+  set tmpnum 0
+  while {($cur_path != "/") && ($cur_path != "~") &&
+	 ($cur_path != "") && ($cur_path != ".")} {
+    set cur_path [string range $cur_path 0 [expr [string last "/" $cur_path]-1]]
+    incr tmpnum
+  }
+  set cur_path $dir_name
+  for {set i $tmpnum} {$i >= 0} {incr i -1} {
+    set fileselect(layer_$i) [FileSelectorBox_GetDirContens_Dir $cur_path *]
+    set fileselect(dir_$i) $cur_path
+    set cur_path [string range $cur_path 0 [expr [string last "/" $cur_path]-1]]
+  }
+  set cur_path $dir_name
+  set tmp_list [FileSelectorBox_GetDirContens_File $cur_path $pattern]
+  foreach j $tmp_list {
+    lappend fileselect(layer_$tmpnum) "$j"
+  }
+  .fileselect.choose.horz_scrollbar set $tmpnum 2 [expr $tmpnum - 1] [expr $tmpnum -1]
+  
+  .fileselect.choose.l1.li delete 0 end
+  .fileselect.choose.l2.li delete 0 end
+  if {$tmpnum > 0} {
+    FileSelectorBox_FillListbox .fileselect.choose.l1.li $fileselect(layer_[expr $tmpnum -1])
+    FileSelectorBox_FillListbox .fileselect.choose.l2.li $fileselect(layer_$tmpnum)
+    set fileselect(cur_num) [expr $tmpnum - 1] 
+  } {
+    FileSelectorBox_FillListbox .fileselect.choose.l1.li $fileselect(layer_$tmpnum)
+    set fileselect(cur_num) $tmpnum 
+  }
+  set fileselect(maxlayers) $tmpnum
+}
+
+proc FileSelectorBox {title pattern start_dir {expand 0}} {
+  global fileselect
+  global fileselectcolor
+  set fileselect(focus_to_entry) 0
+  if {[winfo exists .fileselect] == "0"} {
+    toplevel .fileselect
+    wm minsize .fileselect 300 400
+    wm geometry .fileselect 300x400+200+200
+    FileSelectorBox_MakeItems
+    FileSelectorBox_SetColorsForWin .fileselect
+    bind .fileselect.choose.current.e <Return> {set fileselect(state) ok;break}
+  } {
+    switch [wm state .fileselect] {
+      iconic -
+      withdrawn {catch "wm deiconify .fileselect"}
+      default {}
+    }
+  }
+  wm title .fileselect $title
+  FileSelectorBox_FillEntry .fileselect.misc.right.pattern.e $pattern
+  update
+  set fileselect(pattern) $pattern
+  if {[file isdirectory $start_dir] == "1"} {
+    set tmp [string range $start_dir 0 [expr [string last "/" $start_dir]-1]]
+    if {$start_dir != $tmp} {
+      set fileselect(start_dir) $start_dir
+    } {
+      set fileselect(start_dir) $tmp
+    }
+    FileSelectorBox_GetDirStruct $fileselect(start_dir) $pattern
+  } {
+    set fileselect(start_dir) [pwd]
+    FileSelectorBox_GetDirStruct [pwd] $pattern
+    puts stderr "No valid Dir-Name"
+  }
+
+  set fileselect(state) wait
+  .fileselect.misc.right.pattern.l configure -text "Pattern:  [.fileselect.misc.right.pattern.e get]"
+  set fileselect(search_l) ""
+  set fileselect(search_n) 0
+  if {$expand} {
+    .fileselect.misc.left.expand invoke
+  }
+
+  while {$fileselect(state) == "wait"} {
+    update
+  }
+  set result [.fileselect.choose.current.e get]
+  if {[file isdirectory [file dirname $result]] != "1"} {
+    if {[FileSelectorBox_MessageBox \
+	   "Des Verzoichnis\n\n[file dirname $result]\n\ngibts it!\nSoll i s macha?" \
+	   "Aufpassd" "Machs" "Vergiss es"] =="1"} {
+      catch "exec sh -c \"mkdir -p [file dirname $result]\"" tmp
+      if {$tmp != ""} {
+	putsPossibileError "Start action-> $tmp"
+      }
+    }
+  }
+    wm withdraw .fileselect
+
+  if {$fileselect(state) == "ok"} {
+    return $result
+  } {
+    return "";
+  }
+}

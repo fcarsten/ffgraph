@@ -1,0 +1,726 @@
+
+\subsubsection{FFGraph}
+
+The class {\bf FFGraph} is a container for the class {\bf
+  FFGraphClass}. As the user has no direct access to {\bf
+  FFGraphClass}, using {\bf FFGraph} is the only way to call
+methods in {\bf FFGraphClass} objects. This is done by using the
+\verb|->| operator. E.g. to add a node to a graph you would write:
+
+\bigskip
+
+{\tt
+FFGraph g;\\
+g\verb|->|addNode();\\
+}
+
+\bigskip
+
+FFGraph does an automatic garbage collection. This means that if
+there is no container for a graph left, the graph is freed.
+
+FFGraph defines the following methods:
+
+\begin{itemize}
+
+\item{\bf FFGraph()}
+  
+  Creates a new graph. The underlying {\bf FFGraphClass} object
+  is not allocated before it is actually used.
+
+\item{\bf FFGraph\& operator = (const FFGraph\& graph)}
+  
+  Sets the object to be a container for the same graph as {\bf
+    graph}.
+
+\item{\bf int operator == (const FFGraph\& graph)}
+  
+  Returns whether the object is a container for the same graph as
+  {\bf graph}.
+
+\item{\bf int operator != (const FFGraph\& graph)}
+  
+  Returns whether the object is not a container for the same
+  graph as {\bf graph}.
+  
+\item{\bf FFGraphClass * operator \verb|->| () const}
+  
+  Passes the method to the underlying {\bf FFGraphClass} object.
+
+\end{itemize}
+
+\subsubsection{FFGraphClass}
+
+The class {\bf FFGraphClass} provides standard methods to
+manipulate graphs. The methods of {\bf FFGraphClass} can not be
+accessed directly, but must be accessed using the class {\bf
+  FFGraph}.
+
+{\bf FFGraphClass} defines the following methods:
+
+\begin{itemize}
+
+\item{\bf BOOL getDirected()}
+  
+  Returns whether the graph is directed. This method is intended
+  to be used in the future, as only directed graphs are supported
+  at the moment. May return any value.
+
+\item{\bf int getGraphicNodeIndex()}
+  
+  If the nodes of the graph are labeled with {\bf FFGraphicNode},
+  the index of the label is returned. If not, -1 is returned.
+
+\item{\bf int getGraphicEdgeIndex()}
+  
+  If the edges of the graph are labeled with {\bf FFGraphicEdge},
+  the index of the label is returned. If not, -1 is returned.
+
+\item{\bf int getGraphWindowIndex()}
+  
+  If the graph is labeled with a window label, the index of the
+  label is returned. If not, -1 is returned.
+ 
+% inline void setNodeIndex(int i) {nodeIndex=i;}
+% inline void setEdgeIndex(int i) {edgeIndex=i;}
+% inline void setGraphIndex(int i) {graphIndex=i;}
+  
+\item{\bf void load(const String\& buffer, BOOL datei)}
+  
+  If {\bf datei == YES} the graph specified in the sgraph
+  compatible file {\bf buffer}
+  is merged into the graph.\\
+  If {\bf datei == NO} the graph that is contained in {\bf
+    buffer} in sgraph format is merged into the graph.
+
+\item{\bf void saveToFile(const String\& file)}
+  
+  The graph is saved to the file {\bf file}.
+  
+\item{\bf void saveToFile(const String\& file, const
+    AVLSet\verb|<|FFNodeClass *\verb|>|\& set)}
+  
+  The subgraph defined by the nodes in {\bf set} and the edges
+  between the nodes in {\bf edge} is saved to file {\bf file}.
+
+\item{\bf void saveToString( String\& str)}
+
+The graph is saved to the string {\bf str}.
+
+\item{\bf void saveToString( String\& str, const
+    AVLSet\verb|<|FFNodeClass *\verb|>|\& set)}
+      
+  The subgraph defined by the nodes in {\bf set} and the edges
+  between the nodes in {\bf edge} is saved to string {\bf str}.
+
+\item{\bf FFNode addNode(const FFPoint\& p=FFPoint(100,100,0))}
+  
+  A new node is added to the graph and returned. If the nodes of
+  the graph are labeled with {\bf FFGraphicNode}, the node is
+  moved to position {\bf p}.
+
+\item{\bf  FFEdge addEdge(FFNode s, FFNode t)}
+  
+  A new edge between source node {\bf s} and target node {\bf t}
+  is added to the graph and returned. {\bf s} and {\bf t} must
+  belong to this graph.
+
+\item{\bf void removeNode(FFNode n)}
+  
+  Node {\bf n} is removed from the graph. All edges from or to
+  {\bf n} are removed from the graph as well.
+
+\item{\bf void removeEdge(FFEdge e)}
+
+Edge {\bf e} is removed from the graph.
+
+\item{\bf void clear()}
+
+All nodes and edges are removed from the graph.
+
+\item{\bf void allNodes(AVLSet\verb|<|FFNodeClass *\verb|>|\& set)}
+
+All nodes of the graph are added to set {\bf set}.
+
+\item{\bf void allEdges(AVLSet\verb|<|FFEdgeClass *\verb|>|\& set)}
+
+All edges of the graph are added to set {\bf set}.
+
+\item{\bf const AVLSet\verb|<|FFNodeClass *\verb|>|\& allNodes()
+    const}
+
+A set containing all nodes of the graph is returned.
+
+\item{\bf const AVLSet\verb|<|FFEdgeClass *\verb|>|\& allEdges()
+    const}
+
+A set containing all edges of the graph is returned.
+
+\item{\bf int getNodeLabelIndex(const String\& type,
+    AVLSet\verb|<|int\verb|>| *set=NULL) const}
+  
+  If {\bf set == NULL} the index of the node label with type {\bf
+    type} is returned, or -1 if none is found.  if {\bf set !=
+    NULL} the indexes of all node labels which contain {\bf type}
+  in their type are added to {\bf set}. The index of the first
+  label that is found is returned, or -1, if none is found.
+  
+\item{\bf int getEdgeLabelIndex(const String\&,
+    AVLSet\verb|<|int\verb|>| *set=NULL) const}
+  
+  If {\bf set == NULL} the index of the edge label with type {\bf
+    type} is returned, or -1 if none is found.  if {\bf set !=
+    NULL} the indexes of all edge labels which contain {\bf type}
+  in their type are added to {\bf set}. The index of the first
+  label that is found is returned, or -1, if none is found.
+  
+\item{\bf int getGraphLabelIndex(const String\&,
+    AVLSet\verb|<|int\verb|>|* set=NULL) const}
+  
+  If {\bf set == NULL} the index of the graph label with type
+  {\bf type} is returned, or -1 if none is found.  if {\bf set !=
+    NULL} the indexes of all graph labels which contain {\bf
+    type} in their type are added to {\bf set}. The index of the
+  first label that is found is returned, or -1, if none is found.
+  
+\item{\bf FFGraphLabel *getGraphLabel(const String\& s,
+    AVLSet\verb|<|FFGraphLabel *\verb|>| *set=NULL)}
+  
+  If {\bf set == NULL} the graph label with type {\bf type}
+  is returned, or {\bf NULL} if none is found.  if {\bf set !=
+    NULL} all graph labels which contain {\bf type} in their type
+  are added to {\bf set}. The first label that is found is
+  returned, or {\bf NULL}, if none is found.
+
+\item{\bf FFGraphLabel *getGraphLabel(int index)}
+  
+  The graph label with index {\bf index} is returned or {\bf
+    NULL} if the graph has no graph label with index {\bf index}.
+  
+\item{\bf const MPlex\verb|<|FFGraphLabel *\verb|>|\&
+    getGraphLabels() const}
+
+An MPlex containing all graph labels is returned.
+
+\item{\bf const MPlex\verb|<|FFNodeLabel *\verb|>|\&
+    getNodeLabels() const}
+
+An MPlex containing the prototypes for all node labels is returned.
+
+\item{\bf const MPlex\verb|<|FFEdgeLabel *\verb|>|\&
+    getEdgeLabels() const}
+
+An MPlex containing the prototypes for all edge labels is returned.
+
+\item{\bf int addNodeLabel(FFNodeLabel *label)}
+  
+  Prototypes of label {\bf label} are added to all nodes in the
+  graph. The index of the label is returned. If the nodes are
+  already labeled with a label {\bf label}, only the index is
+  returned.
+
+\item{\bf int addEdgeLabel(FFEdgeLabel *label)}
+  
+  Prototypes of label {\bf label} are added to all edges in the
+  graph. The index of the label is returned. If the edges are
+  already labeled with a label {\bf label}, only the index is
+  returned.
+
+\item{\bf int addGraphLabel(FFGraphLabel *label)}
+
+Label {\bf label} is added to  the graph. The index of
+the label is returned. If the graph is already labeled with a 
+label {\bf label}, only the index is returned.
+
+\item{\bf void delNodeLabel(int index, BOOL doFree=YES)}
+
+The node labels with index {\bf index} are removed from all nodes. 
+If {\bf doFree == YES} all labels are freed using the {\bf delete} 
+operator.
+
+\item{\bf void delEdgeLabel(int index, BOOL doFree=YES)}
+
+The edge labels with index {\bf index} are removed from all edges. 
+If {\bf doFree == YES} all labels are freed using the {\bf delete}
+operator.
+
+\item{\bf void delGraphLabel(int index, BOOL doFree=YES)}
+
+The graph label with index {\bf index} is removed from the graph. 
+If {\bf doFree == YES} the label is freed using the {\bf delete} 
+operator.
+
+\item{\bf void delNodeLabel(const String\& type, BOOL doFree=YES)}
+  
+  Removes the node label with type {\bf type} from all nodes in
+  the graph. If {\bf doFree == YES} all labels are freed using
+  the {\bf delete} operator.
+
+\item{\bf void delEdgeLabel(const String\& type, BOOL doFree=YES)}
+  
+  Removes the edge label with type {\bf type} from all nodes in
+  the graph. If {\bf doFree == YES} all labels are freed using
+  the {\bf delete} operator.
+
+\item{\bf void delGraphLabel(const String\& type, BOOL doFree=YES)}
+  
+  Removes the graph label with type {\bf type} from the graph.
+  If {\bf doFree == YES} the label is freed using the {\bf
+    delete} operator.
+  
+\item{\bf void assignGraphLabel(const FFGraphLabel *label, int
+    i=-1)}
+  
+  Assigns {\bf label} to the graph label with index {\bf i} using
+  the method {\bf void FFLabelClass::assign(FFLabelClass *)}.  If
+  {\bf i == -1} the graph checks if it is labeled with a label of
+  the same type as {\bf label} and assigns {\bf label} to it if
+  it finds one.
+  
+\item{\bf void assignGraphLabel(const MPlex\verb|<|FFGraphLabel
+    *\verb|>|\& set)}
+  
+  For all graph labels in {\bf set}, the graph checks if it is
+  labeled with a label of the same type as the label from {\bf
+    set} and assigns the label from {\bf set} to it if it finds
+  one.
+        
+\item{\bf void setGraphLabel(FFGraphLabel *label , int index=-1,
+    BOOL doFree=YES)}
+  
+  Sets the graph label of index {\bf index} to {\bf label}. If
+  {\bf doFree == YES} the old label is freed using the {\bf
+    delete} operator. If {\bf index == -1} the graph checks if
+  it is labeled with a graph label of the same type as {\bf
+    label} and sets it to {\bf label} if it finds one.
+  
+\item{\bf void setGraphLabel(const MPlex\verb|<|FFGraphLabel
+    *\verb|>|\& set, BOOL doFree=YES)}
+    
+  For all graph labels in {\bf set}, the graph checks if it is
+  labeled with a label of the same type as the label from {\bf
+    set} and sets it to the label from {\bf set} if it finds one.
+  If {\bf doFree == YES} the old label is freed using the {\bf
+    delete} operator.
+    
+\item{\bf void setName(const String\& name)}
+
+Sets the name of the graph to {\bf name}.
+
+\item{\bf const String\& getName()}
+
+Returns the name of the graph.
+  
+\item{\bf FFNodeClass *nodeWithValue(int k)}
+  
+  Returns the node with the value {\bf k}\footnote{compare
+    FFNodeClass::setValue(int)}.
+      
+\item{\bf void rev()}
+
+Reverts all edges.
+
+\item{\bf void eliminateParallelEdges()}
+  
+  For all pairs of parallel edges, all but one are removed from
+  the graph.  The edges to be removed are chosen randomly.
+
+\item{\bf BOOL contains(FFNodeClass * n)}
+
+Returns whether the graph contains node {\bf n}.
+
+\item{\bf BOOL contains(FFEdgeClass * e)}
+
+Returns whether the graph contains edge {\bf e}.
+
+\item{\bf BOOL setStartNode(FFNode n)}
+  
+  Marks node {\bf n} as start-node. {\bf n} must be a node of the
+  graph.  Unmarks the previous start-node.
+
+\item{\bf FFNodeClass * getStartNode()}
+  
+  Returns the node that has been marked as start-node, or {\bf
+    NULL} if no node has been marked as start-node.
+  
+\item{\bf BOOL setEndNodes(const AVLSet\verb|<|FFNodeClass
+    *\verb|>|\& set)}
+  
+  Marks all nodes of {\bf set} as end-nodes. All nodes from {\bf
+    set} must be nodes of the graph.
+
+\item{\bf BOOL addEndNode(FFNode n)}
+  
+  Marks node {\bf n} as end-node. {\bf n} must be a node of the
+  graph.
+
+\item{\bf BOOL delEndNode(FFNode n)}
+  
+  Marks node {\bf n} as no longer being an end-node. {\bf n} must
+  be a node of the graph.
+
+\item{\bf void clearEndNodes()}
+
+Marks all end-nodes as no longer being end-nodes.
+
+\item{\bf const AVLSet\verb|<|FFNodeClass *\verb|>|\& getEndNodes()}
+  
+  Returns a set containing all nodes that are marked as being
+  end-nodes.
+  
+\item{\bf int getNumNodes() const}
+
+Returns the number of nodes in the graph.
+
+\item{\bf int getNumEdges() const}    
+
+Returns the number of edges in the graph.
+
+\item{\bf FFGraph copy(FFGraph\& graph)}
+
+Merges the graph into graph {\bf graph}. 
+
+\item{\bf FFGraph copy()}
+
+Returns a copy of the graph.
+
+\item{\bf BOOL containsCycle()}
+
+Returns whether the graph contains cycles.
+
+\item{\bf BOOL weakConnected()}
+
+Returns whether the graph is weak connected.
+
+\item{\bf BOOL strongConnected()}
+
+Returns whether the graph is strong connected.
+
+\item{\bf BOOL isTree()}
+
+Returns whether the graph is a tree.
+
+\item{\bf void show()}
+
+Prints the graph as ASCII to stdout.
+
+\item{\bf void createGraphic(FFGraphWindow *w = NULL, FFGraphicNode 
+	*gn=NULL, FFGraphicEdge *ge=NULL)}
+
+Displays the graph in graphic context {\bf w}. If {\bf gn != NULL} it
+is used instead of {\bf FFGraphicNode} to store the graphical
+information of the nodes. If {\bf ge != NULL} it
+is used instead of {\bf FFGraphicEdge} to store the graphical
+information of the edges.
+
+\item{\bf FFGraphWindow *getWindow() const}
+
+Returns the graphic context the graph is displayed in, or {\bf NULL}
+if the graph has no graphic context.
+
+\item{\bf void removeGraphic()}
+
+Removes the graph from the graphic context it is displayed in.
+The graphic context is freed using the {\bf delete} operator.
+
+\item{\bf FFGraphWindow *leaveWindow()}
+
+Removes the graph from the graphic context it is displayed in.
+The graphic context is returned.
+
+\item{\bf FFGraphWindow *hideGraphic()}
+
+Removes the graph from the graphic context it is displayed in.  All
+graphic information in the nodes and edges remains unchanged. This
+means the {\bf FFGraphicNode} and {\bf FFGraphicEdge} classes are not
+deleted.  The graphic context is returned.
+
+\end{itemize}
+
+\subsubsection{FFNodeClass}
+
+The class {\bf FFNodeClass} provides methods to manipulate nodes.
+There is no public constructor for the class {\bf FFNodeClass}.
+If you want a new node, use the method {\bf
+  FFGraphClass::addNode(...)}.  {\bf FFNode} is a typedef to {\bf
+  FFNodeClass *}
+
+FFNodeClass defines the following methods:
+
+\begin{itemize}
+
+\item{\bf int getValue() const}
+
+Returns the value of the node. Counterpart to {\bf setValue(...)}.
+
+\item{\bf inline void setValue(int i)}
+  
+  Sets the value of the node to {\bf i}. Counterpart to {\bf
+    getValue()}.  This method may be used by anyone and therefore
+  the value is only very locally valid. {\bf This method must not
+    be used by labels during init, parse or unparse!!!}
+
+\item{\bf FFNode copy()}
+
+Returns a copy of the node in a copy of the graph.
+  
+\item{\bf inline int indeg() const}
+
+Returns the number of ingoing edges.
+
+\item{\bf inline int outdeg() const}
+
+Returns the number of outgoing edges.
+
+\item{\bf void eliminateParallelEdges()}
+
+For all parallel edges going into this node all but one are removed.
+
+\item{\bf void assignLabel(FFNodeLabel *l, int index=-1)}
+
+Assigns {\bf label} to the node label with index {\bf i} using
+the method {\bf void FFLabelClass::assign(FFLabelClass *)}.
+If {\bf i == -1} the node checks if it is labeled with a label
+of the same type as {\bf label} and assigns {\bf label} to it
+if it finds one.
+
+\item{\bf void assignLabel(MPlex\verb|<|FFNodeLabel *\verb|>|\&
+    set)}
+  
+  For all node labels in {\bf set} the node checks if it is
+  labeled with a label of the same type as the label from {\bf
+    set} and assigns the label from {\bf set} to it if it finds
+  one.
+
+\item{\bf void setLabel(FFNodeLabel *l, int i=-1, BOOL doFree=YES)}
+  
+  Sets the node label of index {\bf index} to {\bf label}. If
+  {\bf doFree == YES} the old label is freed using the {\bf
+    delete} operator. If {\bf index == -1} the node checks if it
+  is labeled with a node label of the same type as {\bf label}
+  and sets it to {\bf label} if it finds one.
+  
+\item{\bf void setLabel(MPlex\verb|<|FFNodeLabel *\verb|>|\& set,
+    BOOL doFree=YES)}
+    
+  For all node labels in {\bf set}, the node checks if it is
+  labeled with a label of the same type as the label from {\bf
+    set} and sets it to the label from {\bf set} if it finds one.
+  If {\bf doFree == YES} the old label is freed using the {\bf
+    delete} operator.
+ 
+\item{\bf int getLabelIndex(const String\& type,
+    AVLSet\verb|<|int\verb|>| *set=NULL) const}
+  
+  If {\bf set == NULL} the index of the node label with type {\bf
+    type} is returned, or -1 if none is found.  if {\bf set !=
+    NULL} the indexes of all node labels which contain {\bf type}
+  in their type are added to {\bf set}. The index of the first
+  label that is found is returned, or -1, if none is found.
+
+\item{\bf FFNodeLabel *getLabel(int index)}
+  
+  Returns the node label with index {\bf index}, or {\bf NULL} if
+  the node has no label with index {\bf index}.
+  
+\item{\bf const MPlex\verb|<|FFNodeLabel *\verb|>| *getLabels()
+    const}
+
+Returns a MPlex containing all labels of the node.
+
+\item{\bf FFGraph getGraph()}
+
+Returns the graph the node is in.
+
+\item{\bf void show()}
+
+Prints the node to stdout.
+  
+\item{\bf AVLSet\verb|<|FFNode\verb|>| succ()}
+
+Returns a set containing the successors of the node.
+
+\item{\bf AVLSet\verb|<|FFNode\verb|>| pred()}
+
+Returns a set containing the predecessor of the node.
+
+\item{\bf const AVLSet\verb|<|FFEdge\verb|>|\& transToSucc() const}
+
+Returns a set containing the edges to the successors of the node
+
+\item{\bf const AVLSet\verb|<|FFEdge\verb|>|\& transFromPred()
+    const}
+
+Returns a set containing the edges from the predecessor of the node.
+
+\item{\bf void succ(AVLSet\verb|<|FFNode\verb|>|\& set)}
+
+Adds the successors of the node to {\bf set}.
+
+\item{\bf void pred(AVLSet\verb|<|FFNode\verb|>|\& set)}
+
+Adds the predecessor of the node to {\bf set}.
+  
+\item{\bf void setName(const String\& name)}
+
+Sets the name of the node to {\bf name}.
+
+\item{\bf const String\& getName() const}
+
+Returns the name of the node.
+  
+\item{\bf void hideGraphic()}
+
+Hides the node from a graphic context.
+
+\item{\bf void showGraphic()}
+
+Shows a node on the graphic context that has been hidden before.
+  
+\item{\bf FFGraphicNode *getGraphicNode() \\
+    FFGraphicNode *operator()() \\
+    FFGraphicNode *operator\verb|->|()}
+
+Returns the {\bf FFGraphicNode} label, if the node is labeled with
+{\bf FFGraphicNode}, or {\bf NULL} if it is not.
+
+\end{itemize}
+
+\subsubsection{FFEdgeClass}
+
+The class {\bf FFEdgeClass} provides methods to manipulate edges.
+There is no public constructor for the class {\bf FFEdgeClass}.
+If you want a new Edge use the method {\bf
+  FFGraphClass::addEdge(...)}. {\bf FFEdge} is a typedef to {\bf
+  FFEdgeClass *}.  The class {\bf FFEdgeClass} provides the
+following methods:
+
+\begin{itemize}
+
+\item{\bf FFEdge copy()}
+
+Returns a copy of the edge in a copy of the graph.
+
+\item{\bf void setValue(int k)}
+
+Sets the value of the edge to k. Counterpart to {\bf getValue()}.
+As anyone can use this method, values are only very locally valid.
+{\bf Labels must not use this method during init, parse or unparse}.
+
+\item{\bf int getValue()}
+
+Returns the value of the edge. Counterpart to {\bf setValue(...)}.
+
+\item{\bf void setWeight (FFCoord x)}
+
+Sets the weight of the edge to {\bf x}.
+
+\item{\bf FFCoord getWeight()}
+
+Returns the weight of the edge.
+
+\item{\bf void setName(const String\& name)}
+
+Sets the name of the edge to {\bf name}.
+
+\item{\bf const String\& getName()}
+
+Returns the name of the edge.
+
+\item{\bf FFGraph getGraph()}
+
+Returns the graph the edge is in.
+
+\item{\bf FFNode source()}
+
+Returns the source node of the edge.
+
+\item{\bf FFNode target()}
+
+Returns the target node of the edge.
+
+\item{\bf void revert()}
+
+Reverts the edge.
+
+\item{\bf void setTarget(FFNode n)}
+  
+  Sets the target of the edge to {\bf n}. {\bf n} must be a node
+  of the same graph as the edge.
+
+\item{\bf void setSource(FFNode n)}
+  
+  Sets the target of the edge to {\bf n}. {\bf n} must be a node
+  of the same graph as the edge.
+
+\item{\bf void assignLabel(FFEdgeLabel *label, int i=-1)}
+  
+  Assigns {\bf label} to the edge label with index {\bf i} using
+  the method {\bf void FFLabelClass::assign(FFLabelClass *)}.  If
+  {\bf i == -1} the edge checks if it is labeled with a label of
+  the same type as {\bf label} and assigns {\bf label} to it if
+  it finds one.
+
+\item{\bf void setLabel(FFEdgeLabel *l, int i=-1, BOOL doFree=YES)}
+  
+  Sets the edge label of index {\bf index} to {\bf label}. If
+  {\bf doFree == YES} the old label is freed using the {\bf
+    delete} operator. If {\bf index == -1} the edge checks, if it
+  is labeled with an edge label of the same type as {\bf label}
+  and sets it to {\bf label} if it finds one.
+  
+\item{\bf void assignLabel(MPlex\verb|<|FFEdgeLabel *\verb|>|\&
+    set)}
+  
+  For all edge labels in {\bf set} the edge checks if it is
+  labeled with a label of the same type as the label from {\bf
+    set} and assigns the label from {\bf set} to it if it finds
+  one.
+  
+\item{\bf void setLabel(MPlex\verb|<|FFEdgeLabel *\verb|>|\& set,
+    BOOL doFree=YES)}
+  
+  For all edge labels in {\bf set}, the edge checks if it is
+  labeled with a label of the same type as the label from {\bf
+    set} and sets it to the label from {\bf set} if it finds one.
+  If {\bf doFree == YES} the old label is freed using the {\bf
+    delete} operator.
+ 
+\item{\bf int getLabelIndex(const String\& type,
+    AVLSet\verb|<|int\verb|>| *set=NULL) const}
+  
+  If {\bf set == NULL} the index of the edge label with type {\bf
+    type} is returned, or -1 if none is found.  if {\bf set !=
+    NULL} the indexes of all edge labels which contain {\bf type}
+  in their type are added to {\bf set}. The index of the first
+  label that is found is returned, or -1, if none is found.
+
+\item{\bf FFEdgeLabel *getLabel(int index)}
+  
+  Returns the edge label with index {\bf index}, or {\bf NULL} if
+  the edge has no label with index {\bf index}.
+
+\item{\bf MPlex\verb|<|FFEdgeLabel *\verb|>| *getLabels()}
+  
+  Returns a MPlex containing all labels of the edge.
+
+\item{\bf void show()}
+  
+  Prints the edge to stdout.
+
+\item{\bf void hideGraphic()}
+  
+  Hides the edge from a graphic context.
+
+\item{\bf void showGraphic()}
+
+Shows a previously hidden edge in the graphic context
+  
+\item{\bf FFGraphicEdge *getGraphicEdge() \\
+    FFGraphicEdge *operator()() \\
+    FFGraphicEdge *operator\verb|->|()}
+  
+  Returns the {\bf FFGraphicEdge} label if the edge is labeled
+  with {\bf FFGraphicEdge} or {\bf NULL}, if it is not.
+
+\end{itemize}

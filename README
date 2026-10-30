@@ -1,0 +1,6 @@
+ffgraph is a C++ class library to create, manipulate and display
+directed graphs. Access to the library is provided through the classes
+described in doc/ffgraph.ps. Graphs can be loaded and saved in a
+slightly extended sgraph file format.
+
+It was originally created in the early 90s and recently ported to compile and run on modern Linux, namely Ubuntu 24.04.

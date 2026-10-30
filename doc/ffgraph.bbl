@@ -1,0 +1,36 @@
+\begin{thebibliography}{SACTM95}
+
+\bibitem[Him90]{GraphEd:Himsolt-90b}
+Michael Himsolt.
+\newblock {\em {GraphEd} User Manual}.
+\newblock Universit{\"a}t Passau, 1990.
+
+\bibitem[Him93]{Sgraph:Himsolt-93a}
+Michael Himsolt.
+\newblock {\em Sgraph Programmer's Manual}.
+\newblock Universit{\"a}t Passau, 1993.
+
+\bibitem[N{\"a}h94]{naeher:94}
+S.~N{\"a}her.
+\newblock {LEDA} user manual (version 3.0).
+\newblock Technical report, Max-Plank-Institut f{\"u}r Informatik,
+  Saarbr{\"u}cken, 1994.
+
+\bibitem[Ous94]{Tcl:Oust}
+John~K. Ousterhout.
+\newblock {\em Tcl and the Tk Toolkit}.
+\newblock Addison-Wesley, April 1994.
+
+\bibitem[SACTM95]{meta:95}
+B.~Steffen A. Cla{\ss}en T.~Margaria.
+\newblock The \meta: An environment for flexible tool management.
+\newblock In {\em 6th Int. Conf. on Theory and Practice of Software Development
+  (TAPSOFT'95)}, LNCS N.915, pages 791--792, Aarhus (DK), May 1995.
+
+\bibitem[San94]{sander:94}
+Georg Sander.
+\newblock Graph layout through the {VCG} tool.
+\newblock Technical Report A03/94, Universit{\"a}t des Saarlandes,
+  Saarbr{\"u}cken, Germany, October 1994.
+
+\end{thebibliography}

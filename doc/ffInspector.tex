@@ -1,0 +1,56 @@
+Inspectors are C++ classes which are usually bound to graph
+labels. They are normally used to display the contents of a label in a
+window on the screen.
+
+E.g. the window label {\bf FFTclWindow} uses the class {\bf
+FFTclGraphInsp} to display the contents of graph, node and egde
+labels.
+
+\begin{figure}[htb]
+\noindent
+\fbox{\epsfig{figure=inspector.eps,clip=}}
+\caption{FFTclGraphInsp}
+\end{figure}
+
+\subsection{Using inspectors}
+
+Inspectors are subclasses of {\bf FFInspector}. 
+Inspectors are usually invoked by the graph label they are bound to
+and stay on the screen until the label is deleted or the window is
+dismissed by the user. See the corresponding graph label methods for
+details on how to invoke inspectors.
+
+\subsection{Writing inspectors}
+\label{writing_inspectors}
+
+If you write your own graph label, you might also want to write an
+inspector for it to display its contents. To write an inspector you
+have to subclass {\bf FFInspector} and implement the following
+methods:
+
+\begin{itemize}
+
+\item{\bf FFInspector(FFGraphLabel *g)}
+
+Initialize the inspector according to {\bf g}. {\bf g} is the label
+the inspector is bound to.
+
+\item{\bf virtual void show()}
+
+Should display the inspector on the screen.
+
+\item{\bf virtual void hide()}
+
+Should remove the inspector from the screen.
+
+\item{\bf virtual void inspect() = NULL}
+
+Display the contents of the label the inspector is bound to, or
+whatever you want to display.
+
+\end{itemize}
+
+If you want to use the tcl/tk widget set to display the inspector, you
+might want to subclass {\bf FFTclInspector} which is a subclass of
+{\bf FFInspector}.
+

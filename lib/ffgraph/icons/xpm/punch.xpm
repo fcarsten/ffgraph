@@ -1,0 +1,311 @@
+/* XPM */
+static char *punch[] = {
+/* width height num_colors chars_per_pixel */
+"    48    48      255            2",
+/* colors */
+".. c #000000",
+".# c #bba286",
+".a c #372015",
+".b c #301d18",
+".c c #c5855b",
+".d c #876049",
+".e c #986d53",
+".f c #eba669",
+".g c #966551",
+".h c #af7959",
+".i c #9f9f9f",
+".j c #533023",
+".k c #6e402d",
+".l c #492d23",
+".m c #90614b",
+".n c #945c45",
+".o c #3e2a22",
+".p c #f9bd87",
+".q c #959595",
+".r c #544948",
+".s c #23130e",
+".t c #fab974",
+".u c #1f110a",
+".v c #9f8c81",
+".w c #8d8d8d",
+".x c #cb8c5d",
+".y c #956249",
+".z c #cb845d",
+".A c #452d22",
+".B c #888788",
+".C c #2c1a10",
+".D c #fce9bb",
+".E c #fdd391",
+".F c #36261d",
+".G c #89583d",
+".H c #726865",
+".I c #1b0f09",
+".J c #845438",
+".K c #fdf5bf",
+".L c #462f26",
+".M c #757575",
+".N c #3f4040",
+".O c #c0835f",
+".P c #643829",
+".Q c #db985f",
+".R c #bc815b",
+".S c #827264",
+".T c #26160d",
+".U c #53342c",
+".V c #fabd7a",
+".W c #34221e",
+".X c #e3a66a",
+".Y c #e79e6e",
+".Z c #8e6952",
+".0 c #dda16e",
+".1 c #fdcc8a",
+".2 c #7b513c",
+".3 c #ccaf88",
+".4 c #605f60",
+".5 c #090404",
+".6 c #fdcd97",
+".7 c #815745",
+".8 c #eba36b",
+".9 c #f6b979",
+"#. c #dc8b59",
+"## c #b47b56",
+"#a c #835133",
+"#b c #130b07",
+"#c c #f2a775",
+"#d c #858484",
+"#e c #41261d",
+"#f c #a56f47",
+"#g c #20120d",
+"#h c #c68e64",
+"#i c #474747",
+"#j c #755646",
+"#k c #d3a274",
+"#l c #fddca7",
+"#m c #9f6341",
+"#n c #fcd59c",
+"#o c #a8a7a6",
+"#p c #9c704b",
+"#q c #d2945f",
+"#r c #9e6a4d",
+"#s c #5a351e",
+"#t c #fdca93",
+"#u c #1d100d",
+"#v c #e5a16b",
+"#w c #edb480",
+"#x c #f5ad7e",
+"#y c #623c33",
+"#z c #f5b074",
+"#A c #f0c790",
+"#B c #150c05",
+"#C c #b98764",
+"#D c #656464",
+"#E c #8c5f45",
+"#F c #291912",
+"#G c #c39b71",
+"#H c #aca8a3",
+"#I c #8b5d44",
+"#J c #2f2a25",
+"#K c #fbce94",
+"#L c #371e19",
+"#M c #b7734e",
+"#N c #ab7156",
+"#O c #e6ae7c",
+"#P c #fcc681",
+"#Q c #f4ad6c",
+"#R c #5a3a2e",
+"#S c #fbc280",
+"#T c #746f6f",
+"#U c #a46b4f",
+"#V c #be7b58",
+"#W c #21110d",
+"#X c #f8ce94",
+"#Y c #19120f",
+"#Z c #1e110a",
+"#0 c #331a18",
+"#1 c #baaea3",
+"#2 c #eead7d",
+"#3 c #fdd9a6",
+"#4 c #e49866",
+"#5 c #262115",
+"#6 c #442b22",
+"#7 c #3f2627",
+"#8 c #d39869",
+"#9 c #ac6c50",
+"a. c #e9a778",
+"a# c #b8b8b8",
+"aa c #3b2423",
+"ab c #513628",
+"ac c #b3b4b3",
+"ad c #ddb48d",
+"ae c #b0b0b0",
+"af c #a9795a",
+"ag c #302018",
+"ah c #623f32",
+"ai c #180d07",
+"aj c #aaaaaa",
+"ak c #dbad81",
+"al c #d3946c",
+"am c #24140c",
+"an c #eca16a",
+"ao c #bc8e69",
+"ap c #dd996f",
+"aq c #502b20",
+"ar c #ac794c",
+"as c #c2885b",
+"at c #f9d49e",
+"au c #2b170c",
+"av c #fdd198",
+"aw c #b77f5a",
+"ax c #23140e",
+"ay c #fde3af",
+"az c #b37d56",
+"aA c #1c1007",
+"aB c #8a8a8a",
+"aC c #bfbfbe",
+"aD c #fdc784",
+"aE c #271c15",
+"aF c #efa973",
+"aG c #fabf81",
+"aH c #cb926a",
+"aI c #28150c",
+"aJ c #dea776",
+"aK c #808080",
+"aL c #f9b780",
+"aM c #807e80",
+"aN c #f9b580",
+"aO c #cec7bc",
+"aP c #1e120c",
+"aQ c #1b0e09",
+"aR c #f7b474",
+"aS c #f9c88d",
+"aT c #a97059",
+"aU c #786157",
+"aV c #7f4d33",
+"aW c #e1ba89",
+"aX c #805441",
+"aY c #331f1d",
+"aZ c #7f7b78",
+"a0 c #91654b",
+"a1 c #fcc989",
+"a2 c #fceec1",
+"a3 c #160c07",
+"a4 c #b68362",
+"a5 c #3b261e",
+"a6 c #d38c64",
+"a7 c #39221c",
+"a8 c #fdf1cf",
+"a9 c #98684b",
+"b. c #332216",
+"b# c #aa7356",
+"ba c #aeaca9",
+"bb c #784a3c",
+"bc c #0a0908",
+"bd c #edac70",
+"be c #251912",
+"bf c #9c7252",
+"bg c #915844",
+"bh c #c7bba7",
+"bi c #3e251a",
+"bj c #4a4a4a",
+"bk c #9a6650",
+"bl c #6d4431",
+"bm c #845141",
+"bn c #f5b27b",
+"bo c #473326",
+"bp c #977864",
+"bq c #fbc58e",
+"br c #fdca86",
+"bs c #9d9a98",
+"bt c #fdc486",
+"bu c #404040",
+"bv c #100a07",
+"bw c #f5ae67",
+"bx c #784735",
+"by c #fdce89",
+"bz c #696968",
+"bA c #dd9d6d",
+"bB c #fcdba9",
+"bC c #160d06",
+"bD c #fdd6a0",
+"bE c #faba86",
+"bF c #9d9391",
+"bG c #fbdfab",
+"bH c #674031",
+"bI c #565555",
+"bJ c #ab7656",
+"bK c #202020",
+"bL c #f9eaca",
+"bM c #b07551",
+"bN c #f5ad77",
+"bO c #3a3029",
+"bP c #613c2b",
+"bQ c #a77252",
+"bR c #452820",
+"bS c #3f2724",
+"bT c #2c170e",
+"bU c #9d8769",
+"bV c #59332d",
+"bW c #efb988",
+"bX c #a06c4b",
+"bY c #845a40",
+"bZ c #040201",
+"b0 c #8b533d",
+"b1 c #a4a19e",
+"b2 c #5b3f32",
+"b3 c #2f1b14",
+"b4 c #b2704c",
+"b5 c #a67054",
+"b6 c #714b37",
+"b7 c #f0a66b",
+"b8 c #4f3326",
+/* pixels */
+"ajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajaj",
+"ajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajaj",
+"ajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajaj",
+"ajajajajajajajajajajajajajajaj.#akak.3#Hajajajajajajajajajajajajajajajajajajajajajajajajajajajaj",
+"ajajajajajaj#o.v.v.v.v.vbFbpbP#4bnaN.9aW#1ajajba#1ajajajajajajajajajajajajajajajajajajajajajajaj",
+"ajajajajajbFaTala.a.aJbAaH.O#V.YbNaRbwataLaoao.p#t#A#1ajajajajajajajajajajajajajajajajajajajajaj",
+"ajajajajb1afaHbA#2#z#Q#Q#qas#q#vbd#QbwaS.VbN.8.9brbw.9#1ajajajajajajajajajajajajajajajajajajajaj",
+"ajajajajaZaras.0.f.9#X#w.R.R#q.Xb7.fbwbBbtbn.8aL.t#P#SaGad.3bhbh#Hajajajajajajajajajajajajajajaj",
+"ajajajaj#jaz.x#8.f.p.K#Ob4.ObA.Q.X.f#zbt.pbNbNbnaN#Pa1#P#SbrbyavaWajajajajajajajajajajajajajajaj",
+"ajajaj#d.g#ha6#vaFat.K#ObM#hal.Q.f#Qbwa1.8aFbN#xaNaGaDbtbt.1#K.1#A#1ajajajajajajajajajajajajajaj",
+"ajajaj#jaw.x#8.8aF.Da2.Xar.xap.Y.8.tay#l.X#4aFb7b7.taGbtbraD#tav#3ad#Hajajajajajajajajajajajajaj",
+"ajaj.qbb.R.c.Qan#z.KbG#O#Ma6bAaF#z.ta8ay.X.Q#4b7#Qbq#taD.1a1.1avbD.6adbaajaj#oajajajajajajajajaj",
+"ajajaU.gbM.c#4b7aR.K.Ebd#Ma6.YbEbEa1a8#l#v#.anbNbNbDa8aL.Vbybyby#tav#A.3#Hajajajajajajajajajajaj",
+"ajajb2.m#m#Map#c.p#3#l.0b4#q.YbN.9.6a8#3bA#.#caL.9bBa8#S.tby.1#K.1#t.6bB.3b1ajacaeajajajajajajaj",
+"ajajbR.mb0#Mapa.aF.6bB#hb4.z#4aFaL#3a8#l.Y#.#c#PaDaya8bqbN#ta1a1ay.1.Eaya2.#aj#D.qaj.qbjacacajaj",
+"ajaj.UaX.k#9alap.z.0bW#9.n#M#4#Q.t#la8#3.Y#.bw.V#Pa2a2#t#cbtaDava8bDavay.D#kaj.qajaj.qbuaKajajaj",
+"ajaj.rbobPbkao#V#m#mazbx.k#m.x.Q#4.p#la1.Q.Y#x.pavbLa2#S#Q#t.6bGa8by#PbDatad#Hajajajajajajajajaj",
+"ajaj.H#0#sbx.y.gbgbm.gahbx.naw.c#V#8bd.X.zap#x.pav.DbG.V#Q#tava2a2avaGbW#XaW#HajajajajaMacaOajaj",
+"ajaj.iaYbR#y.Pblbbbg#Nal#kaHbJ#rb0.nbX###ma6#xaNbE#t.pbNbN#K#3a8.DbD#wbWbWad.#ajajajajbjajbIajaj",
+"ajajaj.r#0abamabaT#CbMaJatbG#G.G.k.Pbx.yaV#Va..Y#caL.VanaR.Eaya8.D#3bWakakakaoajajajaj.qbzajajaj",
+"ajajaj.M.jafbQal#k.ObMapbWbGbGbf.j.lbR.j#sb0#9#Mb4.c#q#4bE#tbDa2av#n#kaH#k#kbUajajajajaOajajajaj",
+"ajaj.HbJap.Ya.apaHao.hbM.c#8bG#GbiagauamaEaa#e.l.j.Pb0b4bn.V.E.1#wbWaHak#k#Gbfb1ajajaCaB.qajajaj",
+"ajb1aVas#w#A.Xa6#hao#Ubkbg#mao.Z.Cauau.ube.W.W.W#ebP.P#aas.Q.Qbd#qasaH#k#k#G.Zbsajac#DbIajajajaj",
+"ajbpaV#faJat#O#q.Rao#paX.2aV.dboauauaI.I#gb..C.CaI.Aaxaq.J.J.J#f#par#haH#kaf.Z.S#o#T.Majajajajaj",
+"aj.v#a#a.Rat#AalawarbfaX.7#yaaaPam.ua3#B#gauauaIaIaEai.CbTauauaq.2b5a4aHaHa4a0bOac#J#Jajajajajaj",
+"aj#o.2#abMaW#Aala4b5#Eblah#7#u#ZbCbCbC.I#u.u.Cax#gaQ.IaI.TamambVbmb5.h#CaHa4a0#RbK.....MajaeaCaj",
+"ajaj.S.Pbx#9awbQ#E.2ahah#y#7.s#W#ZaiaAaAbC#Y#B.I#g#u#W.T.o.Uah.g.m.yaT.O#8arbQa0#Y....#YaBaCbsaj",
+"ajajb1#s#s#s#s#s.PbV.7bpbpb2aaaY.saibCaAaAaiaAaAaAag#L#jbp.g.J#E#I.maT#G.O##bMbQa9aP......bObjaj",
+"ajajajaZ.a.a.a.a#L#I.3aoao.dah.Ua5.Tam#gaAaAam.T.C#0aq.ybJb#bfbQ#p#p#rbkb#azarar#fb6.5....aB#daj",
+"ajajajaj.q.FbC.I.Cbl.h#C#Cbf.maUb6.L.WaYauau.baY.W#LbHa9bQ#p.g.g#I#I#E#I.hazar#farbX.2bZ...4.M.q",
+"ajajajajaj.q.o.I.aaq#sbY.e.e.g.e.Z#jb2.W#F#F#5aEagbRbY.G.J#IbY.2bbblb6a0.haw##bQ#9#NbXb8bZ.....4",
+"ajajajajajajbsaUam.Tbi#sbHaX#I.g.Z.daUagag#5#5#5b.ah.7blbPbP#sbP#Rabb6.dafaza4b5aTb5#m#abibv..aK",
+"ajaj#oajajajajajbs.Haab3aq#s#s#s.jb6b2.oaaaYaYbS#6abb8bS#7.o.o.o.A.UbH#Ia9##awbM#N#U#Ua9#e#u...q",
+"ajajajajajajajajajaj#o.S.L#Lbiauaua5.CauaYb3auaE#0aE#g#u.Ia3aE.F.F#6ahbb.maT.h.h#N#9#U#Uah#bbcaj",
+"ajajajajaKbjajajajajajajajbF#d.H.r.La7#6.bb3#g#WaEamambTau.b.F.F.F#e.UbHbmbk#U.hbJ.haT#Ubl#ubKaj",
+"ajajajajbubj.qajajajajajajajajajajajajaj#J....#YaxaIauauauaubT.Fa5#6#6ahbbbg.ybQ.haTaTa9abbi#Jaj",
+"ajajajajajajajajajajajajajajajajajajajajbI.......5#B.b.Cauauaub3#7#7.o.Ubl.2.G#r#UbQ#rbYb8b8#iaj",
+"ajajajajajajajajajajajajajajajaKajajajaj#Y........bZ#gaaauauauau.W.o.L.l.UbHbx.m.ga0#E#s.A.a.5#D",
+"ajajajajajajajajajajajajajajajaKaj.Mbubj............bZ#Fa7auauauau.F.LbS.L#RbHbbaXbYaX.l.AaUacaj",
+"ajajajajajajajajajajajajajajajajaj.i.4bIbjbKbc........#g.W.CauauaubTboaa.UbV#yb6bxaXbP.l.A#iacaj",
+"ajajajajajajajajajajaj#T.wajajajbIajbI.i.4ajaj.4......#Y.Wauauauauaub..L.Lbob8b2ah#6#6#ebi#Dajaj",
+"ajajajajajajajajajajaj.Nbu.qajajajajaKaj.qajaj.4......bvbeaP#WaIauaubTb.a5bob.b.b.a5#e#6b3.iajaj",
+"ajajajajajajajajajajajaKaKaKaeaj.Majajajajajajbzbu#Jbc..bvax#ua3bC.u.u.uaibe#Fb3.b.oaZbs#TaZajaj",
+"ajajajajajajajajajajajajajbKaKaj.iajajajajajajajajaj.q.....5#Y#gbva3#Ba3.s#Wb3.b#b.H#HajaCaBbjaB",
+"ajajajajajajajajajajajajaj.iaBajajajaj.iajajaKajaKaj#dbu.4.BaBbcaBaCbI.5.5aM#daM.N#Dajajajajaeaj",
+"ajajajajajajajajajajajajajajajajajajajaB.qajaj.iajajaMajaCaBa8a#aj.qaCaCbjajajajae.ibz.iajajajaj",
+"ajajajajajajajajajajajajajajajajajajajajajajajbuaBajajacaBaBaeaBajajajaOaCajajajaja#.qaCajajajaj",
+"ajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajajaj"
+};
+SIMPLE  =                    T                                                  BITPIX  =                    8                                                  NAXIS   =                    2                                                  NAXIS1  =                   48                                                  NAXIS2  =                   48                                                  HISTORY Written by XV 3.10a                                                     END                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªª@Šªª³ŠŠ°ŠªªªÇ¾ªªªª¸•¾ªªªªªªªªªªªªªªªªªªªªªªªŠ•ªªŸªªª¾Šï¸ª•¾¾Jªªª°ŸhŸªªªªªªªªªªªªªªªªªŸŠªªªªŸªª€ª€ª„@_‡Š	Š¾U„?dªªªª°ªªªªªªªªªªªªªª €ªŸªªªªªªªªª•   "j¨ª¾ŠJŠªªªªªªªªªªª€€€°ªuªªªªªªh@*	  "/{šp{ªªªªªªªªªªªªª?@•ªªªª€ª•ªª_   %+7%%%+-2 ŸªªªªªªªªªªªªªpªªªUªUŸ_ªª_   '%557:FI22-+dªªªªªªªªªªªªªªªªªªªŸ_UJ 	    '7+=?GTU`F53G³ªªªªªªªªªªªªªªªª€ªu@J      (*5.5CKW`d`53g³ªªªªªªªªªªªªªªªª€ªªªª    +'/55=KUmrpj>3&dªªªªªªªªªªªªªªªªªªªªU   " ../=O\dwzwd::Gªªªªª@J•ªªªªªªªªªªªªª*  *+22IWho†€€s=+*ªªªªª€Jªªªªªªª–„jL5(2" "***-=K`tz†ƒ†€zO ªªªªªªªªªªª§u5%++% "**2IWm€††€}zzI	ªªª§ªªªªªšj+ 6>>>:TF/+%%.2=:..///3=KhsˆŒƒ€zzs- •ªªªªªªšg+>K`hrrig$$   %IbOFF>FC=Ti„‰~€~r]+ €ªªªªª•/&6>dwwrwr^F' $0dd`hd\WOTp†Œˆ}€x:  _ªªªª•*O†’’{mgT5'%"%'%Ksyrrhhjh†‰ƒ{ƒx\ _u•ªªª{&&&&%h²˜˜iI=+"6oƒ{yywt‰ƒƒ{T  Š„ªªª¡>>>>>D?bF+%$%^r`jhm€¢’ˆƒs   2JªªªuDU}Œj\IIG./=Irmo€’¤ƒp  Š¾šªª§\]ƒ¿Ì£~jOI.?`~†’ŸpC   uª°¾ªª]]ØÌ£Œƒ{`bG+6\~ŸŸp2³**ªªªªªªZ{²Ø¹¡˜y`\Zi7%36```{yƒšŸ«„ru§puªªªªªª¡Z”¿Ì±žš˜zthr˜r'''-FD]”¦¦¸¡”Ÿ««¢ršª³dUªªªªªªjƒ©¯¶©Ÿ˜†ƒ”¤à¢+$+-5:DbÀÇ×Ò¿ÃŸµ«¢{¡ªª¾Š•ªªªªªªu:„£«’ƒ©Ãàà{:50:>b}„”¡ªÇÒÚë×Ù«Ÿ««‰ªªªªÇªªªªªªªL"==€’ƒ²Øà¢dLDUoZŒ¶¯¸ÅÇ²Á×ãïèÝÃµµµ˜ªªªª•hªªªªªŸ%0GDOWh€£«Ÿƒwbkxˆrž¾ÄÇÒÉ½½ÔÝïèÚ¿ÃÃ¼¦ªªªªJªUªªªªj">Uorh`rIUkŒ”Œ¤¸±–©¾É×èàÇ»Ò×ëë×ÉÃÓ¿¨ªªªª³ÇªªªªL7Ft˜Œrr‰ULrš¦ªÉßÐ¦¯¾É×êëË»ÒÕàïÓÍÚØ¼¨ªªªªªªªªªªª=`L}£©–­Ã}k„ª»ÄßïÝ¯Ÿ»ÇÍëëÒ¸ÍÏ×ïÚ×ãè«ª•ªª•@€ªªªªª0mb„©¶¸ÕÞš–ª¸ÅÝïß¯Ÿ¸ÍÏãïÎ½ÒÐÐãÒ×ãë¦ªd•ª•J³³ªªªªFmr„©¸ÉÝß­¡¯½ÃÕïÝ«Ÿ¸ÅÃÞïËÄÓÒÔÒÒÕÞ²¡ª³°ªªªªªªªªªgrƒ”ª¶Áï×¸„ž¯ÇÇÐïß¯Ÿ²½½ÚïÅÇÓÓÓÒ×Ì²¨ªªªªªªªªªªªªª•W”¦²¾ïà¹„ž«¸¾Äïã±¦ª¶»ÎÒÏÒÐÒ×ÚÕ¼¬ªª§ªªªªªªªªªªªª^Œš¤³¸èë±ƒš©¯³Äãß±ª¸¶¶ÄÉÍÐÏÒ×Ý¼¨ªªªªªªªªªªªªªªªª„ršž¯¸Øï¹ƒš£¦´»»Ð³¸½¾ÄÉÏÍÍÒÔÒÌ°ªªªªªªªªªªªªªªªªªª^‰š¤´Éï¹’«¦±´¾ÍÉ½½ÀÄÍÐÍËÐÓ×¿ªªªªªªªªªªªªªªªªªªª{ƒ”­´ÃÓ¿¡±¶´»ÞÍÀ³ÅÄÍËÉ¼²¼¼¨ªªªªªªªªªªªªªªªªªªª¡„Ÿ«»¾»»¡”¡¯¸»»ÏÇ½³ÃÐ»Ã°ªªªªªªªªªªªªªªªªªªªªªªªªª–€£¶¶²«Ÿ’Œ¯½Á»ØÅ˜˜ÉÒÌ°ªªªªªªªªªªªªªªªªªªªªªªªªªªª§–FªÀÄÃ¿°ªª¬°ªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªª¦µµ²¨ªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªªª                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                

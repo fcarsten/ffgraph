@@ -1,0 +1,99 @@
+
+There are two ways to use the library. The first one is to use it as
+a new graph data-type for your graph algorithms. The second one is to
+bind data to a graph. The second way is normally used if you have
+any data which skeleton structure is a graph, e.g. data-flow
+graphs. The library helps you to maintain and work with your data
+and gives you powerful features to display the data.  The main
+classes to access the library are {\bf FFGraph}, {\bf
+  FFGraphClass}, {\bf FFNodeClass} and {\bf FFEdgeClass}. In
+addition there are two data types {\bf FFNode} and {\bf FFEdge}
+which are pointers to {\bf FFNodeClass} and {\bf FFEdgeClass}.
+{\bf FFGraph} is a container for {\bf FFGraphClass} objects. The
+user has no direct access to the class {\bf FFGraphClass}. The
+user can call methods on {\bf FFGraphClass} objects by using the
+\verb|->| operator on {\bf FFGraph} objects. E.g. to create a new
+graph and add a node to the graph you would write:
+
+\bigskip
+
+{\tt  
+FFGraph g; \\
+g\verb|->|addNode(); \\    
+}
+
+\bigskip
+
+The reason for this is the overloaded \verb|->| operator in {\bf
+  FFGraph} which passes all method calls to the underlying {\bf
+  FFGraphClass} object. Copies of {\bf FFGraph} objects share the
+same {\bf FFGraphClass} object. This allows an efficient garbage
+collection and protects the user from making any of the usual pointer
+errors like uninitialized pointers or pointers to invalid addresses. If
+you want a copy of a graph you can use the method {\bf
+FFGraphClass::copy(...)}. However {\bf FFNode} and {\bf FFEdge} are
+only pointers, for efficiency reasons so beware\footnote{Using
+  the container mechanism for FFNode and FFEdge would slow down
+  the library by 30\%}!  For a detailed description of all
+methods of the classes {\bf FFGraph}, {\bf FFGraphClass}, {\bf
+  FFNodeClass} and {\bf FFEdgeClass} see
+sections\vref{standard_classes}.
+
+The following data types which are not C++ classes are defined in
+the library. 
+
+\begin{itemize}
+
+\item{\bf BOOL}
+  
+  {\bf BOOL} is a boolean data type with the two values {\bf YES}
+  and {\bf NO}. 
+
+\item{\bf FFCoord}
+
+  {\bf FFCoord} is a floating point data type.
+  
+\end{itemize}
+
+If you have a label that should be bound to every graph, node or 
+edge, you can use the methods
+
+\begin{itemize}
+
+\item{\bf void addDefGraphLabel(FFGraphLabel *)}
+
+\item{\bf void addDefNodeLabel(FFNodeLabel *)}
+
+\item{\bf void addDefEdgeLabel(FFEdgeLabel *)}
+
+\end{itemize}
+
+to specify default labels for them.\\
+
+\bigskip
+
+The library uses two kinds of error handlers:
+
+\begin{itemize}
+
+\item{\bf ffError(errGrade, errKind, char *file, int line)}
+
+\item{\bf ffError(errGrade, char *msg, char *file, int line)}
+
+\end{itemize}
+
+ The library calls these functions whenever an error {\bf kind} or
+{\bf msg} of grade {\bf grade} occurred in file {\bf file} at line
+{\bf line}. The values of {\bf grade} and {\bf kind} are defined in
+{\bf ffError.h}.  If you want to display errors differently, you can
+tell the library to use your own error-handler by calling:
+
+\begin{itemize}
+
+\item{\bf setErrorHandler(kindErrorHandler, charErrorHandler)}
+
+{\bf kindErrorHandler} and {\bf charErrorHandler} are defined in {\bf
+ffError.h}. If you pass {\bf NULL} as a handler, the handler remains
+unchanged.
+
+\end{itemize}

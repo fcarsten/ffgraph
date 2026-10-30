@@ -1,0 +1,38 @@
+#
+# Makefile.tail.common
+#
+# Definition des Zieles dependimpl, welches die
+# Auslagerung der Dependencies in die Datei
+# Makefile.dependencies ermoeglicht
+#
+
+
+dependimpl:
+	@echo "adding dependencies in `pwd`"
+	@$(CPP) $(DEPEND_DEFS) $(INCLUDES) -M $(srcs) | $(pvtdir)/contrib/shortinc \
+	> Makefile.dependencies
+.PHONY: dependimpl
+
+# subdependimpl erstellt Dependencies fuer Directories, bei denen
+# die .o Files im Unterdirectory $(OFILE_DIR) stehen
+#
+
+subdependimpl:
+	@echo "adding dependencies in `pwd`"
+	@$(CPP) $(DEPEND_DEFS) $(INCLUDES) -M $(srcs) | \
+		awk '{ if ($$1 != prev) { if (rec != "") \
+			printf("$$(OFILE_DIR)/%s\n", rec); \
+                	rec = $$0; prev = $$1; } \
+	                else { if (length(rec $$2) > 78) { \
+				printf("$$(OFILE_DIR)/%s\n",rec); rec = $$0; } \
+                	else rec = rec " " $$2 } } \
+	                END { printf("$$(OFILE_DIR)/%s\n",rec) }' | \
+		sed -e s/"$$(OFILE_DIR)\/ "/""/g | \
+		$(pvtdir)/contrib/shortinc \
+	> Makefile.dependencies
+.PHONY: subdependimpl
+
+
+include Makefile.dependencies
+
+

@@ -1,0 +1,220 @@
+\documentclass[a4paper]{article}
+
+% \usepackage{german}
+% \usepackage{fancyheadings}
+\usepackage{a4}
+\usepackage{xspace}
+\usepackage{longtable}
+\usepackage[english]{babel,varioref}
+\usepackage{bnf}
+\usepackage[dvips]{graphics}
+\usepackage[dvips]{epsfig}
+\usepackage{times}
+% \usepackage{floatflt, epsfig}
+
+\font\fmilogofont=fmilogo15 scaled\magstep0    
+\font\skriptuni=skriptuni scaled\magstep0      % 
+
+\topmargin -0.5 cm
+\oddsidemargin 0cm
+\evensidemargin 0cm
+\textwidth 16cm
+\textheight 22.2cm
+\parindent 0.5cm
+
+\input{epsf} 
+\newfont{\bfsf}{cmssdc10 scaled 1000}
+\newfont{\bfsfsm}{cmssdc10 scaled 800}
+\newcommand{\meta}{{\sf META-Frame}}
+
+\newcommand{\bnfterm}[1]{\underline{\tt #1}}
+\newcommand{\bnfstar}{\mbox{$^*$}}
+\newcommand{\bnfplus}{\mbox{$^+$}}
+\newcommand{\bnfchoice}{\mbox{$\,\mid\,$}}
+\newcommand{\bnfempty}{\mbox{$\lambda$}}
+
+\setlength{\parindent}{0pt}
+
+\nonfrenchspacing
+\sloppy
+\raggedright
+
+
+\begin{document}
+
+% \initfloatingfigs
+
+%----------------------------------------------------------------------------
+% TITLE AND STUFF
+%----------------------------------------------------------------------------
+
+
+\footskip5cm
+\thispagestyle{empty}
+\begin{center}
+{\skriptuni UNIVERSITaTPASSAU} \\
+\medskip
+
+%\ \\
+{\large {\sf Fakult\"at f\"ur Mathematik und Informatik}} \\
+%{\sc D--94030 Passau} \\
+\ \\
+\ \\
+{\fmilogofont P}
+\ \\
+\ \\
+\ \\
+\ \\
+{\Large {\bf The ffgraph Library}}\\
+\ \\
+\ \\              
+\ \\
+\ \\
+
+
+Carsten Friedrich\\[4mm]
+Lehrstuhl f\"{u}r Informatik \\
+Universit\"at Passau\\
+Innstr. 33\\
+D-94032 Passau (Germany)\\
+tel: +49 851 509.3090 \\
+fax: +49 851 509.3092 \\
+{\tt friedric@fmi.uni-passau.de}\\
+\ \\
+\ \\
+\ \\
+\ \\
+\ \\
+\ \\
+\ \\
+MIP-9520 \\
+Dezember 1995 \\
+\end{center}
+\ \\
+\ \\
+\ \\
+\ \\
+\ \\ 
+\ \\ 
+
+\newpage 
+\thispagestyle{empty}
+
+\newpage
+
+\pagestyle{headings}
+
+\tableofcontents
+
+\newpage
+
+\section{Introduction} 
+\label{introduction}
+
+\input ffIntro
+
+\section{Installing the library} 
+\label{installing}
+
+\input ffInstall
+
+\section{Using the graph library}  
+\label{using_the_graph_library}
+
+\input ffUsing
+
+\section{Compiling your program}
+\label{compiling_your_program}
+
+\input ffCompile
+
+\section{Labels}  
+\label{labels}
+
+\input ffLabels
+
+\section{Inspectors}
+\label{inspectors}
+
+\input ffInspector
+
+\section{Graphic contexts}
+\label{graphic}
+
+\input ffGraphic
+
+\section{Layouters}  
+\label{layouters}
+
+\input ffLayout
+
+\section{The important classes in detail} 
+\label{classes_in_detail}
+
+\subsection{Standard classes}
+\label{standard_classes}
+
+\input ffStdClasses
+
+\subsection{Label classes}
+\label{label_classes}
+
+\input ffLabelClasses
+
+\subsection{Graphic classes}
+\label{graphic_classes}
+
+\input ffGraphicClasses
+
+\section{The ffgraph graph editor} 
+
+A graph editor called {\bf ffgraph} is included in the
+distribution to give you an example of how to use the library.
+You can pass a list of graphs to {\bf ffgraph} which will be
+loaded and displayed.
+
+\begin{appendix}
+
+% \section{Copyright information} 
+
+% \input COPYRIGHT
+
+\section{The extended sgraph file format}
+\label{sgraph_file_format}
+
+\input ffSgraph
+
+\section{The class hierarchy}
+\label{the_class_hierachy}
+
+This figure shows the class hierachy of the most important
+classes in the library.
+
+\begin{figure}[htb]
+\fbox{\epsfig{figure=hierachy.eps}}
+\caption{The class hierarchy}
+\end{figure}
+
+\clearpage
+\newpage
+
+\section*{Acknowledgements}
+
+I am grateful to Prof. Bernhard Steffen, Andreas Cla\ss en, Dr. Ruth
+Wishart, Karlheinz Agsteiner and all of the \meta{} team for their
+constructive cooperation in the design and implementation of the ffgraph
+library.
+
+\newpage 
+
+\bibliographystyle{alpha}
+\bibliography{ffgraph}
+
+\end{appendix}
+
+\newpage
+
+\input{mips}
+
+\end{document}
+

@@ -1,0 +1,187 @@
+/*
+// Copyright 1994 Carsten Friedrich, Universitaet Passau
+//
+// $Author: holzmann $
+// $Date: 1996/01/09 12:31:51 $
+// $RCSfile: FFTclBasicWindow.h,v $
+// $Revision: 1.3 $
+// $State: Exp $
+//
+*/
+
+#ifndef FF_TCL_BASIC_WINDOW
+#define FF_TCL_BASIC_WINDOW
+
+#include <tk.h>
+#include <globdefs.h>
+
+#include <ffgraph/FFPoint.h>
+#include <ffgraph/FFMatrix.h>
+#include <ffgraph/FFWindow.h>
+#include <ffgraph/FFGraphWindow.h>
+#include <ffgraph/FFGraph.h>
+#include <ffgraph/FFNodeClass.h>
+#include <ffgraph/FFEdgeClass.h>
+#include <container/AVLMap.h>
+// #include "FFSugiInsp.h"
+// #include "FFSpringInsp.h"
+// #include "FFSugi.h"
+// #include "FFSpring.h"
+class FFLayoutLabel;
+
+#define initMatrix FFMatrix(FFPoint(1,0,0,0), FFPoint(0,1,0,0), FFPoint(0,0,1,0), FFPoint(300,200,0,1))
+#define invInitMatrix FFMatrix(FFPoint(1,0,0,0), FFPoint(0,1,0,0), FFPoint(0,0,1,0), FFPoint(-300,-200,0,1))
+								
+inline FFCoord rad(FFCoord x)
+{
+	return(x*M_PI/180);
+}
+
+typedef enum {
+  CREATING_EDGE =1,
+  ADD_POINT,
+  RM_POINT
+} modalModes;
+
+#define RADIUS 10
+
+class FFTclGraphInsp;
+
+class FFTclBasicWindow: public FFGraphWindow, public FFWindow
+{
+protected:
+  int tmpPoint;              // der gewaehlte Punkt in einer Kante
+  int width, height;
+  FFCoord labelXoff, labelYoff;
+  
+  BOOL showNodesFlag;
+  BOOL showEdgesFlag;
+  
+	BOOL alreadyInitialisized;
+// Gegeben
+ FFCoord alpha, beta, gamma;
+ FFCoord scale;
+ FFMatrix ctm;
+ FFMatrix invCtm;
+ FFMatrix projMatrix;
+ FFPoint viewPoint;	  
+
+  String canvas;
+	
+  AVLMap<String, FFGraphicNode *> nodeMap;
+  AVLMap<String, FFGraphicEdge *> edgeMap;
+  FFSet<FFGraphicNode *> currentNSet;
+
+  FFSet<FFLayoutLabel *> layouter;
+    
+  BOOL modal;
+  BOOL updateFlag;
+    
+  FFGraphicEdge *currentE;
+  
+  virtual String modifyEdge(FFGraphicEdge *e, String command);
+	virtual void _buildProjMatrix();
+	virtual void _hideLines();
+	virtual void _updateLayouter();
+	
+  virtual FFPoint _adjust(const FFPoint&,  FFPoint, 
+                          const FFPoint&, BOOL);
+
+  virtual FFPoint proj(const FFPoint&);
+  virtual FFPoint unProj(const FFPoint&);
+  
+public:
+	virtual FFGraphLabel *proto() const {return new FFTclBasicWindow;}
+  virtual void event(labelEvent, labelEventStruct *);
+
+	virtual void scaleXYZ(FFCoord , FFCoord , FFCoord );
+	virtual void rotateX(FFCoord);
+	virtual void rotateY(FFCoord);
+	virtual void rotateZ(FFCoord);
+	virtual void translate(FFCoord, FFCoord, FFCoord);
+	
+  virtual FFPoint adjust(FFGraphicNode *A, FFPoint B);
+  
+  virtual BOOL hasOwnInspector() const {return NO;}
+  virtual void init(const FFGraph& c);
+  virtual void adjustWindowSize();
+	virtual void setLabelOffset(int x, int y) 
+		{labelXoff=x/10.0; labelYoff=y/10.0; updateGraph();}
+  
+  virtual String addNode(FFGraphicNode *n);
+  virtual String addEdge(FFGraphicEdge *e);
+  virtual String addLabel(FFGraphicNode *n);
+  virtual String addLabel(FFGraphicEdge *e);
+
+  virtual void changeColor(FFGraphicNode *n, String& );
+  virtual String changeToIcon(FFGraphicNode *n, String& );
+  virtual String changeToCircle(FFGraphicNode *n);
+  virtual String changeToWindow(FFGraphicNode *n);
+  virtual void changeMask(FFGraphicNode *n, String& );
+  virtual void changeColor(FFGraphicEdge *e, String& );
+  virtual void changeLabel(FFGraphicNode *n, const String& );
+  virtual void changeLabel(FFGraphicEdge *n, const String& );
+
+  virtual void remove(FFGraphicNode *n);
+  virtual void remove(FFGraphicEdge *e);
+
+  virtual void removeLabel(FFGraphicNode *n);
+  virtual void removeLabel(FFGraphicEdge *e);
+
+  // wird u.a. bei verschieben aufgerufen
+  virtual void updateGraph(); 
+  virtual void updateGraph(FFGraphicNode *); 
+  virtual void updateGraph(FFGraphicEdge *);  
+  virtual void setSpline(FFGraphicEdge *, BOOL);
+  
+  virtual void setCurrent(FFGraphicNode *);
+  virtual void setCurrent(FFGraphicEdge *);
+  virtual void addToCurrent(FFGraphicNode *);
+  virtual void selectIfNot(FFGraphicNode *);
+  virtual void unsetCurrent();
+  virtual BOOL isCurrent(FFGraphicNode *n)
+		{return currentNSet.contains(n);}
+	virtual FFSet<FFGraphicNode *>& selectedNodes()
+		{return currentNSet;}
+
+// Die zwei Methoden werden benutzt wenn man sich nicht sicher ist ob das
+// Element wirklich selektiert ist.                              
+  virtual void unset(FFGraphicNode *n); 
+  virtual void unset(FFGraphicEdge *e); 
+
+  virtual int recall(Tcl_Interp *i, int k, char **c);  
+  const Tcl_Interp *getInterp() {return interp;}
+  virtual void sizeTo(int x, int y);
+  FFPoint getRange(const FFGraphicNode *);
+  
+  virtual void setUpdate(BOOL f) {updateFlag = f;};
+  virtual BOOL getUpdate() {return updateFlag;};
+  virtual void update() { FFWindow::update();}
+  
+  virtual void showNode(BOOL flag = YES);
+  virtual void hideNode() {showNode(NO);}
+
+  virtual void showEdge(BOOL flag = YES);
+  virtual void hideEdge() {showEdge(NO);}
+  
+  virtual int setTitle(const String &s) {return FFWindow::setTitle(s);}
+	virtual void setBusy() {Tcl_VarEval(interp, "setBusy ", NULL);
+										 update();}
+	virtual void unsetBusy() {Tcl_VarEval(interp, "unsetBusy ", NULL);
+											 update();}
+
+	virtual int mapWindow(){return FFWindow::mapWindow();}
+  virtual int unmapWindow(){return FFWindow::unmapWindow();}
+	virtual int withdraw(){return FFWindow::withdraw();}
+  virtual int iconify(){return FFWindow::iconify();}
+  virtual int deiconify(){return FFWindow::deiconify();}
+
+  String fsBox(String message= String("Select File:"), 
+               String type= String("*"), String name=String(""));
+  FFTclBasicWindow();
+  virtual ~FFTclBasicWindow();
+};
+
+#endif
+
+

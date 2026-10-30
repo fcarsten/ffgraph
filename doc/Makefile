@@ -1,0 +1,55 @@
+# Generated automatically from Makefile.in by configure.
+LATEX=/local/bin/latex
+DVIPS=/local/bin/dvips
+FIGTODEV=
+BIBTEX=/local/bin/bibtex
+
+DOCUMENT = ffgraph
+PSFILES = $(DOCUMENT).ps 
+
+EPSFILES = g5.eps hierachy.eps icons.eps inspector.eps springInsp.eps \
+        sugiInsp.eps
+        
+TEXFILES = ffInstall.tex ffIntro.tex ffLabelClasses.tex ffgraph.tex \
+        COPYRIGHT.tex ffLabels.tex ffLayout.tex ffSgraph.tex ffStdClasses.tex \
+        ffCompile.tex ffUsing.tex ffGraphic.tex ffGraphicClasses.tex \
+        ffInspector.tex
+
+all: $(PSFILES)
+.PHONY: all 
+
+$(DOCUMENT).dvi: $(TEXFILES) $(EPSFILES)
+	@echo Latex first run
+	@$(LATEX) $(DOCUMENT) > /dev/null
+	@echo Bibtex
+	@$(BIBTEX) $(DOCUMENT) > /dev/null
+	@echo Latex second run
+	@$(LATEX) $(DOCUMENT) > /dev/null
+	@echo Latex third run
+	@$(LATEX) $(DOCUMENT) > /dev/null
+.PHONY: $(DOCUMENT).dvi 
+
+clean:
+	rm -f *~ *.toc *.bak *.aux *.log *.blg \#* 
+
+distclean: clean
+
+realclean: distclean
+	rm -f *.ps *.dvi *.bbl
+
+cleanall: clean
+
+distcleanall: distclean
+
+realcleanall: realclean
+
+%.ps: %.fig
+	$(FIGTODEV) -L ps $< > $@
+
+%.ps: %.dvi
+	@echo Converting dvi to ps
+	@$(DVIPS) $<
+
+%.dvi: %.tex
+	$(LATEX) $<
+

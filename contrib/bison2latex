@@ -1,0 +1,58 @@
+#!/usr/local/bin/perl	 		
+# -*- perl -*-
+
+$seen = 0;
+
+print "\\begin{grammar}\n  [(colon){\$\\rightarrow\$}]\n  [(semicolon)\\\\\$|\$]\n  [(comma){}]\n  [(period){\\\\}]\n  [(quote){\\begin{bf}}{\\end{bf}}]\n  [(nonterminal){\$\\langle\$}{\$\\rangle\$}]\n";
+while (<>) {
+    if (/^%token\s*(.*)$/) {
+	foreach (split (/\s+/, $1)) {
+	    $token{$_} = 1;
+	}
+    }
+    if (/^%%/) {
+	goto end if $seen;
+	$seen = 1;
+    } else {
+	next unless $seen;
+    }
+    if (/^\s*(\w+)\s*:\s*(.*)\s*$/) {
+	$head = $1;
+	$head =~ s/_/\\_/g;
+	print "  <$head> : ";
+	&do_rest ($2);
+    }
+    if (/^\s*\|\s*(.*)\s*$/) {
+	print "     ; ";
+	&do_rest ($1);
+    }
+    if (/^\s*[^'];[^']\s*$/) {
+	print "     .\n";
+    }
+}
+end:
+print "\\end{grammar}\n";
+exit;
+
+sub do_rest {
+    local ($line) = @_;
+    foreach (split (/\s+/, $line)) {
+	$dummy = $token{$_} || /^'.*'$/;
+	s/^'(.*)'$/\1/g;
+	s/_/\\_/g;
+	s/\*/\$\\star\$/g;
+	s/#/\\#/g;
+	s/%/\\%/g;
+	s/\{/\\\{/g;
+	s/\}/\\\}/g;
+	s/\^/\\char94/g;
+	if ($dummy) {
+	    print "\"$_\" ";
+	} elsif (/^'(.)'$/) {
+	    print "\"$1\" ";
+	} else {
+	    print "<$_> ";
+	}
+    }
+    print "\n";
+}
