@@ -250,18 +250,18 @@ int lower_barycenter (int node, SNode *nodes, int level)
       tmpN = nodes[node].succ (ps);
 
       if (nodes[tmpN].indeg > 1)
-      {
-	// FIXME: both branches below return, so this loop never runs more
-	// than once (only the first predecessor is examined).  Probably the
-	// final 'return' was meant to come after the loop.  Behaviour kept
-	// as in the original pending a decision.
-	for (pp = nodes[tmpN].pred.first (); pp != 0; 
-	     nodes[tmpN].pred.next (pp))
-	  if (nodes[tmpN].point.v[0] < nodes[nodes[tmpN].pred (pp)].point.v[0])
-	    return (0);
-	  else
-	    return ((int) nodes[tmpN].point.v[0]);
-      }
+	{
+	  // Check *all* predecessors of the successor: if it lies left of
+	  // any of them, return 0 (= no preference, node stays put).
+	  // Otherwise fall through to the normal barycenter computation
+	  // (which yields the successor's x for outdeg == 1).
+	  // NOTE: originally an 'else return <succ x>' inside the loop made
+	  // it stop after the first predecessor.
+	  for (pp = nodes[tmpN].pred.first (); pp != 0; 
+	       nodes[tmpN].pred.next (pp))
+	    if (nodes[tmpN].point.v[0] < nodes[nodes[tmpN].pred (pp)].point.v[0])
+	      return (0);
+	}
     }
     
   for (ps = nodes[node].succ.first (); ps != 0; nodes[node].succ.next (ps))
