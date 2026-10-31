@@ -30,6 +30,9 @@
 #include <ffgraph/FFRandom.h>
 #include <ffgraph/FFShow.h>
 #include <signal.h>
+#include <vector>
+#include <cerrno>
+#include <cstdlib>
 #include <sys/time.h>  // gettimeofday(), struct timeval
 
 // This function is used if I want a conditional breakpoint by wrapping
@@ -40,6 +43,18 @@
 //  cerr << "Breaking ... " << endl;
 //  return -1;
 // }
+
+// A legacy positive integer first argument selects the empty-window mode.
+// Require the *entire* argument to be numeric so filenames such as
+// "2026.graph" are not mistaken for mode selectors.
+static bool isPositiveIntegerArgument(const char* argument)
+{
+ if (!argument || !*argument) return false;
+ errno = 0;
+ char* end = nullptr;
+ const long value = std::strtol(argument, &end, 10);
+ return errno == 0 && end != argument && *end == '\0' && value > 0;
+}
 
 int main(int argc, char **argv)
 {
@@ -81,8 +96,8 @@ int main(int argc, char **argv)
 
  // If arguments were supplied I try to open them as graphs.
 
- if((argc > 1) && (atoi(argv[1]) <= 0)) {      		
-   FFGraph tmpG[argc];
+ if((argc > 1) && !isPositiveIntegerArgument(argv[1])) {
+   std::vector<FFGraph> tmpG(static_cast<std::size_t>(argc - 1));
    
    for(int i=1; i<argc; i++)
     {			

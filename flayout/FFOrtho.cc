@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <vector>
 #include <string.h>
 
 #include <ffgraph/FFOrtho.h>
@@ -321,30 +323,23 @@ BOOL FFOrtho::_doSwap(int eins, int zwei, FFPoint dest1)
  return NO;
 }
 
-static int ffOrthoCmp(const FFNode *n1, const FFNode *n2)
-{
- return ( (((*n1)->getCoord()) >= ((*n2)->getCoord())) ? 
-          ((((*n1)->getCoord()) == ((*n2)->getCoord()))? 0 : 
-           -1) : 
-          1 );
-}
-
 BOOL FFOrtho::swapBadies()
 {
  BOOL didSwap=NO;
  int anzNodes = graph->getNumNodes();
- FFNode *knoten = new FFNode[anzNodes];
+ std::vector<FFNode> knoten;
+ knoten.reserve(anzNodes);
  
  const FFSet<FFNode> knotenS = graph->allNodes();
  int k=0;
  
  for(Pix i=knotenS.first(); i!= 0; knotenS.next(i))
   {
-   knoten[k++] = knotenS(i);
+   knoten.push_back(knotenS(i));
   }
  
- qsort(knoten, anzNodes, sizeof(FFNodeClass *), 
-       (int (*)(const void *, const void *)) ffOrthoCmp);
+ std::sort(knoten.begin(), knoten.end(),
+           [](FFNode a, FFNode b) { return a->getCoord() > b->getCoord(); });
 
 //  int minSwap= std::min(100, anzNodes);
 //  int topTen= std::max(anzNodes/2, minSwap);
@@ -383,8 +378,7 @@ BOOL FFOrtho::swapBadies()
      }
   }
  
- delete [] knoten;
- knoten = 0;
+ // knoten is automatically destroyed here.
  
  return didSwap;
 }
