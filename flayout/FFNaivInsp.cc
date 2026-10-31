@@ -77,10 +77,10 @@ int naivInspRecall(ClientData d,Tcl_Interp *i, int k, const char **c)
 
 FFNaivInsp::FFNaivInsp(FFGraphLabel *l) : FFTclInspector(l)
 {
- Tcl_CreateCommand(interp, "recall", 
+ recallCommand_ = Tcl_CreateCommand(interp, "recall",
                    naivInspRecall, 
                    (int *)this, 
-                   nullptr);
+                   recallCommandDeleted);
  String tmpS;
  
  if(getenv("FF_LIBDIR") == NULL)

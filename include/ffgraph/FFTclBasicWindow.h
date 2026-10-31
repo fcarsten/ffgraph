@@ -71,6 +71,19 @@ protected:
  FFCoord scale;
  
  BOOL alreadyInitialisized;
+ // Tcl commands hold this as ClientData; remove them before destruction.
+ static void projectionCommandDeleted(ClientData d)
+ {
+   static_cast<FFTclBasicWindow*>(d)->projCommand_ = nullptr;
+ }
+ static void unprojectionCommandDeleted(ClientData d)
+ {
+   static_cast<FFTclBasicWindow*>(d)->unprojCommand_ = nullptr;
+ }
+ Tcl_Command projCommand_ = nullptr;
+ Tcl_Command unprojCommand_ = nullptr;
+ // Only delete a selection handler installed by this instance.
+ bool ownsSelectionHandler_ = false;
 // Gegeben
  FFMatrix ctm;
  FFMatrix invCtm;

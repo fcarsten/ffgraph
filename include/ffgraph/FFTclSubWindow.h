@@ -20,6 +20,11 @@ class FFTclSubWindow: public FFTclBasicWindow
 {
 protected:
  String tkNode;
+ static void subRecallCommandDeleted(ClientData d)
+ {
+   static_cast<FFTclSubWindow*>(d)->subRecallCommand_ = nullptr;
+ }
+ Tcl_Command subRecallCommand_ = nullptr;
  FFNode parentNode;
  //  	Tk_Window windowId;
  
@@ -32,7 +37,7 @@ public:
  
  FFTclSubWindow(FFNode dad= NULL, Tcl_Interp *i=NULL, Tk_Window win=0, 
                 const String& w=cfEmpty, const String& id=cfEmpty);
- virtual ~FFTclSubWindow(){interp= 0;}
+ virtual ~FFTclSubWindow();
 };
 
 #endif

@@ -155,6 +155,33 @@ if(BUILD_TESTING)
   endif()
   add_test(NAME test_graph_ownership COMMAND test_graph_ownership)
 
+  # Ownership regression tests use the existing model and GUI archives.
+  add_executable(test_label_replacement tests/test_label_replacement.cpp)
+  target_link_libraries(test_label_replacement PRIVATE
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+  )
+  if(MATH_LIBRARY)
+    target_link_libraries(test_label_replacement PRIVATE ${MATH_LIBRARY})
+  endif()
+  if(DL_LIBRARY)
+    target_link_libraries(test_label_replacement PRIVATE ${DL_LIBRARY})
+  endif()
+  add_test(NAME test_label_replacement COMMAND test_label_replacement)
+
+  add_executable(test_tcl_command_lifetime tests/test_tcl_command_lifetime.cpp)
+  target_link_libraries(test_tcl_command_lifetime PRIVATE
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+  )
+  if(MATH_LIBRARY)
+    target_link_libraries(test_tcl_command_lifetime PRIVATE ${MATH_LIBRARY})
+  endif()
+  if(DL_LIBRARY)
+    target_link_libraries(test_tcl_command_lifetime PRIVATE ${DL_LIBRARY})
+  endif()
+  add_test(NAME test_tcl_command_lifetime COMMAND test_tcl_command_lifetime)
+
   add_executable(test_tcl_compat
       tests/test_tcl_compat.cpp
   )

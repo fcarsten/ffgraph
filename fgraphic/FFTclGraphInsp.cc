@@ -513,10 +513,10 @@ FFTclGraphInsp::FFTclGraphInsp(FFGraphLabel *g) : FFTclInspector(g)
  currentN = 0;
  currentE = 0;
  nodeIndex = edgeIndex = graphIndex =-1;
- Tcl_CreateCommand(interp, "recall", 
+ recallCommand_ = Tcl_CreateCommand(interp, "recall",
                    finspectorRecall, 
                    (int *)this, 
-                   nullptr);
+                   recallCommandDeleted);
   
  String tmpS;
  

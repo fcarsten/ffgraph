@@ -321,10 +321,10 @@ FFTclWindow::FFTclWindow()
   tmpS=String(getenv("FF_ICONDIR"));
  iconLibDir = tmpS;
  
-  Tcl_CreateCommand(interp, "recall", 
-                    fgraphWindowRecall, 
-		    (int *)this, 
-		    nullptr);
+  recallCommand_ = Tcl_CreateCommand(interp, "recall",
+                    fgraphWindowRecall,
+                    (ClientData)this,
+                    recallCommandDeleted);
 //  if(!boringMode)
 //    {
 //      tkToken = Tk_CreateTimerHandler (30000, fgraphWindowTimer, 
@@ -452,6 +452,11 @@ void FFTclWindow::updateInspector()
 
 FFTclWindow::~FFTclWindow()
 {
-  FF_TclEvalObjv(interp, {"destroyWindow"});
+  if (interp && !Tcl_InterpDeleted(interp))
+   {
+    if (recallCommand_)
+     Tcl_DeleteCommandFromToken(interp, recallCommand_);
+    FF_TclEvalObjv(interp, {"destroyWindow"});
+   }
 }
 

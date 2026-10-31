@@ -1288,15 +1288,15 @@ FFTclBasicWindow::FFTclBasicWindow() :  nodeMap(NULL), edgeMap(NULL)
  
  scale = 1.0;
  
- Tcl_CreateCommand(interp, "proj", 
-                   fgraphWindowProj, 
-                   (int *)this, 
-                   nullptr);
- 
- Tcl_CreateCommand(interp, "unproj", 
-                   fgraphWindowUnproj, 
-                   (int *)this, 
-                   nullptr);
+ projCommand_ = Tcl_CreateCommand(interp, "proj",
+                   fgraphWindowProj,
+                   (ClientData)this,
+                   projectionCommandDeleted);
+
+ unprojCommand_ = Tcl_CreateCommand(interp, "unproj",
+                   fgraphWindowUnproj,
+                   (ClientData)this,
+                   unprojectionCommandDeleted);
 }
 
 
@@ -1361,6 +1361,7 @@ void FFTclBasicWindow::init(const FFGraph& c)
      Tk_CreateSelHandler(w, XA_PRIMARY, XA_STRING, fgraphWindowSel, 
                          (int *)this, XA_STRING);  
 #endif
+     ownsSelectionHandler_ = true;
      mapWindow();
      update();
     }
@@ -1565,16 +1566,22 @@ FFPoint FFTclBasicWindow::getRange(const FFGraphicNode *n)
 
 FFTclBasicWindow::~FFTclBasicWindow()
 {
- if(interp)
+ if (interp && !Tcl_InterpDeleted(interp))
   {
+   if (projCommand_)
+    Tcl_DeleteCommandFromToken(interp, projCommand_);
+   if (unprojCommand_)
+    Tcl_DeleteCommandFromToken(interp, unprojCommand_);
+
+   if (ownsSelectionHandler_ && w)
+    {
 #if(TK_MAJOR_VERSION < 4)
-   Tk_DeleteSelHandler(w, XA_STRING);
+     Tk_DeleteSelHandler(w, XA_STRING);
 #else
-   Tk_DeleteSelHandler(w, XA_PRIMARY, XA_STRING);
+     Tk_DeleteSelHandler(w, XA_PRIMARY, XA_STRING);
 #endif
+    }
   }
- 
-//  Tk_DeleteTimerHandler(tkToken);
 }
 
 //

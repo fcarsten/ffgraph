@@ -71,14 +71,20 @@ int fgraphSubWindowRecall(ClientData d,Tcl_Interp *i, int k, const char **c)
 FFTclSubWindow::FFTclSubWindow(FFNode dad, Tcl_Interp *i, Tk_Window win,
                                const String& winName, const String& id)  
 {
- if(interp)
-  {
-   FF_TclEvalObjv(interp, {"wm", "withdraw", "."});
-   Tcl_DeleteInterp(interp);
-  }
+ // FFWindow/FFTclBasicWindow constructed a private interpreter, but
+ // subwindows borrow their parent's interpreter instead. Discard the
+ // private interpreter and its command tokens before adopting the parent.
+ if (interp)
+  Tcl_DeleteInterp(interp);
+ projCommand_ = nullptr;
+ unprojCommand_ = nullptr;
  
   parentNode = dad;
   interp=i;
+  // Prevent Tcl_DeleteInterp in the parent from freeing this interpreter
+  // while a subwindow still holds a callback into it.
+  if (interp)
+    Tcl_Preserve(interp);
   w=win;
   canvas=winName;
   tkNode=id;
@@ -86,33 +92,33 @@ FFTclSubWindow::FFTclSubWindow(FFNode dad, Tcl_Interp *i, Tk_Window win,
   
   // Tcl_CreateCommand registers its own command name; no heap copy needed.
   const String commandName = String("SubRecall.") + canvas;
-  Tcl_CreateCommand(interp, commandName.c_str(),
-                    fgraphSubWindowRecall,
-                    (ClientData)this,
-                    nullptr);
+  if (interp && !Tcl_InterpDeleted(interp))
+    subRecallCommand_ = Tcl_CreateCommand(interp, commandName.c_str(),
+                                          fgraphSubWindowRecall,
+                                          (ClientData)this,
+                                          subRecallCommandDeleted);
 }
 
-int fgraphSubWindowSel(ClientData data, int off, char *buffer, int maxBytes)
+FFTclSubWindow::~FFTclSubWindow()
 {
-  return ((FFTclBasicWindow *)data)->exportSelection(off, buffer, maxBytes);
+  // Parent and subwindow share the interpreter and main Tk window.
+  // Remove only our command; the base classes must not withdraw the
+  // parent's window or delete its projection/selection callbacks.
+  Tcl_Interp *borrowedInterp = interp;
+  if (borrowedInterp)
+   {
+    if (!Tcl_InterpDeleted(borrowedInterp) && subRecallCommand_)
+      Tcl_DeleteCommandFromToken(borrowedInterp, subRecallCommand_);
+    interp = nullptr;
+    Tcl_Release(borrowedInterp);
+   }
 }
 
 void FFTclSubWindow::init(const FFGraph& c)
 {
   FFTclBasicWindow::init(c);
-
-  if(!alreadyInitialisized)
-  {
-    alreadyInitialisized=YES;
-#if(TK_MAJOR_VERSION < 4)
-    Tk_CreateSelHandler(w, XA_STRING, fgraphSubWindowSel, (int *)this, 
-                        XA_STRING);  
-#else
-    Tk_CreateSelHandler(w, XA_PRIMARY, XA_STRING, fgraphSubWindowSel, 
-                        (int *)this, XA_STRING);  
-#endif
-    // Tk_CreateSelHandler(windowId, XA_STRING, fgraphSubWindowSel, (int *)this, XA_STRING);  
-  }
+  // A subwindow borrows the parent's Tk_Window. Registering a selection
+  // callback here would overwrite the parent's handler with a pointer to
+  // this object, which becomes dangling on subwindow deletion.
+  alreadyInitialisized = YES;
 }
-
-

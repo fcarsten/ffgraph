@@ -175,13 +175,16 @@ void FFNodeClass::assignLabel(FFNodeLabel *l, int i)
 
 void FFNodeClass::setLabel(const MPlex<FFNodeLabel *>&l, BOOL doFree)
 {
+ // Replacing the container with itself must not delete its own entries.
+ if (&l == label)
+  return;
  if(l.length() ==0)
   return;
  if(l[l.low()]->node->derGraph == derGraph)
   {
    for(int j=label->low(); j<label->fence(); label->nextInt(j))
     {
-     if(doFree)
+     if(doFree && (*label)[j] != l[j])
       delete (*label)[j];
      
      (*label)[j] = l[j];
@@ -201,6 +204,9 @@ void FFNodeClass::setLabel(FFNodeLabel *l, int i, BOOL doFree)
 {
  if((label != NULL) && (i >= 0))
   {
+   // An existing label may be passed back as its own replacement.
+   if ((*label)[i] == l)
+    return;
    if(doFree)
     delete (*label)[i];
    l->index=i;
@@ -212,6 +218,8 @@ void FFNodeClass::setLabel(FFNodeLabel *l, int i, BOOL doFree)
    if(k <0)
     k= derGraph->addNodeLabel(l);
 
+   if ((*label)[k] == l)
+    return;
    if(doFree)
     delete (*label)[k];
    l->index=k;

@@ -154,6 +154,9 @@ void FFEdgeClass::assignLabel(const MPlex<FFEdgeLabel *>&l)
 
 void FFEdgeClass::setLabel(const MPlex<FFEdgeLabel *>&l, BOOL doFree)
 {
+ // Replacing the container with itself must not delete its own entries.
+ if (&l == label)
+  return;
  int k=l.length();
  if(k ==0)
   return;
@@ -162,7 +165,7 @@ void FFEdgeClass::setLabel(const MPlex<FFEdgeLabel *>&l, BOOL doFree)
   {
    for(int j=label->low(); j<label->fence(); label->nextInt(j))
     {
-     if(doFree)
+     if(doFree && (*label)[j] != l[j])
       delete (*label)[j];
      l[j]->index=j;
      (*label)[j] = l[j];
@@ -197,6 +200,9 @@ void FFEdgeClass::setLabel(FFEdgeLabel *l, int i, BOOL doFree)
 {
  if((label != NULL) && (i >= 0))
   {
+   // An existing label may be passed back as its own replacement.
+   if ((*label)[i] == l)
+    return;
    if(doFree)
     delete (*label)[i];
    l->index=i;
@@ -208,6 +214,8 @@ void FFEdgeClass::setLabel(FFEdgeLabel *l, int i, BOOL doFree)
    if(k <0)
     k= derGraph->addEdgeLabel(l);
    
+   if ((*label)[k] == l)
+    return;
    if(doFree)
     delete (*label)[k];
    l->index=k;

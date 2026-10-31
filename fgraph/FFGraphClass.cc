@@ -694,6 +694,8 @@ void FFGraphClass::setGraphLabel(FFGraphLabel *l, int i, BOOL doFree)
 {
  if(i >=0)
   {
+   if(graphLabel[i] == l)
+    return;
    if(doFree)
     delete graphLabel[i];
    l->index=i;
@@ -706,6 +708,8 @@ void FFGraphClass::setGraphLabel(FFGraphLabel *l, int i, BOOL doFree)
     k= addGraphLabel(l);
    else
     {
+     if(graphLabel[k] == l)
+      return;
      if(doFree)
       delete graphLabel[k];				
      l->index=k;
@@ -716,6 +720,8 @@ void FFGraphClass::setGraphLabel(FFGraphLabel *l, int i, BOOL doFree)
 
 void FFGraphClass::setGraphLabel(const MPlex<FFGraphLabel *>& l, BOOL doFree)
 {
+ if (&l == &graphLabel)
+  return;
  for(Pix i=l.first(); i!=0; l.next(i))
   {
    setGraphLabel(l(i), doFree);

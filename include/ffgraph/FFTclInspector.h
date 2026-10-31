@@ -17,13 +17,23 @@
 
 class FFTclInspector : public FFWindow, public FFInspector
 {
+protected:
+  static void recallCommandDeleted(ClientData d)
+  {
+    static_cast<FFTclInspector*>(d)->recallCommand_ = nullptr;
+  }
+  Tcl_Command recallCommand_ = nullptr;
 public:
   virtual void hide() {withdraw();}
   virtual void show();
  virtual void update(){FFWindow::update();}
  
   FFTclInspector(FFGraphLabel *g) : FFInspector(g) {}
-  virtual ~FFTclInspector(){}
+  virtual ~FFTclInspector()
+  {
+    if (interp && !Tcl_InterpDeleted(interp) && recallCommand_)
+      Tcl_DeleteCommandFromToken(interp, recallCommand_);
+  }
 };
 
 #endif

@@ -247,10 +247,10 @@ int sugiInspRecall (ClientData d,Tcl_Interp *i, int k, const char **c)
 
 FFSugiInsp::FFSugiInsp (FFGraphLabel *l) : FFTclInspector (l)
 {
-  Tcl_CreateCommand (interp, "recall", 
+  recallCommand_ = Tcl_CreateCommand (interp, "recall",
 		     sugiInspRecall, 
 		     (int *) this, 
-		     (void (*) (ClientData)) NULL);
+		     recallCommandDeleted);
  String tmpS;
  
  if (getenv ("FF_LIBDIR") == NULL)

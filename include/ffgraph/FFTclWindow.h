@@ -22,6 +22,11 @@ class FFTclWindow: public FFTclBasicWindow
 protected:
   BOOL  updateInsp;
   String iconLibDir;
+  static void recallCommandDeleted(ClientData d)
+  {
+    static_cast<FFTclWindow*>(d)->recallCommand_ = nullptr;
+  }
+  Tcl_Command recallCommand_ = nullptr;
   
  // virtual void _buildExportString();
   virtual void _buildLayoutMenu();
