@@ -25,6 +25,8 @@ protected:
   Tcl_Command recallCommand_ = nullptr;
 public:
   virtual void hide() {withdraw();}
+  // True only while the interpreter still has its Tk root window.
+  bool hasLiveWindow() const;
   virtual void show();
  virtual void update(){FFWindow::update();}
  

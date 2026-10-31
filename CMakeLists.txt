@@ -170,6 +170,23 @@ if(BUILD_TESTING)
   endif()
   add_test(NAME test_graph_reference_cycle COMMAND test_graph_reference_cycle)
 
+  # Replacement labels must acquire their graph observer; interpreters
+  # created before Tk initialization must be released on destruction.
+  foreach(test_name test_graph_label_initialization test_ffwindow_interpreter_lifetime)
+    add_executable(${test_name} tests/${test_name}.cpp)
+    target_link_libraries(${test_name} PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+    )
+    if(MATH_LIBRARY)
+      target_link_libraries(${test_name} PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(${test_name} PRIVATE ${DL_LIBRARY})
+    endif()
+    add_test(NAME ${test_name} COMMAND ${test_name})
+  endforeach()
+
   # Ownership regression tests use the existing model and GUI archives.
   add_executable(test_label_replacement tests/test_label_replacement.cpp)
   target_link_libraries(test_label_replacement PRIVATE
@@ -212,4 +229,23 @@ if(BUILD_TESTING)
   )
 
   add_test(NAME test_tcl_compat COMMAND test_tcl_compat)
+
+  # Requires a display; run under Xvfb to exercise inspector hide/show.
+  # Do not require Xvfb for ordinary compilation or headless unit tests.
+  find_program(XVFB_RUN_EXECUTABLE NAMES xvfb-run)
+  if(XVFB_RUN_EXECUTABLE)
+    add_executable(test_inspector_visibility tests/test_inspector_visibility.cpp)
+    target_link_libraries(test_inspector_visibility PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+    )
+    if(MATH_LIBRARY)
+      target_link_libraries(test_inspector_visibility PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(test_inspector_visibility PRIVATE ${DL_LIBRARY})
+    endif()
+    add_test(NAME test_inspector_visibility
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_inspector_visibility>")
+  endif()
 endif()

@@ -700,6 +700,9 @@ void FFGraphClass::setGraphLabel(FFGraphLabel *l, int i, BOOL doFree)
     delete graphLabel[i];
    l->index=i;
    graphLabel[i]=l;
+   // setGraphLabel() transfers ownership just like addGraphLabel(), and
+   // replacement labels must observe their containing graph as well.
+   l->init(FFGraph(this));
   }
  else
   {
@@ -713,7 +716,8 @@ void FFGraphClass::setGraphLabel(FFGraphLabel *l, int i, BOOL doFree)
      if(doFree)
       delete graphLabel[k];				
      l->index=k;
-     graphLabel[k]=l;		
+     graphLabel[k]=l;
+     l->init(FFGraph(this));
     }
   }
 }

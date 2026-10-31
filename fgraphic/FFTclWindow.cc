@@ -419,16 +419,20 @@ void FFTclWindow::_buildLayoutMenu()
 
 void FFTclWindow::showInspector()
 {
-  if(inspector)
+  // The Tcl interpreter can survive an external destruction of its Tk root.
+  // Do not keep trying to show a dead inspector; create a fresh one instead.
+  if (inspector && !static_cast<FFTclGraphInsp*>(inspector)->hasLiveWindow())
   {
-    inspector->show();
-    updateInspector();
+    delete inspector;
+    inspector = nullptr;
   }
+
+  if (inspector)
+    inspector->show();
   else
-  {
-    inspector= new FFTclGraphInsp(this);
-    updateInspector();
-  } 
+    inspector = new FFTclGraphInsp(this);
+
+  updateInspector();
 }
 
 void FFTclWindow::updateInspector()

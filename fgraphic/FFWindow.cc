@@ -246,13 +246,26 @@ FFWindow::~FFWindow()
 {
  if(interp != NULL)
   {
+   // Tcl_CreateInterp() runs in the constructor, before a Tk window is
+   // created. If initialization never took place, this interpreter is solely
+   // owned by FFWindow and can be safely disposed of without invoking Tk.
+   if(w == nullptr)
+    {
+     Tcl_DeleteInterp(interp);
+     interp = nullptr;
+     return;
+    }
+
    FF_TclEvalObjv(interp, {"wm", "withdraw", "."});
    
    // folgende Zeile wurde auskommentiert, da es Probleme
    // gab, wenn ein Fenster Zeiger mit delete freigegeben
    // wurde. Das Auskommentieren der Zeile beseitigte auch
    // den Absturtz unter LINUX.  volker 10.10.1996
-   //Tcl_DeleteInterp(interp);
+   // Do not delete a Tk-initialized interpreter here yet: historical
+   // window teardown caused crashes, and registered GUI callbacks may be
+   // active. This requires an event-loop/window-lifecycle regression test.
+   // Tcl_DeleteInterp(interp);
   }
 }
 
