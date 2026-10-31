@@ -29,7 +29,6 @@
 #include <ffgraph/FFKaese.h>
 #include <ffgraph/FFRandom.h>
 #include <ffgraph/FFShow.h>
-#include <signal.h>
 #include <vector>
 #include <cerrno>
 #include <cstdlib>
@@ -58,11 +57,9 @@ static bool isPositiveIntegerArgument(const char* argument)
 
 int main(int argc, char **argv)
 {
- // Floating point exeptions suck. Especially division by zero.
- // What is +-infinity and NAN defined for in IEEE if not for handling
- // this kind of stuff?
-
- signal(SIGFPE, SIG_IGN);
+ // Keep SIGFPE at its default disposition. IEEE-754 floating-point
+ // divisions normally produce infinities/NaNs without a signal, whereas
+ // ignoring an integer divide-by-zero trap can repeatedly fault.
 
  // Seeding random generator
  

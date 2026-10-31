@@ -95,7 +95,8 @@ void FFKaese::placeNodes()
     }
   }
 
- unit = 360/(numNodes);
+ // An empty cluster set must not trigger an integer division by zero.
+ unit = numNodes > 0 ? 360.0 / numNodes : 0.0;
  
  for(int i=0; i< numClusters; i++)
   {
@@ -1337,13 +1338,16 @@ int FFKaese::mostCommonNeighbours(FFNode knoten, int numOfSwitches)
  // neighbours[tmpVal] += numOfSwitches;
  
  for(int i=0; i<numClusters; i++)
-  if((i != tmpVal) && (clusterSize[i] > sollWert/10))
+  if((i != tmpVal) && (clusterSize[i] > sollWert/10) &&
+     (neighbours[i] > 0.0f))
   {
-   if( (  neighbours[maxN] / neighbours[i] <= 0.75) ||
-       ( (  neighbours[i] / neighbours[maxN] >= 0.75) &&
+   // These counts are non-negative. Compare products instead of ratios
+   // so zero neighbour counts never create NaNs or infinities.
+   if( (neighbours[maxN] <= 0.75f * neighbours[i]) ||
+       ( (neighbours[maxN] > 0.0f) &&
+         (neighbours[i] >= 0.75f * neighbours[maxN]) &&
          (abweichung(i) + numOfSwitches < abweichung(maxN))))
     maxN = i;
-   
   }
  
  delete [] neighbours;

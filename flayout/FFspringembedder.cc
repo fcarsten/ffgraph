@@ -580,6 +580,7 @@ FFCoord FFSpring::cool (FFCoord maxForce, FFCoord vibration,
 
   // Test, ob Graph schwingt 
   if ((coolMaxForce4 != 0.0) &&
+      (coolMaxForce1 != 0.0) && (coolMaxForce2 != 0.0) &&
       (fabs ((coolMaxForce1-coolMaxForce3) / coolMaxForce1) < vibration) &&
       (fabs ((coolMaxForce2-coolMaxForce4) / coolMaxForce2) < vibration))
     coolPhase = 2;

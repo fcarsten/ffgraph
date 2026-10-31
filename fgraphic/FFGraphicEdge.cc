@@ -39,7 +39,10 @@ FFCoord FFGraphicEdge::dist(const FFPoint& p1, const FFPoint& p2)
 FFCoord FFGraphicEdge::dist(const FFPoint& P, const FFPoint& A, const FFPoint& B)
 {
   FFPoint R = B-A;
-  FFCoord x =  - R*(A-P) / (R*R) ;
+  const FFCoord lengthSquared = R*R;
+  if (lengthSquared == 0.0)
+    return dist(P, A); // A and B coincide: the segment is a point.
+  FFCoord x = -R*(A-P) / lengthSquared;
   
   if(x < 0.0 || x > 1.0)
     {
