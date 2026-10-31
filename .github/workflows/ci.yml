@@ -1,0 +1,38 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ubuntu-24-04:
+    name: Ubuntu 24.04 / C++17
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install build and GUI test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            tcl-dev tk-dev libx11-dev libxpm-dev \
+            xvfb xauth
+
+      - name: Configure (Debug)
+        run: cmake --preset debug -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build --preset debug --parallel 2
+
+      - name: Run tests (including Xvfb GUI tests)
+        run: ctest --preset debug --output-on-failure --parallel 2
