@@ -165,6 +165,7 @@ int upper_barycenter (int node, SNode *nodes, int level)
     return (actCoord);
   
   if (nodes[node].anzDum == 2)
+  {
     if (nodes[node].level != level)
       {
 	if (nodes[node].level+1 == level)
@@ -189,6 +190,7 @@ int upper_barycenter (int node, SNode *nodes, int level)
 	if (result < actCoord)
 	  return (actCoord);
       }
+  }
   // Division durch 0 vermeiden!
   if ((result == 0) && (nodes[node].indeg == 0))
     return (0);
@@ -216,6 +218,7 @@ int lower_barycenter (int node, SNode *nodes, int level)
   
   // Falls Dummies ueberlanger Kanten
   if (nodes[node].anzDum == 2)
+  {
     if (nodes[node].level < level)
       {
 	if (nodes[node].elevel == level)
@@ -236,6 +239,7 @@ int lower_barycenter (int node, SNode *nodes, int level)
 	    (nodes[node+1].level != level+1))
 	  return ((int) nodes[node].posList[level+1].v[0]);
       }
+  }
 
   // Gib 0 zurueck, wenn ein Knoten nur einen Nachfolger hat, 
   // dieser Nachfolger jedoch mehrere Vorgaenger besitzt und 
@@ -246,12 +250,18 @@ int lower_barycenter (int node, SNode *nodes, int level)
       tmpN = nodes[node].succ (ps);
 
       if (nodes[tmpN].indeg > 1)
+      {
+	// FIXME: both branches below return, so this loop never runs more
+	// than once (only the first predecessor is examined).  Probably the
+	// final 'return' was meant to come after the loop.  Behaviour kept
+	// as in the original pending a decision.
 	for (pp = nodes[tmpN].pred.first (); pp != 0; 
 	     nodes[tmpN].pred.next (pp))
 	  if (nodes[tmpN].point.v[0] < nodes[nodes[tmpN].pred (pp)].point.v[0])
 	    return (0);
 	  else
 	    return ((int) nodes[tmpN].point.v[0]);
+      }
     }
     
   for (ps = nodes[node].succ.first (); ps != 0; nodes[node].succ.next (ps))
@@ -331,6 +341,7 @@ void make_down (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
           do
             {
               if (move)
+              {
 		if (j > 1)
 		  {
 		    if (nodes[nodeNr[j-1]].dummy != 0) 
@@ -371,6 +382,7 @@ void make_down (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 		    
 		    possibleDistance += (node_j - minDiff);
 		  }
+              }
               j--;
             }
           while ((j >= 1) && !(done[j]));
@@ -619,6 +631,7 @@ void make_up (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
           do
             {
               if (move)
+              {
 		if (j > 1)
 		  {
 		    if (nodes[nodeNr[j-1]].dummy != 0) 
@@ -659,6 +672,7 @@ void make_up (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 		    
 		    possibleDistance += (node_j - minDiff);
 		  }
+              }
               j--;
             }
           while ((j >= 1) && !(done[j]));
@@ -722,6 +736,7 @@ void make_up (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
           do
             {
               if (move)
+              {
 		if (j < nodesL)
 		  {
 		    if ((nodes[nodeNr[j]].dummy != 0) && 
@@ -756,9 +771,10 @@ void make_up (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 		  {
 		    //  j == nodesL, 
 		    // also kein Knoten rechts
-		    if ((index = nodesL) || (nodes[nodeNr[nodesL]].dummy == 0))
+		    if ((index == nodesL) || (nodes[nodeNr[nodesL]].dummy == 0))
 		      possibleDistance += distance;
 		  }
+              }
               j++;
             }
           while ((j <= nodesL) && !(done[j]));

@@ -348,17 +348,19 @@ void FFGraphicNode::init(FFNodeClass *n)
 
   fenster= node->getGraph()->getWindow();
   if(node->getGraph()->getGraphicNodeIndex() <= 0)
-   node->getGraph()->setNodeIndex(node->getGraph()->getNodeLabelIndex(type()));
+   {
+    node->getGraph()->setNodeIndex(node->getGraph()->getNodeLabelIndex(type()));
+   }
   
-   if(fenster != NULL)
-    {
-     tkNode = fenster->addNode(this);
-     tkLabel = fenster->addLabel(this);
-     if(shape < FF_FIGURE)
-      setRange(fenster->getRange(this));
-     if(fenster->getUpdate())
-      fenster->updateGraph(this);
-    }  
+  if(fenster != NULL)
+   {
+    tkNode = fenster->addNode(this);
+    tkLabel = fenster->addLabel(this);
+    if(shape < FF_FIGURE)
+     setRange(fenster->getRange(this));
+    if(fenster->getUpdate())
+     fenster->updateGraph(this);
+   }  
   return;
 }
 
@@ -515,4 +517,3 @@ void FFGraphicNode::rmoveTo(const char *x1, const char *y1, const char *z1)
   rmoveTo(FFPoint(atof(x1), atof(y1), atof(z1)));
   return;
 }
-

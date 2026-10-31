@@ -132,6 +132,7 @@ void init_sgraph (FFGraph &graph, SNode *nodes, SEdge *edges,
     {
       if (((allNodes (p)->getValue ()) > 0) &&
 	  ((allNodes (p)->getValue ()) <= anzN))
+      {
 	if (nodes[allNodes (p)->getValue ()].attrib == 1)
 	  {
 	    nodes[allNodes (p)->getValue ()].node = allNodes (p);
@@ -139,6 +140,7 @@ void init_sgraph (FFGraph &graph, SNode *nodes, SEdge *edges,
 	  } 
 	else
 	  allNodes (p)->setValue (0);
+      }
     }
   
   // alle anderen Knoten (kein sinnvoller "value"-Wert)
@@ -165,6 +167,7 @@ void init_sgraph (FFGraph &graph, SNode *nodes, SEdge *edges,
     {
       if (((allEdges (p)->getValue ()) > 0) &&
 	  ((allEdges (p)->getValue ()) <= anzE))
+      {
 	if (edges[allEdges (p)->getValue ()].attrib == 1)
 	  {
 	    edges[allEdges (p)->getValue ()].edge = allEdges (p);
@@ -172,6 +175,7 @@ void init_sgraph (FFGraph &graph, SNode *nodes, SEdge *edges,
 	  }
 	else
 	  allEdges (p)->setValue (0);
+      }
     }
   
   // alle anderen Kanten (ohne sinnvollen "value"-Wert)
