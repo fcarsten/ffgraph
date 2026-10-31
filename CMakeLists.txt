@@ -155,6 +155,21 @@ if(BUILD_TESTING)
   endif()
   add_test(NAME test_graph_ownership COMMAND test_graph_ownership)
 
+  # Graph labels/inspectors borrow their owning graph; exercise reference
+  # cycles, the constructor guard, and copy-out ownership semantics.
+  add_executable(test_graph_reference_cycle tests/test_graph_reference_cycle.cpp)
+  target_link_libraries(test_graph_reference_cycle PRIVATE
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+  )
+  if(MATH_LIBRARY)
+    target_link_libraries(test_graph_reference_cycle PRIVATE ${MATH_LIBRARY})
+  endif()
+  if(DL_LIBRARY)
+    target_link_libraries(test_graph_reference_cycle PRIVATE ${DL_LIBRARY})
+  endif()
+  add_test(NAME test_graph_reference_cycle COMMAND test_graph_reference_cycle)
+
   # Ownership regression tests use the existing model and GUI archives.
   add_executable(test_label_replacement tests/test_label_replacement.cpp)
   target_link_libraries(test_label_replacement PRIVATE

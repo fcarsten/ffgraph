@@ -43,6 +43,34 @@ protected:
   FFGraphClass * operator -> () const;
 };
 
+// A graph-owned label (or its inspector) must not hold an owning FFGraph
+// handle: the graph owns the label, so that would create a reference cycle.
+// This deliberately non-copyable view preserves the FFGraph interface for
+// legacy layout algorithms that accept FFGraph&. Any FFGraph copied from the
+// view becomes a normal, reference-counted owning handle.
+class FFGraphObserver : public FFGraph
+{
+public:
+  FFGraphObserver() : FFGraph(YES) {}
+
+  void observe(const FFGraph& owner)
+  {
+    graph = owner.operator->();
+  }
+
+  // Unlike a normal FFGraph, an unbound observer must not manufacture a
+  // graph that it cannot own or release.
+  FFGraphClass* operator->() const { return graph; }
+
+  // FFGraph's destructor would normally decrement the graph's reference
+  // count. The observed graph is not owned by this handle.
+  ~FFGraphObserver() override { graph = nullptr; }
+
+  FFGraphObserver(const FFGraphObserver&) = delete;
+  FFGraphObserver& operator=(const FFGraphObserver&) = delete;
+  FFGraphObserver& operator=(const FFGraph&) = delete;
+};
+
 inline FFGraphClass *FFGraph::operator->() const
 {
  FFGraph *self = const_cast<FFGraph *>(this);

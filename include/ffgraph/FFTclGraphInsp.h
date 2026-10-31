@@ -21,7 +21,7 @@
 
 class FFTclGraphInsp :  public FFTclInspector
 {
-  FFGraph graph;
+  FFGraphObserver graph;
   FFGraphicNode *currentN;
   FFGraphicEdge *currentE;
   int nodeIndex,

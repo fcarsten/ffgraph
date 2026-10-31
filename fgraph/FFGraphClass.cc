@@ -730,7 +730,11 @@ void FFGraphClass::setGraphLabel(const MPlex<FFGraphLabel *>& l, BOOL doFree)
 
 FFGraphClass::FFGraphClass(BOOL bare)
 {
- reps=0;
+ // While default labels are initialized, FFGraph(this) creates temporary
+ // owning handles. Keep one construction reference so their destructors
+ // cannot delete *this before construction finishes. The caller will acquire
+ // the real owning reference after the constructor returns.
+ reps=1;
  status= VALID;
  startNode = 0;
  graphIndex=-1;
@@ -748,6 +752,9 @@ FFGraphClass::FFGraphClass(BOOL bare)
    for(i= defEdgeLabels.first(); i!=0; defEdgeLabels.next(i))
     addEdgeLabel(defEdgeLabels(i)->proto());
   }
+ // Drop the construction guard without running a destructor on an object
+ // that has not yet been returned to its owner.
+ --reps;
 }
 
 void FFGraphClass::removeNode(FFNode node)
@@ -903,7 +910,13 @@ FFGraphClass::~FFGraphClass()
   {
    ffError(RUNTIME_ERROR, "Non correct removal of a graph");
   }
- 
+
+ // Graph/label destruction can invoke callbacks that construct short-lived
+ // FFGraph handles. Keep them from recursively deleting this graph while its
+ // destructor is in progress; only the external owning reference should
+ // determine when destruction starts.
+ ++reps;
+
  // while (! knotenSet.empty())
  //  removeNode(knotenSet(knotenSet.first()));
  
@@ -931,6 +944,7 @@ FFGraphClass::~FFGraphClass()
 #ifdef DEBUG
  cerr << "Graph got deleted\n";
 #endif
+ --reps;
 }
 
 

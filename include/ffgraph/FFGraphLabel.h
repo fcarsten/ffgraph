@@ -13,14 +13,14 @@ class FFInspector;
 class FFGraphLabel : public FFLabelClass
 {
 protected:
- FFGraph graph;
+ FFGraphObserver graph;
  FFInspector *inspector;
  virtual void _buildInspector() {};
  
 public:
   FFGraphLabel()
     {inspector = 0; _setType(ffGraphLabel);}
-  virtual void init(const FFGraph& g) { graph = g; }
+  virtual void init(const FFGraph& g) { graph.observe(g); }
   virtual FFGraphLabel *proto() const = 0;
   virtual BOOL hasOwnInspector() const; 
   virtual void showInspector();

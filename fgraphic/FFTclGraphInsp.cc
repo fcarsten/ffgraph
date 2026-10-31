@@ -508,7 +508,7 @@ void FFTclGraphInsp::_buildEdgeMenu()
 
 FFTclGraphInsp::FFTclGraphInsp(FFGraphLabel *g) : FFTclInspector(g)
 {
- graph = g->getGraph();
+ graph.observe(g->getGraph());
   
  currentN = 0;
  currentE = 0;
