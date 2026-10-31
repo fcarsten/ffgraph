@@ -191,20 +191,25 @@ public:
     return idx;
   }
   int del_high() override {
-    if (this->fnc == this->lo) throw std::out_of_range("MPlex: delete high from empty plex");
-    slots_.erase(--this->fnc);
-    if (unused_ > 0) {
-      // The removed slot may itself have been a hole.
-      // Recompute to keep the count exact after boundary deletion.
-      unused_ = 0; for (const auto& e : slots_) if (!e.second.present) ++unused_;
-    }
-    return this->fnc - 1;
+    const int idx = high();
+    if (idx < this->lo || idx >= this->fnc)
+      throw std::out_of_range("MPlex: delete high from empty plex");
+    // Remove the highest present element and any trailing deleted slots.
+    slots_.erase(slots_.lower_bound(idx), slots_.end());
+    this->fnc = idx;
+    unused_ = 0;
+    for (const auto& e : slots_) if (!e.second.present) ++unused_;
+    return high();
   }
   int del_low() override {
-    if (this->fnc == this->lo) throw std::out_of_range("MPlex: delete low from empty plex");
-    slots_.erase(this->lo++);
-    unused_ = 0; for (const auto& e : slots_) if (!e.second.present) ++unused_;
-    return this->lo;
+    const int idx = low();
+    if (idx < this->lo || idx >= this->fnc)
+      throw std::out_of_range("MPlex: delete low from empty plex");
+    slots_.erase(slots_.begin(), slots_.upper_bound(idx));
+    this->lo = idx + 1;
+    unused_ = 0;
+    for (const auto& e : slots_) if (!e.second.present) ++unused_;
+    return low();
   }
   void clear() override { slots_.clear(); this->fnc = this->lo; unused_ = 0; }
   int reset_low(int newlow) override {
@@ -235,10 +240,17 @@ public:
       std::swap(slots_.at(valid_indices[i]).value, slots_.at(valid_indices[valid_indices.size()-1-i]).value);
   }
   void append(const MFPlex<Type>& other) override {
-    for (int i = other.low(); i < other.fence(); other.nextInt(i)) add_high(other[i]);
+    // Snapshot before mutation: other may alias *this.
+    std::vector<Type> values;
+    for (int i = other.low(); i < other.fence(); other.nextInt(i))
+      values.push_back(other[i]);
+    for (const Type& value : values) add_high(value);
   }
   void prepend(const MFPlex<Type>& other) override {
-    for (int i = other.high(); i > other.ecnef(); other.prevInt(i)) add_low(other[i]);
+    std::vector<Type> values;
+    for (int i = other.high(); i > other.ecnef(); other.prevInt(i))
+      values.push_back(other[i]);
+    for (const Type& value : values) add_low(value);
   }
 
   int count() const { return static_cast<int>(slots_.size()) - unused_; }

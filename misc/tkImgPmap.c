@@ -22,6 +22,7 @@
 #include <tk.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 
 #ifdef HAVE_X11_XPM_H
@@ -793,13 +794,28 @@ GetPixmapData(interp, string, fileName, widthPtr, heightPtr)
 		    fileName, "\": ", Tcl_PosixError(interp), (char *) NULL);
 	    return NULL;
 	}
-	fseek(f, 0, SEEK_END);
-	numBytes = ftell(f) + 1;
-	fseek(f, 0, SEEK_SET);
-	data = (char *) ckalloc((unsigned) numBytes);
-	if ( data != NULL ) {
-	    fread(data, 1, numBytes, f);
-	}
+        {
+            long fileSize;
+            size_t bytesRead;
+            if (fseek(f, 0, SEEK_END) != 0 ||
+                (fileSize = ftell(f)) < 0 ||
+                fseek(f, 0, SEEK_SET) != 0 ||
+                (unsigned long)fileSize >= (unsigned long)UINT_MAX) {
+                Tcl_AppendResult(interp, "couldn't determine XPM file size", (char *)NULL);
+                fclose(f);
+                return NULL;
+            }
+            data = (char *)ckalloc((unsigned)(fileSize + 1));
+            if (data != NULL) {
+                bytesRead = fread(data, 1, (size_t)fileSize, f);
+                if (bytesRead != (size_t)fileSize || ferror(f)) {
+                    Tcl_AppendResult(interp, "error reading XPM file", (char *)NULL);
+                    fclose(f);
+                    goto errorCleanup;
+                }
+                data[fileSize] = '\0';
+            }
+        }
 	fclose(f);
     } else {
 	data = ckalloc((unsigned) strlen(string) + 1);

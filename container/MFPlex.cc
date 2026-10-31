@@ -1,3 +1,4 @@
+#include <vector>
 #if __GNUG__ >= 2
 #  pragma implementation
 #endif
@@ -413,13 +414,17 @@ MFPlex<Type>:: ~MFPlex()
 template<class Type>
 void MFPlex<Type>::append (const MFPlex& a)
 {
-  for (int i = a.low(); i < a.fence(); a.nextInt(i)) add_high(a[i]);
+  std::vector<Type> values;
+  for (int i = a.low(); i < a.fence(); a.nextInt(i)) values.push_back(a[i]);
+  for (const Type& value : values) add_high(value);
 }
 
 template<class Type>
 void MFPlex<Type>::prepend (const MFPlex& a)
 {
-  for (int i = a.high(); i > a.ecnef(); a.prevInt(i)) add_low(a[i]);
+  std::vector<Type> values;
+  for (int i = a.high(); i > a.ecnef(); a.prevInt(i)) values.push_back(a[i]);
+  for (const Type& value : values) add_low(value);
 }
 
 template<class Type>

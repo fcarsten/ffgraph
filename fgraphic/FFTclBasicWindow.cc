@@ -29,6 +29,8 @@ extern "C" {
 #include <regex>
 #include <string>
 #include <string.h>
+#include <algorithm>
+#include <cstring>
 #include <ffgraph/FFGraphClass.h>
 #include <ffgraph/FFTclBasicWindow.h>
 #include <ffgraph/FFTclCompat.h>
@@ -63,20 +65,14 @@ void fgraphBasicWindowTimer(ClientData)
 
 int FFTclBasicWindow::exportSelection(int off, char *buffer, int maxBytes)
 {
- if(exportString.length())
-  {
-   if(maxBytes >= (int)exportString.length() -off)
-    {
-     strcpy(buffer, (const char *)String(exportString.from(off)));
-     return exportString.length()-off ;
-    }
-   else
-    {
-     strcpy(buffer, (const char *)String(exportString.at(off, maxBytes)));
-     return maxBytes;
-    }
-  }  
- return -1;
+ // Tcl/Tk's selection callback returns a byte count, not a C string.
+ if (off < 0 || maxBytes <= 0 || buffer == nullptr) return -1;
+ const std::size_t length = exportString.length();
+ if (static_cast<std::size_t>(off) >= length) return -1;
+ const std::size_t available = length - static_cast<std::size_t>(off);
+ const std::size_t count = std::min(available, static_cast<std::size_t>(maxBytes));
+ std::memcpy(buffer, exportString.data() + off, count);
+ return static_cast<int>(count);
 }
 
 void FFTclBasicWindow::_hideLines()

@@ -26,6 +26,9 @@ extern "C" {
 #include <stream.h>
 #include <fstream.h>
 #include <string.h>
+#include <algorithm>
+#include <vector>
+#include <string>
 
 #include <ffgraph/FFGraph.h>
 #include <ffgraph/FFGraphClass.h>
@@ -186,18 +189,10 @@ int FFTcl3DWindow::recall(Tcl_Interp *i, int c, const char **v)
 struct hideStruct
 {
  FFGraphicNode *n;
- char s[5];
- char l[5];
+ std::string s;
+ std::string l;
  FFCoord z;
 };
-
-static int tmpCMP(struct hideStruct *a, struct hideStruct *b)
-{
- return ( ((a->z) <= (b->z)) ? 
-          (((a->z) == (b->z))? 0 : 
-           -1) : 
-          1 );
-}
 
 void FFTcl3DWindow::_hideLines()
 {
@@ -207,32 +202,35 @@ void FFTcl3DWindow::_hideLines()
  if(laenge<2)
   return;
  
- struct hideStruct liste[laenge];
+ std::vector<hideStruct> liste;
+ liste.reserve(laenge);
  int k=0;
  
  for(Pix i= nodeMap.first(); i!=0; nodeMap.next(i))
   {
    if(nodeMap.contents(i))
     {
+     liste.emplace_back();
      liste[k].n = nodeMap.contents(i);
      tmpP = proj(liste[k].n->getCoords(),
                  liste[k].n->getRange());
      liste[k].z = tmpP.v[2];
-     strcpy(liste[k].s, liste[k].n->getId().c_str());
-     strcpy(liste[k].l, liste[k].n->getLabelId().c_str());
+     liste[k].s = liste[k].n->getId().c_str();
+     liste[k].l = liste[k].n->getLabelId().c_str();
      k++;
     }
   }
  
- qsort(liste, k, sizeof(struct hideStruct),
-       (int (*)(const void *, const void *))tmpCMP); 
+ std::sort(liste.begin(), liste.end(),
+           [](const hideStruct& a, const hideStruct& b) { return a.z < b.z; });
+ if (liste.empty()) return; 
  
- FF_TclEvalObjv(interp, {(const char *)canvas, "raise", liste[0].s, "all"});
- FF_TclEvalObjv(interp, {(const char *)canvas, "raise", liste[0].l, liste[0].s});
+ FF_TclEvalObjv(interp, {(const char *)canvas, "raise", liste[0].s.c_str(), "all"});
+ FF_TclEvalObjv(interp, {(const char *)canvas, "raise", liste[0].l.c_str(), liste[0].s.c_str()});
  
  for(int j=1; j< k; j++)
   {
-   FF_TclEvalObjv(interp, {(const char *)canvas, "raise", liste[j].s, liste[j-1].l});
-   FF_TclEvalObjv(interp, {(const char *)canvas, "raise", liste[j].l, liste[j].s});
+   FF_TclEvalObjv(interp, {(const char *)canvas, "raise", liste[j].s.c_str(), liste[j-1].l.c_str()});
+   FF_TclEvalObjv(interp, {(const char *)canvas, "raise", liste[j].l.c_str(), liste[j].s.c_str()});
   } 		
 }
