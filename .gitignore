@@ -1,3 +1,7 @@
 *.o
 *.pov
 *.a
+
+/build/
+/CMakeUserPresets.json
+/staging/
