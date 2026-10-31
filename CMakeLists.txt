@@ -139,6 +139,22 @@ if(BUILD_TESTING)
     target_include_directories(${test_name} PRIVATE include .)
     add_test(NAME ${test_name} COMMAND ${test_name})
   endforeach()
+  # FFGraph handles use intrusive reference counts. Exercise assignment and
+  # destruction against the real model, not a mock of FFGraphClass.
+  add_executable(test_graph_ownership tests/test_graph_ownership.cpp)
+  target_compile_features(test_graph_ownership PRIVATE cxx_std_17)
+  target_link_libraries(test_graph_ownership PRIVATE
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+  )
+  if(MATH_LIBRARY)
+    target_link_libraries(test_graph_ownership PRIVATE ${MATH_LIBRARY})
+  endif()
+  if(DL_LIBRARY)
+    target_link_libraries(test_graph_ownership PRIVATE ${DL_LIBRARY})
+  endif()
+  add_test(NAME test_graph_ownership COMMAND test_graph_ownership)
+
   add_executable(test_tcl_compat
       tests/test_tcl_compat.cpp
   )

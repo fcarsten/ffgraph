@@ -146,26 +146,31 @@ FFGraph& FFGraph::operator = (const FFGraph& g)
 
 FFGraph& FFGraph::assign (const FFGraph& g)
 {
-  if(graph) 
+  // Releasing the old reference before acquiring the new one could destroy
+  // the graph when assigning a handle to itself (or to another handle for
+  // the same graph). Keep the source alive throughout the assignment.
+  if (this == &g)
+    return *this;
+
+  FFGraph &source = const_cast<FFGraph&>(g);
+  if (source.graph == NULL)
    {
-    if(!graph->decNumOfReps()) 
-     {
-      delete graph;
-     }
+    source.graph = source.createGraph();
+    source.graph->incNumOfReps();
    }
-  
-  FFGraph &g2 = const_cast<FFGraph&>(g);
-  
-  if(g2.graph == NULL) 
-   {
-    g2.graph = g2.createGraph();
-    g2.graph->incNumOfReps();
-   }
-  
-  graph= g2.graph;
-  if(graph)
-   graph->incNumOfReps();
-  
+
+  FFGraphClass *newGraph = source.graph;
+  if (newGraph == graph)
+    return *this;
+
+  // Acquire the new ownership before releasing the old graph. This also
+  // leaves *this unchanged if constructing a lazy source graph throws.
+  newGraph->incNumOfReps();
+  FFGraphClass *oldGraph = graph;
+  graph = newGraph;
+  if (oldGraph && !oldGraph->decNumOfReps())
+    delete oldGraph;
+
   return *this;
 }
 

@@ -91,6 +91,7 @@ void FFTclGraphInsp::inspect()
     }
    else 
     {  
+     free(tmpA[3]);
      tmpA[3]= strdup(gl->type());
      syntax = String(graph->getGraphLabel(graphIndex)->unparse());
     }
@@ -145,6 +146,7 @@ void FFTclGraphInsp::inspectNode(FFNode n1)
   
  if(tmpL && tmpL->isInspectable())
   {
+   free(tmpA[3]);
    tmpA[3]= strdup(tmpL->type());
    syntax = String(n1->getLabel(nodeIndex)->unparse());
   }
@@ -239,6 +241,7 @@ void FFTclGraphInsp::inspectEdge(FFEdge e1)
   
  if(tmpL && tmpL->isInspectable())
   {
+   free(tmpA[3]);
    tmpA[3]= strdup(tmpL->type());
    syntax = String(e1->getLabel(edgeIndex)->unparse());
   }

@@ -163,7 +163,8 @@ void FFWindow::initFromFile(const String& file, int argc, char **argv)
   if (tmpGeometry != NULL) 
    {
     geometry = tmpGeometry;
-    Tcl_SetVar(interp, "geometry", strdup(geometry), TCL_GLOBAL_ONLY);
+    // Tcl_SetVar copies the string; allocating with strdup leaked memory.
+    Tcl_SetVar(interp, "geometry", geometry.c_str(), TCL_GLOBAL_ONLY);
     if (FF_TclEvalObjv(interp, {"wm", "geometry", ".", (const char *)geometry}) != TCL_OK) 
      {
       ffError(CF_TCL, Tcl_GetStringResult(interp));
@@ -172,13 +173,11 @@ void FFWindow::initFromFile(const String& file, int argc, char **argv)
   
   if(file.length()) 
   {
-    char *tmpF = strdup((const char *)file);
-    
-    if (Tcl_EvalFile (interp, tmpF) != TCL_OK)
+    // Tcl_EvalFile only needs the filename for the duration of the call.
+    if (Tcl_EvalFile(interp, file.c_str()) != TCL_OK)
     {
       ffError(CF_TCL, Tcl_GetStringResult(interp));
     }
-    free(tmpF); //??? Save ???
   }
 }
 

@@ -84,13 +84,12 @@ FFTclSubWindow::FFTclSubWindow(FFNode dad, Tcl_Interp *i, Tk_Window win,
   tkNode=id;
   modal=NO;
   
-  char *tmpS=strdup(String("SubRecall.")+canvas);
-  
-  Tcl_CreateCommand(interp, tmpS, 
-                    fgraphSubWindowRecall, 
-                    (int *)this, 
+  // Tcl_CreateCommand registers its own command name; no heap copy needed.
+  const String commandName = String("SubRecall.") + canvas;
+  Tcl_CreateCommand(interp, commandName.c_str(),
+                    fgraphSubWindowRecall,
+                    (ClientData)this,
                     nullptr);
-  // free(tmpS); ????
 }
 
 int fgraphSubWindowSel(ClientData data, int off, char *buffer, int maxBytes)
