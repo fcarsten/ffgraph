@@ -47,6 +47,10 @@ int FFOrthoInsp::recall(Tcl_Interp *, int , const char **c)
     // cerr << "Setting yoff to " << c[2] << endl;
     ORTHO->setyoff((FFCoord)atoi(c[2]));
    }
+  else if(befehl == "zoff")
+   {
+    ORTHO->setzoff((FFCoord)atoi(c[2]));
+   }
   else if(befehl == "deleteWindow")
    {
     withdraw();
@@ -110,6 +114,11 @@ void FFOrthoInsp::inspect()
  if(Tcl_VarEval(interp, 
                 ".positionitems.yoffset.e del 0 end;\n.positionitems.yoffset.e insert 0 ", 
                 (const char *)dec((int)ORTHO->getyoff()), NULL) != TCL_OK)
+  ffError(CF_TCL, Tcl_GetStringResult(interp));
+
+ if(Tcl_VarEval(interp, 
+                ".positionitems.zoffset.e del 0 end;\n.positionitems.zoffset.e insert 0 ", 
+                (const char *)dec((int)ORTHO->getzoff()), NULL) != TCL_OK)
   ffError(CF_TCL, Tcl_GetStringResult(interp));
 
  if(ORTHO->get3D())

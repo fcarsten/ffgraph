@@ -23,10 +23,13 @@ FFOrtho::FFOrtho ()
 {
  xOffSet = ORTHO_X_OFFSET;
  yOffSet = ORTHO_Y_OFFSET;
+ zOffSet = ORTHO_Z_OFFSET;
  nodes = 0;
  count = 0;
  anzX = 0;
  anzY = 0;
+ anzZ = 1;
+ wsize = FF_WSIZE_2D;
  threeD = NO;
  anim = YES;
  doSwapping = NO;
@@ -67,13 +70,13 @@ FFCoord distSum(const FFNode node, const FFPoint& pos,
        
        if(tmpN != NULL)
         {
-         dist += (pos - tmpGN->getCoords()).absabs2D();
+         dist += (pos - tmpGN->getCoords()).absabs();
          // dist += pos.brieftraeger(tmpGN->getCoords());
         }
       }
      else
       {
-       dist += (pos - partnerPos).absabs2D();
+       dist += (pos - partnerPos).absabs();
        // dist += pos.brieftraeger(partnerPos);
       }
     }
@@ -90,13 +93,13 @@ FFCoord distSum(const FFNode node, const FFPoint& pos,
        
        if(tmpN != NULL)
         {
-         dist += (pos - tmpGN->getCoords()).absabs2D();
+         dist += (pos - tmpGN->getCoords()).absabs();
          // dist += pos.brieftraeger(tmpGN->getCoords());
         }
       }
      else
       {
-       dist += (pos - partnerPos).absabs2D();
+       dist += (pos - partnerPos).absabs();
        // dist += pos.brieftraeger(partnerPos);
       }
     }
@@ -115,6 +118,8 @@ FFCoord distSum(const FFNode node, const FFPoint& pos,
   if(pos.v[0] > gn->getCoords().v[0])
    dist --;
   else if(pos.v[1] > gn->getCoords().v[1])
+   dist --;
+  else if(pos.v[2] > gn->getCoords().v[2])
    dist --;
  
  return dist;
@@ -143,6 +148,46 @@ int ffMinArray(const FFCoord tmpA[], int num)
   return -1;
 }
 
+// Weltkoordinaten der Gitterzelle pos (im 2D-Fall ist anzZ == 1, also z == 0)
+FFPoint FFOrtho::_cellPoint(int pos) const
+{
+ const int layerSize = anzX * anzY;
+ return FFPoint((pos % anzX) * xOffSet,
+                ((pos / anzX) % anzY) * yOffSet,
+                (pos / layerSize) * zOffSet);
+}
+
+// Gitterzelle, die einer Weltkoordinate am naechsten liegt (ohne Randpruefung)
+int FFOrtho::_pointToCell(const FFPoint& p) const
+{
+ const int x = (int)((p.v[0] + xOffSet / 2) / xOffSet);
+ const int y = (int)((p.v[1] + yOffSet / 2) / yOffSet);
+ const int z = threeD ? (int)((p.v[2] + zOffSet / 2) / zOffSet) : 0;
+ return _cellIndex(x, y, z);
+}
+
+// Die Nachbarschaft einer Zelle: zuerst die 3x3 Zellen der eigenen Ebene
+// (Reihenfolge wie im urspruenglichen 2D-Code), im 3D-Fall danach die
+// 3x3 Zellen der Ebene davor und der Ebene dahinter.
+void FFOrtho::_fillWunschPos(int center)
+{
+ const int inPlane[FF_WSIZE_2D] =
+  { 0, -anzX, -1, +1, +anzX, -anzX - 1, -anzX + 1, +anzX - 1, +anzX + 1 };
+ 
+ for(int k = 0; k < FF_WSIZE_2D; k++)
+  wunschPos[k] = center + inPlane[k];
+ 
+ if(wsize > FF_WSIZE_2D)
+  {
+   const int layerSize = anzX * anzY;
+   for(int k = 0; k < FF_WSIZE_2D; k++)
+    {
+     wunschPos[FF_WSIZE_2D + k]     = center - layerSize + inPlane[k];
+     wunschPos[2 * FF_WSIZE_2D + k] = center + layerSize + inPlane[k];
+    }
+  }
+}
+
 // Rueckgabewert: Eine prinzipiell gute Position, deren Swappartner
 //                aber zu teuer ist. Ziel -> neue Suche in dessen
 //                Umgebung.
@@ -155,24 +200,12 @@ int FFOrtho::testWunschPos(FFNode knoten, FFCoord schwellWert, int bad)
  
  int result = -1;
 
-#if(FF_WSIZE >= 5)
- wunschPos[1] = wunschPos[0] - anzX;     // ber Wunschposition
- wunschPos[2] = wunschPos[0] - 1;        // links von Wunschposition
- wunschPos[3] = wunschPos[0] + 1;        // rechts von Wunschposition
- wunschPos[4] = wunschPos[0] + anzX;     // unter Wunschposition
-#endif
-
-#if(FF_WSIZE >= 9)
- wunschPos[5] = wunschPos[1] - 1;   // Jetzt mit der 3x3 Matrix um
- wunschPos[6] = wunschPos[1] + 1;   // den Punkt
- wunschPos[7] = wunschPos[4] - 1;
- wunschPos[8] = wunschPos[4] + 1;
-#endif
+ _fillWunschPos(wunschPos[0]);   // 3x3 (2D) bzw. 3x3x3 (3D) Nachbarschaft
   
- for(int k=0; k< FF_WSIZE ; k++)
+ for(int k=0; k< wsize ; k++)
   {
    
-   if((wunschPos[k] <= count) && (wunschPos[k] >= 0) && 
+   if((wunschPos[k] < count) && (wunschPos[k] >= 0) && 
       (wunschPos[k] != myPos) && (wunschPos[k] != bad))
     { 
      if (nodes[wunschPos[k]] != NULL)
@@ -199,8 +232,7 @@ int FFOrtho::testWunschPos(FFNode knoten, FFCoord schwellWert, int bad)
       }
      else
       {
-       wunschP[k]= FFPoint(((int)(wunschPos[k] % anzX)) * xOffSet,
-                           ((int)(wunschPos[k] / anzX)) * yOffSet);
+       wunschP[k]= _cellPoint(wunschPos[k]);
        FFCoord newValue1 = distSum(knoten, wunschP[k]);
        distArray[k]= newValue1 - oldValue1;
       }
@@ -384,14 +416,11 @@ BOOL FFOrtho::swapNodes()
      
      FFPoint istP = tmpGN->getCoords();
      
-     int xFak = (int) ((med.v[0]+(xOffSet / 2)) / xOffSet);
-     int yFak = (int) ((med.v[1]+(yOffSet / 2)) / yOffSet);
-
-     wunschPos[0] = yFak * anzX + xFak; // an Wunschpoisition
+     wunschPos[0] = _pointToCell(med); // an Wunschpoisition
 
      FFCoord schwellWert = FF_RES_VAL;
      int rerun = testWunschPos(tmpN, schwellWert);
-     int mini = ffMinArray(distArray, FF_WSIZE);
+     int mini = ffMinArray(distArray, wsize);
      
      while((distArray[mini] > 0.0) && (rerun > 0))
       {
@@ -399,7 +428,7 @@ BOOL FFOrtho::swapNodes()
        int ignoreValue= wunschPos[0];
        wunschPos[0] = wunschPos[rerun];
        rerun = testWunschPos(tmpN, schwellWert, ignoreValue);
-       mini = ffMinArray(distArray, FF_WSIZE);
+       mini = ffMinArray(distArray, wsize);
        schwellWert += 100.0;
       }
 //      cerr << endl;
@@ -450,16 +479,16 @@ FFCoord FFOrtho::_getEdgeSum()
 BOOL FFOrtho::_adjustPlacement()
 {
  int randOff = FF_RAND;
- int numNodes = graph->getNumNodes();
  const FFSet<FFNode>& tmpNS = graph->allNodes();
  BOOL returnVal = YES;
  
- // Knoten normieren d.h. an minimale Koordinaten verschieben
  FFCoord minX= HUGE_VAL;
  FFCoord minY= HUGE_VAL;
+ FFCoord minZ= HUGE_VAL;
 
  FFCoord maxX= -HUGE_VAL;
  FFCoord maxY= -HUGE_VAL;
+ FFCoord maxZ= -HUGE_VAL;
  
  for(Pix i=tmpNS.first(); i!= 0; tmpNS.next(i))
   {
@@ -470,8 +499,10 @@ BOOL FFOrtho::_adjustPlacement()
      const FFPoint& tmpP = tmpGN->getCoords();
      minX = std::min(minX, tmpP.v[0]);
      minY = std::min(minY, tmpP.v[1]);
+     minZ = std::min(minZ, tmpP.v[2]);
      maxX = std::max(maxX, tmpP.v[0]);
      maxY = std::max(maxY, tmpP.v[1]);
+     maxZ = std::max(maxZ, tmpP.v[2]);
     }
   }
  
@@ -484,16 +515,33 @@ BOOL FFOrtho::_adjustPlacement()
  
  FFCoord xShift = xOffSet * randOff - minX;
  FFCoord yShift = yOffSet * randOff - minY;
+ FFCoord zShift = 0.0;
 
  maxX += xShift;
  maxY += yShift;
  
  anzX = (int)((maxX+xOffSet/2) / xOffSet) + randOff + 1;
  anzY = (int)((maxY+yOffSet/2) / yOffSet) + randOff + 1;
- count = anzX * anzY;
  
- cerr << "Breite: " << anzX << " Lnge: " << count/anzX << endl;
+ // In 3D the grid gets a third dimension: anzZ layers (planes) with the
+ // same safety margin (randOff) as in x and y.  In 2D there is one layer.
+ if(threeD)
+  {
+   zShift = zOffSet * randOff - minZ;
+   maxZ += zShift;
+   anzZ = (int)((maxZ+zOffSet/2) / zOffSet) + randOff + 1;
+  }
+ else
+  anzZ = 1;
+ 
+ count = anzX * anzY * anzZ;
+ 
+ cerr << "Breite: " << anzX << " Lnge: " << anzY;
+ if(threeD)
+  cerr << " Tiefe: " << anzZ;
+ cerr << endl;
 
+ delete [] nodes;     // Wiederholter Aufruf ("Reducing grid space and retry")
  nodes = new FFNode[count];
  for(int k=0; k< count; k++)
   nodes[k]= 0;
@@ -503,40 +551,25 @@ BOOL FFOrtho::_adjustPlacement()
   FFGraphicNode *tmpGN= tmpN->getGraphicNode();
   if(tmpGN != NULL) {
    FFPoint tmpP = tmpGN->getCoords();
-   tmpP += FFPoint(xShift, yShift);
-   int tmpX = (int)((tmpP.v[0]+xOffSet/2) / xOffSet);
-   int tmpY = (int)((tmpP.v[1]+yOffSet/2) / yOffSet);
+   tmpP += FFPoint(xShift, yShift, zShift);
    
-   wunschPos[0] = tmpY*anzX + tmpX;
-     
-#if(FF_WSIZE >= 5)
-   wunschPos[1] = wunschPos[0] - anzX;     // ber Wunschposition
-   wunschPos[2] = wunschPos[0] - 1;        // links von Wunschposition
-   wunschPos[3] = wunschPos[0] + 1;        // rechts von Wunschposition
-   wunschPos[4] = wunschPos[0] + anzX;     // unter Wunschposition
-#endif
-
-#if(FF_WSIZE >= 9)
-   wunschPos[5] = wunschPos[1] - 1;   // Jetzt mit der 3x3 Matrix um
-   wunschPos[6] = wunschPos[1] + 1;   // den Punkt
-   wunschPos[7] = wunschPos[4] - 1;
-   wunschPos[8] = wunschPos[4] + 1;
-#endif
+   wunschPos[0] = _pointToCell(tmpP);
+   _fillWunschPos(wunschPos[0]);
+   
    int j=0;
    
-   for(; j< FF_WSIZE ; j++) {
-    if((wunschPos[j] <= count) && (wunschPos[j] >= 0) &&
+   for(; j< wsize ; j++) {
+    if((wunschPos[j] < count) && (wunschPos[j] >= 0) &&
        (nodes[wunschPos[j]] == NULL)) {
      nodes[wunschPos[j]] = tmpN;
      tmpN->setValue(wunschPos[j]);
 
-     tmpP = FFPoint( (wunschPos[j] % anzX) * xOffSet, 
-                     (wunschPos[j] / anzX) * yOffSet);
+     tmpP = _cellPoint(wunschPos[j]);
      break;
     }
    }
      
-   if(j == FF_WSIZE) {
+   if(j == wsize) {
     returnVal = NO;
    }
 
@@ -561,6 +594,7 @@ void FFOrtho::_randomPlacement()
              
  anzX += 2 * randOff;
  anzY += 2 * randOff;
+ anzZ = 1;           // zufaellige Startplatzierung ist immer flach
  
  count = anzX * anzY;
  
@@ -609,6 +643,7 @@ void FFOrtho::layout ()
  aktuX = randOff*xOffSet;
  aktuY = randOff*yOffSet;
  count = 0;
+ wsize = threeD ? FF_WSIZE_3D : FF_WSIZE_2D;
  
  BOOL tmpUpdate=YES;
  if (graph->getWindow ())
@@ -628,6 +663,8 @@ void FFOrtho::layout ()
     cerr << "Reducing grid space and retry" << endl;
     setxoff(getxoff() /2);
     setyoff(getyoff() /2);
+    if(threeD)
+     setzoff(getzoff() /2);
     if(inspector != NULL)
      inspector->inspect();
    } 
@@ -709,39 +746,72 @@ void FFOrtho::layout ()
  nodes = 0;
 }
 
+// 3D-Kantenfuehrung im Gitter ("dimension order routing"):
+//
+// Jede Kante laeuft immer zuerst in z-Richtung auf die Ebene des Zielknotens,
+// dann in y-Richtung und zuletzt in x-Richtung zum Ziel.  Alle Segmente
+// sind dadurch achsenparallel, es gibt hoechstens zwei Knickpunkte:
+//
+//   Quelle S = (sx,sy,sz)  ->  (sx,sy,tz)  ->  (sx,ty,tz)  ->  Ziel T
+//             z-Segment          y-Segment         x-Segment
+//
+// Knickpunkte, die mit ihrem Vorgaenger oder dem Ziel zusammenfallen
+// (Segment der Laenge 0), werden weggelassen.  Benachbarte Knoten (nur eine
+// Achse unterscheidet sich) behalten deshalb ihre gerade Kante.  Eine
+// Kollisionspruefung mit anderen Knoten findet bewusst nicht statt.
 void FFOrtho::_3DEdgePos()
 {
- int randOff = FF_RAND;
  const FFSet<FFNode>& tmpNS= graph->allNodes();
  
- cerr << "Doing 3D edge adjustment" << endl;
+ cerr << "Doing 3D edge adjustment (z-y-x routing)" << endl;
+ 
+ // Zwei Punkte gelten als gleich, wenn sie weniger als ein halbes Pixel
+ // voneinander entfernt sind.
+ const FFCoord eps = 0.5;
  
  for(Pix i= tmpNS.first(); i != 0; tmpNS.next(i))
   {
-   const FFSet<FFEdge>& tmpES = tmpNS(i)->transToSucc();
+   FFNode tmpSource = tmpNS(i);
+   FFGraphicNode *tmpGS = tmpSource->getGraphicNode();
+   
+   const FFSet<FFEdge>& tmpES = tmpSource->transToSucc();
    for(Pix j= tmpES.first(); j!= 0; tmpES.next(j))
     {
      FFEdge tmpEdge = tmpES(j);
-     FFNode tmpSource = tmpNS(i);
-     FFNode tmpTarget = tmpEdge->target();
-     FFGraphicNode *tmpGS = tmpSource->getGraphicNode();
-     FFGraphicNode *tmpGT = tmpTarget->getGraphicNode();
+     FFGraphicNode *tmpGT = tmpEdge->target()->getGraphicNode();
      FFGraphicEdge *tmpGE = tmpEdge->getGraphicEdge();
      
      if(tmpGS && tmpGT && tmpGE)
       {
-       FFPoint srcP = tmpGS->getCoords();
-       FFPoint tgtP = tmpGT->getCoords();
+       const FFPoint srcP = tmpGS->getCoords();
+       const FFPoint tgtP = tmpGT->getCoords();
        
-       FFCoord z =  sqrt(( srcP.v[0] * srcP.v[1] + tgtP.v[0] * tgtP.v[1] ) /2);
+       FFPoint last = srcP;
+       FFPoint bend[2];
+       int numBends = 0;
        
-       FFPoint tmpP1 = srcP + FFPoint(0,0,z);
-       FFPoint tmpP3 = tgtP + FFPoint(0,0,z);
-       FFPoint tmpP2(tmpP3.v[0], tmpP1.v[1], z);
-         
-       tmpGE->addPointAt(1,tmpP1);
-       tmpGE->addPointAt(2,tmpP2);
-       tmpGE->addPointAt(3,tmpP3);
+       // 1. z-Segment: in die Ebene des Zielknotens
+       FFPoint tmpP1(srcP.v[0], srcP.v[1], tgtP.v[2]);
+       // 2. y-Segment: auf die Zeile des Zielknotens
+       FFPoint tmpP2(srcP.v[0], tgtP.v[1], tgtP.v[2]);
+       
+       if(fabs(tmpP1.v[2] - last.v[2]) > eps &&
+          (fabs(tmpP1.v[0] - tgtP.v[0]) > eps ||
+           fabs(tmpP1.v[1] - tgtP.v[1]) > eps))
+        {
+         bend[numBends++] = tmpP1;
+         last = tmpP1;
+        }
+       
+       if(fabs(tmpP2.v[1] - last.v[1]) > eps &&
+          fabs(tmpP2.v[0] - tgtP.v[0]) > eps)
+        {
+         bend[numBends++] = tmpP2;
+        }
+       
+       // 3. x-Segment: vom letzten Knick (oder der Quelle) zum Ziel
+       for(int k=0; k < numBends; k++)
+        tmpGE->addPointAt(1 + k, bend[k]);
       }
     }
   }

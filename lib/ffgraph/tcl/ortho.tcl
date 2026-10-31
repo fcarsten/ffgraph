@@ -57,10 +57,12 @@ proc Ortho_MakePositionItems {} {
   label .positionitems.l -text "Positioning:" -anchor nw
   Ortho_MakeMyEntry .positionitems.xoffset "X Distance" yoff
   Ortho_MakeMyEntry .positionitems.yoffset "Y Distance" xoff
+  Ortho_MakeMyEntry .positionitems.zoffset "Z Distance (3D)" zoff
   pack append .positionitems \
     .positionitems.l {top frame nw expand fillx} \
     .positionitems.xoffset {top frame nw expand fillx} \
-    .positionitems.yoffset {top frame nw expand fillx} 
+    .positionitems.yoffset {top frame nw expand fillx} \
+    .positionitems.zoffset {top frame nw expand fillx} 
 }
 
 proc Ortho_MakeActionButtons {} {
