@@ -1573,7 +1573,10 @@ FFTclBasicWindow::~FFTclBasicWindow()
    if (unprojCommand_)
     Tcl_DeleteCommandFromToken(interp, unprojCommand_);
 
-   if (ownsSelectionHandler_ && w)
+   // A Tcl script may already have destroyed the root window. `w` then
+   // points to freed Tk storage, so only unregister its selection handler
+   // while it still matches the interpreter's current main window.
+   if (ownsSelectionHandler_ && w && Tk_MainWindow(interp) == w)
     {
 #if(TK_MAJOR_VERSION < 4)
      Tk_DeleteSelHandler(w, XA_STRING);

@@ -39,6 +39,13 @@ protected:
   
  public:
 
+  // Reclaim window interpreters only between Tcl/Tk event callbacks. Calling
+  // Tcl_DeleteInterp from a command that deletes its own window can abort Tcl
+  // with "DeleteInterpProc called with active evals".
+  // Both functions must run on the thread owning the Tcl/Tk event loop.
+  static void collectPendingInterpreters();
+  static void mainLoop();
+
   Tcl_Interp *getInterpreter()
    {return interp;}
 

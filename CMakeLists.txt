@@ -234,6 +234,23 @@ if(BUILD_TESTING)
   # Do not require Xvfb for ordinary compilation or headless unit tests.
   find_program(XVFB_RUN_EXECUTABLE NAMES xvfb-run)
   if(XVFB_RUN_EXECUTABLE)
+    # Exercises real Tk root-window and Tcl interpreter teardown without
+    # relying on WSLg or the user's interactive desktop.
+    add_executable(test_ffwindow_tk_teardown tests/test_ffwindow_tk_teardown.cpp)
+    target_link_libraries(test_ffwindow_tk_teardown PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+    )
+    if(MATH_LIBRARY)
+      target_link_libraries(test_ffwindow_tk_teardown PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(test_ffwindow_tk_teardown PRIVATE ${DL_LIBRARY})
+    endif()
+    add_test(NAME test_ffwindow_tk_teardown
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_ffwindow_tk_teardown>")
+    set_tests_properties(test_ffwindow_tk_teardown PROPERTIES TIMEOUT 30)
+
     add_executable(test_inspector_visibility tests/test_inspector_visibility.cpp)
     target_link_libraries(test_inspector_visibility PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"

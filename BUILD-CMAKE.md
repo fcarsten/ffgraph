@@ -44,3 +44,22 @@ cmake --install build/install
 The `ffgraph3D` symlink is installed alongside `ffgraph`. Runtime assets
 are installed under the library directory as in the original Makefiles.
 Check application-specific runtime asset lookup on your target installation.
+
+## Tcl/Tk window teardown
+
+`FFWindow` owns its Tcl interpreter, except for `FFTclSubWindow`, which
+explicitly borrows and preserves its parent's interpreter. Do **not** call
+`Tcl_DeleteInterp()` directly from a C++ window destructor: a window can be
+removed inside its own Tcl command callback, where Tcl still has active evals.
+
+The application now calls `FFWindow::mainLoop()` instead of `Tk_MainLoop()`.
+This runs the usual Tk event loop and calls `FFWindow::collectPendingInterpreters()`
+**after** each top-level `Tcl_DoOneEvent()` returns. Embedders using their own
+event loop must likewise call the collector at a safe point **outside** Tcl
+callbacks and nested Tcl `update` evaluations.
+
+The display-backed `test_ffwindow_tk_teardown` checks interpreter/root
+creation and destruction, repeated cycles, already-destroyed roots, two
+simultaneous interpreters, and destruction from an active Tcl callback. It is
+registered with CTest automatically when `xvfb-run` is installed. Use the
+`asan` preset for additional memory/undefined-behaviour checks.

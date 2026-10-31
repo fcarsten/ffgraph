@@ -242,30 +242,61 @@ void FFWindow::setDisplay(const String& d)
 // should be made better.
 //
 
+namespace {
+// FFWindow's Tcl interpreter must outlive any command currently executing in
+// it. Tcl/Tk calls FFWindow's user callbacks from Tcl_Eval(), where an
+// immediate Tcl_DeleteInterp() can abort with active evaluations.
+// The queue is drained at the top level of the event loop instead.
+std::vector<Tcl_Interp*> pendingInterpreterDeletion;
+}
+
+void FFWindow::collectPendingInterpreters()
+{
+  // Deleting one interpreter can cause other windows to be destroyed.
+  // Continue until no newly queued interpreters remain.
+  while (!pendingInterpreterDeletion.empty())
+  {
+    std::vector<Tcl_Interp*> batch;
+    batch.swap(pendingInterpreterDeletion);
+    for (Tcl_Interp* interpreter : batch)
+      Tcl_DeleteInterp(interpreter);
+  }
+}
+
+void FFWindow::mainLoop()
+{
+  // Equivalent to Tk_MainLoop, with a safe interpreter cleanup point after
+  // Tcl_DoOneEvent has fully returned (not inside a Tcl command callback).
+  collectPendingInterpreters();
+  while (Tk_GetNumMainWindows() > 0)
+  {
+    Tcl_DoOneEvent(0);
+    collectPendingInterpreters();
+  }
+  collectPendingInterpreters();
+}
+
 FFWindow::~FFWindow()
 {
- if(interp != NULL)
-  {
-   // Tcl_CreateInterp() runs in the constructor, before a Tk window is
-   // created. If initialization never took place, this interpreter is solely
-   // owned by FFWindow and can be safely disposed of without invoking Tk.
-   if(w == nullptr)
-    {
-     Tcl_DeleteInterp(interp);
-     interp = nullptr;
-     return;
-    }
+  if (interp == nullptr) return; // FFTclSubWindow borrows its interpreter.
 
-   FF_TclEvalObjv(interp, {"wm", "withdraw", "."});
-   
-   // folgende Zeile wurde auskommentiert, da es Probleme
-   // gab, wenn ein Fenster Zeiger mit delete freigegeben
-   // wurde. Das Auskommentieren der Zeile beseitigte auch
-   // den Absturtz unter LINUX.  volker 10.10.1996
-   // Do not delete a Tk-initialized interpreter here yet: historical
-   // window teardown caused crashes, and registered GUI callbacks may be
-   // active. This requires an event-loop/window-lifecycle regression test.
-   // Tcl_DeleteInterp(interp);
+  Tcl_Interp* owned = interp;
+  const bool tkInitialised = w != nullptr;
+  interp = nullptr;
+  w = nullptr;
+
+  if (tkInitialised)
+  {
+    // Derived destructors have already removed their Tcl callbacks and
+    // selection handlers. Defer interpreter/Tk destruction until we are
+    // outside any Tcl_Eval() which may have deleted this C++ window.
+    pendingInterpreterDeletion.push_back(owned);
+  }
+  else
+  {
+    // No Tk event loop exists for this interpreter. Retain the immediate
+    // cleanup behaviour for windows that were never Tk-initialised.
+    Tcl_DeleteInterp(owned);
   }
 }
 

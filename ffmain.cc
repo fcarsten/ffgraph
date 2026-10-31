@@ -91,10 +91,13 @@ int main(int argc, char **argv)
  
  String appName(argv[0]);
 
- // If arguments were supplied I try to open them as graphs.
+ // Keep graph handles alive until the Tk event loop has finished. Otherwise
+ // the last external graph reference can disappear before any GUI events run.
+ std::vector<FFGraph> initialGraphs;
 
+ // If arguments were supplied I try to open them as graphs.
  if((argc > 1) && !isPositiveIntegerArgument(argv[1])) {
-   std::vector<FFGraph> tmpG(static_cast<std::size_t>(argc - 1));
+   initialGraphs.resize(static_cast<std::size_t>(argc - 1));
    
    for(int i=1; i<argc; i++)
     {			
@@ -105,13 +108,13 @@ int main(int argc, char **argv)
      else 
       fenster=new FFTclWindow;
      
-     // FFLayoutLabel * clustering = (FFLayoutLabel *) tmpG[i-1]->getGraphLabel("FFKaese");
+     // FFLayoutLabel * clustering = (FFLayoutLabel *) initialGraphs[i-1]->getGraphLabel("FFKaese");
 
-     tmpG[i-1]->createGraphic(fenster);
+     initialGraphs[i-1]->createGraphic(fenster);
      if(fenster != NULL)
       fenster->setFileName(argv[i]);
      
-     tmpG[i-1]->load(String(argv[i]), YES);
+     initialGraphs[i-1]->load(String(argv[i]), YES);
      cerr << "ready loading" << endl;
      
      // clustering->layout();
@@ -120,17 +123,21 @@ int main(int argc, char **argv)
   }
  else // If no arguments were supplied, I open an empty window
   {			
-   FFGraph tmpG;
+   initialGraphs.emplace_back();
    if(appName.contains("ffgraph3D"))
-    tmpG->createGraphic(new FFTcl3DWindow);
-   else 
-    tmpG->createGraphic(new FFTclWindow);
+    initialGraphs.back()->createGraphic(new FFTcl3DWindow);
+   else
+    initialGraphs.back()->createGraphic(new FFTclWindow);
   }
 
- // Now I start the main event loop by passing control to the Tcl/Tk library
- // This function never returns.
-
- Tk_MainLoop();  
+ // Process Tcl/Tk events and reclaim deleted window interpreters between
+ // top-level events.
+ // Tcl_DeleteInterp is unsafe inside commands that delete their own window.
+ FFWindow::mainLoop();
+ // Releasing the initial graph handles may itself destroy window labels.
+ // Collect any interpreters queued by their destructors before exiting.
+ initialGraphs.clear();
+ FFWindow::collectPendingInterpreters();
 }
 
 // EOF

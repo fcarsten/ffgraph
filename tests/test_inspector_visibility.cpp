@@ -30,16 +30,22 @@ static bool evaluate(Tcl_Interp* i, const char* command, const char* expected) {
   return true;
 }
 
+static void interpreterDeleted(ClientData data, Tcl_Interp*) {
+  ++*static_cast<int*>(data);
+}
+
 int main() {
+  int deleted = 0;
   auto* inspector = new TestInspector;
   Tcl_Interp* interp = inspector->getInterpreter();
   if (!inspector->initialiseTk()) {
     std::cerr << "Could not initialise Tcl/Tk: " << Tcl_GetStringResult(interp) << '\n';
     delete inspector;
-    Tcl_DeleteInterp(interp);
+    FFWindow::collectPendingInterpreters();
     return 1;
   }
 
+  Tcl_CallWhenDeleted(interp, interpreterDeleted, &deleted);
   bool ok = inspector->hasLiveWindow();
   ok = evaluate(interp, "wm withdraw .", "") && ok;
   ok = evaluate(interp, "wm state .", "withdrawn") && ok;
@@ -52,6 +58,6 @@ int main() {
   ok = !inspector->hasLiveWindow() && ok;
 
   delete inspector;
-  Tcl_DeleteInterp(interp);
-  return ok ? 0 : 1;
+  FFWindow::collectPendingInterpreters();
+  return (ok && deleted == 1 && Tk_GetNumMainWindows() == 0) ? 0 : 1;
 }
