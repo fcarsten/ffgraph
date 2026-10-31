@@ -166,8 +166,8 @@ void FFKaese::layout ()
 
 void FFKaese::updateCuts()
 {
- int tmpInner=0;
- int tmpOuter=0;
+// int tmpInner=0;
+// int tmpOuter=0;
  
  for(Pix i= setA.first(); i!= 0; setA.next(i))
   {
@@ -225,7 +225,7 @@ void FFKaese::updateCuts()
   }
 }
  
-char *farbe[]= {
+const char *farbe[]= {
 "green", "red", "blue", "brown", "cyan", "magenta",
 "yellow", "orange",
 "snow",

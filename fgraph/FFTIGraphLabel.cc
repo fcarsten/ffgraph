@@ -366,13 +366,13 @@ void FFTIGraphLabel::_adjEdgeDirST()
  Pix i= 0;
  FFTINodeLabel *nlS= 0;
  FFTINodeLabel *nlT= 0;
- FFTIEdgeLabel *el= 0;
+// FFTIEdgeLabel *el= 0;
 
  for(i=alleKanten.first(); i!= 0; alleKanten.next(i))
   {
    nlS = (FFTINodeLabel *)alleKanten(i)->source()->getLabel(tiNodeLabel);
    nlT = (FFTINodeLabel *)alleKanten(i)->target()->getLabel(tiNodeLabel);
-   el = (FFTIEdgeLabel *)alleKanten(i)->getLabel(tiEdgeLabel);
+//   el = (FFTIEdgeLabel *)alleKanten(i)->getLabel(tiEdgeLabel);
    if(nlS->getSTNum() > nlT->getSTNum())
     alleKanten(i)->revert();
   } 
@@ -478,7 +478,8 @@ void FFTIGraphLabel::dfs()
    nl->lowNum = 0;
   }
  
- if(graph->getStartNode() != NULL)
+ if(graph->getStartNode() != NULL) 
+ {
   if(graph->getDirected())
    {
     //    _dfsDir(graph->getStartNode());
@@ -487,6 +488,7 @@ void FFTIGraphLabel::dfs()
    {
     _dfsUndir(graph->getStartNode());
    }
+ }
 
  while(todo.length() != 0)
   if(graph->getDirected())

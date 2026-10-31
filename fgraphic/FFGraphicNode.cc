@@ -476,7 +476,7 @@ void FFGraphicNode::moveTo(const FFPoint& point)
  return;
 }
 
-void FFGraphicNode::moveTo(char *x1, char *y1, char *z1)
+void FFGraphicNode::moveTo(const char *x1, const char *y1, const char *z1)
 {
   moveTo(FFPoint(atof(x1), atof(y1), atof(z1)));
 }
@@ -510,7 +510,7 @@ void FFGraphicNode::rmoveTo(const FFPoint& point)
 //  return;
 }
 
-void FFGraphicNode::rmoveTo(char *x1, char *y1, char *z1)
+void FFGraphicNode::rmoveTo(const char *x1, const char *y1, const char *z1)
 {
   rmoveTo(FFPoint(atof(x1), atof(y1), atof(z1)));
   return;

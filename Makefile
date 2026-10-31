@@ -18,9 +18,9 @@ RANLIB = ranlib
 
 DEFS = 
 
-CCFLAGS = " -fsanitize=address -g -O2 -Wall -Wextra -Wno-unused-parameter -std=gnu++17"
-CXXFLAGS="-g3 -O0 -fno-omit-frame-pointer -fsanitize=address,undefined "      
-CFLAGS="-g3 -O0 -fno-omit-frame-pointer -fsanitize=address,undefined "
+CCFLAGS = -g -O2 -Wall -Wextra -Wno-unused-parameter  -std=gnu++17
+CXXFLAGS= -g3 -O0 -fno-omit-frame-pointer    
+CFLAGS= -g3 -O0 -fno-omit-frame-pointer  
 LDFLAGS	=  
 
 LDFLAGS_GRAPHIC = -L. -L./fgraph -L./fgraphic -L./flayout -L./container

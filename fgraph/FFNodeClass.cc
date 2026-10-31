@@ -102,7 +102,6 @@ FFNodeClass::FFNodeClass(MPlex<FFNodeLabel *> *l)
  
  attribut= 0;
  label = 0;
- int k=0;
  
  if(l != NULL)
   {

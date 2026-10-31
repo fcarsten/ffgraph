@@ -114,14 +114,15 @@ FFCoord distSum(const FFNode node, const FFPoint& pos,
  // Ein freies Feld nach rechts oben wird immer genommen
  //
  
- if(partner == NULL) 
+ if(partner == NULL) {
   if(pos.v[0] > gn->getCoords().v[0])
    dist --;
   else if(pos.v[1] > gn->getCoords().v[1])
    dist --;
   else if(pos.v[2] > gn->getCoords().v[2])
    dist --;
- 
+ }
+
  return dist;
 }
 
@@ -414,7 +415,7 @@ BOOL FFOrtho::swapNodes()
 
      int myPos = tmpN->getValue();
      
-     FFPoint istP = tmpGN->getCoords();
+//     FFPoint istP = tmpGN->getCoords();
      
      wunschPos[0] = _pointToCell(med); // an Wunschpoisition
 
@@ -870,7 +871,7 @@ BOOL FFOrtho::_testNeighbor(const FFPoint& p1, const FFPoint& p2)
 
 void FFOrtho::_2DEdgePos()
 {
- int randOff = FF_RAND;
+// int randOff = FF_RAND;
  int k=0;
 
  struct inOutStruct inOut[graph->getNumNodes()];

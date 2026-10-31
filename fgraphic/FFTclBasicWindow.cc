@@ -1693,7 +1693,7 @@ String FFTclBasicWindow::addNode(FFGraphicNode *n)
 String FFTclBasicWindow::addLabel(FFGraphicNode *n)
 {
   const char *l = (const char *)(*n)->getName();
-  char *anker = "center";
+  const char *anker = "center";
   
   FFPoint tmpCoord = proj(n->getCoords(), n->getRange());
   

@@ -104,6 +104,7 @@ int FFSpringInsp::recall(Tcl_Interp *, int , const char **c)
 	}
     }
   else if(befehl == "startLayout")
+  {
    if(SPRING->getWindow() && 
       (SPRING->getWindow()->selectedNodes().length()>1))
     {
@@ -121,6 +122,7 @@ int FFSpringInsp::recall(Tcl_Interp *, int , const char **c)
     {
      SPRING->layout();
     }
+  }
   
   return TCL_OK;
 }

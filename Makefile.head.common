@@ -26,8 +26,9 @@ infodir = $(prefix)/info
 mandir  = $(prefix)/man
 runtimedir = $(prefix)/lib/ffgraph
 
-CFLAGS = -g -O -pipe -Wall -Wno-unused
 CCFLAGS = -g -O2 -Wall -Wextra -Wno-unused-parameter -std=gnu++17
+CXXFLAGS= -g3 -O0 -fno-omit-frame-pointer    
+CFLAGS= -g3 -O0 -fno-omit-frame-pointer 
 LDFLAGS	= 
 
 INCLUDES = -I../include -Iinclude -I.. -I. $(shell pkg-config --cflags tk 2>/dev/null)

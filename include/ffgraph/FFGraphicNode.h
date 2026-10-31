@@ -131,9 +131,9 @@ public:
 
   void setWindow(FFGraphWindow *); 
 
-  void moveTo(char *, char *, char *z="0");
+  void moveTo(const char *, const char *, const char *z="0");
   void moveTo(const FFPoint&);
-  void rmoveTo(char *, char *, char *z="0");
+  void rmoveTo(const char *, const char *, const char *z="0");
   void rmoveTo(const FFPoint&);
 
   void updateGraphic();

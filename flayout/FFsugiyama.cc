@@ -180,7 +180,7 @@ void slevel_correct (SNode *nodes, SEdge *edges,
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int i,
+  int //i,
     tmpE;
   Pix p;
     
@@ -762,7 +762,7 @@ void sugiyama (FFGraph &graph, struct FSSugiInfo info,
   DLList <int> backEdges, 
     refEdges, 
     parEdges;
-  Pix p;
+//  Pix p;
   FFGraphWindow *window;
   SNode *nodes;
   SEdge *edges;

@@ -41,7 +41,7 @@
 //  return -1;
 // }
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
  // Floating point exeptions suck. Especially division by zero.
  // What is +-infinity and NAN defined for in IEEE if not for handling

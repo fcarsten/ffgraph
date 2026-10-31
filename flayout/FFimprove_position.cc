@@ -824,7 +824,7 @@ void correct_lines (SNode *nodes, int *nodeArray, int minDiff, int anzN,
     l;
   FFCoord x = offSet, 
     nextPos,
-    nodePos,
+ //   nodePos,
     maxPos = 0.0;
 
   // Bestimme maximale x-Position
@@ -909,8 +909,8 @@ int improve_positions (int *nodeArray, SNode *nodes, int maxL,
 {
   FFCoord min,
     max = 0.0, // Fuer max. Groesse eines Knotens
-    h,
-    test;
+    h;
+//    test;
   int i,
     j,
     l,
