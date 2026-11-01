@@ -1,0 +1,38 @@
+# Opt-in generator validation while the modern GML implementation is a pilot.
+# The production application still builds the checked-in Bison++/flex++ outputs.
+name: Modern GML generator pilot
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  generate-and-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install modern parser generators
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential cmake ninja-build bison flex
+      - name: Configure standalone parser (no Tcl/Tk required)
+        run: cmake -S tests/modern_gml -B build/modern-gml -G Ninja -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug
+      - name: Regenerate and compile
+        run: cmake --build build/modern-gml --parallel 2 --verbose
+      - name: Run parser corpus
+        run: ctest --test-dir build/modern-gml --output-on-failure
+      - name: Configure sanitizer parser test
+        run: >-
+          cmake -S tests/modern_gml -B build/modern-gml-asan -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+          -DFFGRAPH_MODERN_GML_SANITIZERS=ON
+      - name: Compile sanitizer parser test
+        run: cmake --build build/modern-gml-asan --parallel 2
+      - name: Run parser corpus with ASan/UBSan and leak detection
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: ctest --test-dir build/modern-gml-asan --output-on-failure

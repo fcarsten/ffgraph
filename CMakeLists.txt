@@ -20,6 +20,14 @@ if(FFGRAPH_SANITIZERS)
   add_link_options(-fsanitize=address,undefined)
 endif()
 
+# The modern GML parser/scanner is deliberately opt-in until a full
+# token/diagnostic and graph-output parity audit is complete. It is an
+# independent library, not linked into FFGraph or the application.
+option(FFGRAPH_ENABLE_MODERN_GML "Build and test experimental GNU Bison/Flex GML parser" OFF)
+if(FFGRAPH_ENABLE_MODERN_GML)
+  add_subdirectory(tests/modern_gml)
+endif()
+
 # Build the checked-in legacy bison++/flex++ outputs verbatim.
 # Grammar regeneration is deliberately NOT an implicit build dependency.
 add_library(FFcontainer STATIC
