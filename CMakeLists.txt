@@ -132,6 +132,14 @@ install(DIRECTORY include/ffgraph/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ffgra
 install(TARGETS FFGraph FFGraphic FFlayout FFcontainer ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 if(BUILD_TESTING)
+  # Generator has no Bison/Tk dependency; exercise it in the regular suite.
+  find_package(Python3 COMPONENTS Interpreter QUIET)
+  if(Python3_Interpreter_FOUND)
+    add_test(NAME test_graph_corpus_generator_pass11
+      COMMAND "${Python3_EXECUTABLE}" -m unittest discover
+              -s "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus" -p test_generate.py)
+    set_tests_properties(test_graph_corpus_generator_pass11 PROPERTIES TIMEOUT 30)
+  endif()
   foreach(test_name
     test_dllist_stl
     test_hash_pointer_compat
@@ -201,6 +209,45 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME test_gml_graph_parity_pass11 COMMAND test_gml_graph_parity_pass11)
     set_tests_properties(test_gml_graph_parity_pass11 PROPERTIES TIMEOUT 45)
+    add_dependencies(test_gml_graph_parity_pass11 ffgraph_gml_corpus_smoke)
+    add_test(NAME test_gml_generated_graph_parity_pass11
+      COMMAND test_gml_graph_parity_pass11
+              "${CMAKE_CURRENT_BINARY_DIR}/tests/modern_gml/corpus-smoke")
+    set_tests_properties(test_gml_generated_graph_parity_pass11 PROPERTIES TIMEOUT 120)
+  endif()
+
+  # Opt-in end-to-end graph importer and bounded spring-layout regression
+  # against exactly the same deterministic parser/graph corpus.
+  option(FFGRAPH_ENABLE_CORPUS_LAYOUT_TESTS
+    "Run generated-graph import/invariant and headless spring-layout tests" OFF)
+  if(FFGRAPH_ENABLE_CORPUS_LAYOUT_TESTS)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    set(FFGRAPH_LAYOUT_CORPUS "${CMAKE_CURRENT_BINARY_DIR}/generated-layout-corpus")
+    add_custom_command(
+      OUTPUT "${FFGRAPH_LAYOUT_CORPUS}/manifest.json"
+      COMMAND "${Python3_EXECUTABLE}"
+              "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/generate.py"
+              --output-dir "${FFGRAPH_LAYOUT_CORPUS}" --profile smoke --force
+      DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/generate.py"
+      VERBATIM)
+    add_custom_target(ffgraph_layout_corpus
+      DEPENDS "${FFGRAPH_LAYOUT_CORPUS}/manifest.json")
+    add_executable(test_graph_corpus_layout_pass11
+      tests/test_graph_corpus_layout_pass11.cpp)
+    target_compile_features(test_graph_corpus_layout_pass11 PRIVATE cxx_std_17)
+    target_link_libraries(test_graph_corpus_layout_pass11 PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+    if(MATH_LIBRARY)
+      target_link_libraries(test_graph_corpus_layout_pass11 PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(test_graph_corpus_layout_pass11 PRIVATE ${DL_LIBRARY})
+    endif()
+    add_dependencies(test_graph_corpus_layout_pass11 ffgraph_layout_corpus)
+    add_test(NAME test_graph_corpus_layout_pass11
+      COMMAND test_graph_corpus_layout_pass11 "${FFGRAPH_LAYOUT_CORPUS}")
+    set_tests_properties(test_graph_corpus_layout_pass11 PROPERTIES TIMEOUT 120)
   endif()
 
   add_executable(test_graph_io_pass10 tests/test_graph_io_pass10.cpp)

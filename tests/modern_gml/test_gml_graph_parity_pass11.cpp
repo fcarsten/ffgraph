@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -114,7 +115,7 @@ void compare(const char* label, const std::string& fixture) {
   }
 }
 }
-int main() {
+int main(int argc, char** argv) {
   compare("nodes, coordinates, parallel edges and loop",
     "# column-1 legacy comment\n"
     "graph [ label \"fixture\" directed 1 creator \"ffgraph\"\n"
@@ -152,5 +153,38 @@ int main() {
     auto applied = ffgraph_gml::applyToGraph(parsed, *target.operator->());
     require(!applied.ok, "invalid graph rejected by adapter");
     require(snapshot(*target.operator->()) == before, "rejected parse leaves graph unchanged");
+  }
+  // Optional generated corpus. The TSV is produced deterministically from
+  // modern_gml.{y,l}'s supported attribute grammar; only graph-valid rows
+  // enter the legacy importer (negative/syntax-only rows are parser tests).
+  if (argc == 2) {
+    const std::filesystem::path root(argv[1]);
+    std::ifstream listing(root / "cases.tsv");
+    require(static_cast<bool>(listing), "cannot open corpus cases.tsv");
+    std::string line;
+    unsigned compared = 0;
+    while (std::getline(listing, line)) {
+      if (line.empty() || line.front() == '#') continue;
+      std::istringstream stream(line);
+      std::string category, name, relative, nodes, edges;
+      require(static_cast<bool>(std::getline(stream, category, '\t')) &&
+              static_cast<bool>(std::getline(stream, name, '\t')) &&
+              static_cast<bool>(std::getline(stream, relative, '\t')) &&
+              static_cast<bool>(std::getline(stream, nodes, '\t')) &&
+              static_cast<bool>(std::getline(stream, edges, '\t')),
+              "invalid corpus row");
+      if (category != "graph") continue;
+      const auto path = root / relative;
+      std::ifstream input(path, std::ios::binary);
+      require(static_cast<bool>(input), "cannot open " + path.string());
+      const std::string fixture((std::istreambuf_iterator<char>(input)),
+                                std::istreambuf_iterator<char>());
+      compare(name.c_str(), fixture);
+      ++compared;
+    }
+    require(compared >= 15, "too few graph-valid corpus cases");
+    std::cout << "compared " << compared << " generated graph fixtures\n";
+  } else {
+    require(argc == 1, "usage: test_gml_graph_parity_pass11 [corpus_directory]");
   }
 }
