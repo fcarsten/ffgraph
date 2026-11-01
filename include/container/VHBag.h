@@ -100,6 +100,10 @@ public:
     if (it == items_.end() || ++it == items_.end()) { p = 0; return; }
     p = Pix(const_cast<Type*>(std::addressof(*it)));
   }
+  // Legacy API returns a mutable reference to an element used as a hash key.
+  // Do NOT modify that value in place: std::unordered_* requires stable keys.
+  // To change it, erase the old entry and insert a new one (preserving mapped
+  // values as needed). Read-only key access and mapped-value edits are safe.
   Type& operator()(Pix p) override {
     auto it = find_pix(p);
     if (it == items_.end()) { this->error("invalid or null Pix"); static Type invalid{}; return invalid; }

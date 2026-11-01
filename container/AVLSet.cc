@@ -3,6 +3,7 @@
 #endif
 
 #include <container/AVLSet.h>
+#include <utility>
 
 //---- newclass ---------------------------------------------------------
 template<class T>
@@ -34,8 +35,10 @@ template<class T>
 AVLSet<T>& AVLSet<T>::operator =  (const AVLSet<T>& b)
 {
   if (this != &b) {
-    clear();
-    *this |= b;
+    // Do not discard the original tree if copying throws.
+    AVLSet<T> replacement(b);
+    std::swap(root, replacement.root);
+    std::swap(this->count, replacement.count);
   }
   return *this;
 }
@@ -172,8 +175,8 @@ void AVLSet<T>:: _add(AVLNode<T>*& t)
   {
     if (lthread(t))
     {
-      ++this->count;
       _found_node = new AVLNode<T>(*_target_item);
+      ++this->count;
       set_lthread(_found_node, 1);
       set_rthread(_found_node, 1);
       _found_node->lt = t->lt;
@@ -250,8 +253,8 @@ void AVLSet<T>:: _add(AVLNode<T>*& t)
   {
     if (rthread(t))
     {
-      ++this->count;
       _found_node = new AVLNode<T>(*_target_item);
+      ++this->count;
       set_rthread(t, 0);
       set_lthread(_found_node, 1);
       set_rthread(_found_node, 1);
@@ -331,8 +334,8 @@ Pix AVLSet<T>::add(T  item)
 {
   if (root == 0)
   {
-    ++this->count;
     root = new AVLNode<T>(item);
+    ++this->count;
     set_rthread(root, 1);
     set_lthread(root, 1);
     return Pix(root);
@@ -677,23 +680,25 @@ void AVLSet<T>::_kill(AVLNode<T>* t)
 template<class T>
 AVLSet<T>::AVLSet(const AVLSet<T>& b)
 {
-  if ((this->count = b.count) == 0)
-  {
-    root = 0;
+  root = 0;
+  this->count = 0;
+  if (b.count == 0) return;
+
+  // A failed node copy must release every already allocated node. A
+  // constructor that throws does not run AVLSet's destructor.
+  AVLNode<T>** nodes = new AVLNode<T>*[b.count];
+  int built = 0;
+  try {
+    for (AVLNode<T>* t = b.leftmost(); t != 0; t = b.succ(t))
+      nodes[built++] = new AVLNode<T>(t->item);
+  } catch (...) {
+    for (int i = 0; i < built; ++i) delete nodes[i];
+    delete [] nodes;
+    throw;
   }
-  else
-  {
-//    typedef AVLNode<T>* AVLNodePtr<T>;
-    _hold_nodes = new AVLNode<T> *[this->count];
-    AVLNode<T>* t = b.leftmost();
-    int i = 0;
-    while (t != 0)
-    {
-      _hold_nodes[i++] = new AVLNode<T>(t->item);
-      t = b.succ(t);
-    }
-    root = _treeify(this->count);
-  }
+  _hold_nodes = nodes;
+  root = _treeify(b.count);
+  this->count = b.count;
 }
 
 template<class T>

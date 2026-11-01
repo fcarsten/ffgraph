@@ -134,6 +134,7 @@ if(BUILD_TESTING)
     test_container_hash_pix_pass8
     test_container_avl_pass8
     test_container_avlmap_pass8
+    test_container_avl_exception_followup
     test_container_dllist_pass8
     test_string_compat
     test_strstream_compat

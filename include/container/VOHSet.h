@@ -122,6 +122,10 @@ public:
     auto it = items_.find(item);
     return it == items_.end() ? Pix(0) : Pix(const_cast<T*>(std::addressof(*it)));
   }
+  // Legacy API returns a mutable reference to an element used as a hash key.
+  // Do NOT modify that value in place: std::unordered_* requires stable keys.
+  // To change it, erase the old entry and insert a new one (preserving mapped
+  // values as needed). Read-only key access and mapped-value edits are safe.
   T& operator()(Pix p) const override {
     auto it = find_pix(p);
     if (it == items_.end()) throw std::out_of_range("VOHSet: invalid or null Pix");

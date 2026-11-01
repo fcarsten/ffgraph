@@ -168,8 +168,8 @@ void AVLMap<T1,T2>:: _add(AVLMNode<T1,T2>*& t)
   {
     if (lthread(t))
     {
-      ++this->count;
       _found_node = new AVLMNode<T1,T2>(*_target_item, this->def);
+      ++this->count;
       set_lthread(_found_node, 1);
       set_rthread(_found_node, 1);
       _found_node->lt = t->lt;
@@ -246,8 +246,8 @@ void AVLMap<T1,T2>:: _add(AVLMNode<T1,T2>*& t)
   {
     if (rthread(t))
     {
-      ++this->count;
       _found_node = new AVLMNode<T1,T2>(*_target_item, this->def);
+      ++this->count;
       set_rthread(t, 0);
       set_lthread(_found_node, 1);
       set_rthread(_found_node, 1);
@@ -328,8 +328,8 @@ T2& AVLMap<T1,T2>::operator [] (T1  item)
 {
   if (root == 0)
   {
-    ++this->count;
     root = new AVLMNode<T1,T2>(item, this->def);
+    ++this->count;
     set_rthread(root, 1);
     set_lthread(root, 1);
     return root->cont;
@@ -602,8 +602,14 @@ AVLMap<T1,T2>::AVLMap(const AVLMap<T1,T2>& b) :MFMap<T1,T2>(b.def)
 {
   root = 0;
   this->count = 0;
-  for (Pix i = b.first(); i != 0; b.next(i)) 
-    (*this)[b.key(i)] = b.contents(i);
+  try {
+    for (Pix i = b.first(); i != 0; b.next(i))
+      (*this)[b.key(i)] = b.contents(i);
+  } catch (...) {
+    // A throwing constructor does not call the derived destructor.
+    clear();
+    throw;
+  }
 }
 
 
