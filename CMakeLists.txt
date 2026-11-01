@@ -170,6 +170,25 @@ if(BUILD_TESTING)
     set_tests_properties(${test_name} PROPERTIES TIMEOUT 30)
   endforeach()
 
+  # Pass 10: end-to-end sgraph/GML load-modify-save-reload coverage,
+  # including the bundled historical graph. This target needs no display.
+  add_executable(test_graph_io_pass10 tests/test_graph_io_pass10.cpp)
+  target_compile_features(test_graph_io_pass10 PRIVATE cxx_std_17)
+  target_compile_definitions(test_graph_io_pass10 PRIVATE
+    FFGRAPH_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  target_link_libraries(test_graph_io_pass10 PRIVATE
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+  )
+  if(MATH_LIBRARY)
+    target_link_libraries(test_graph_io_pass10 PRIVATE ${MATH_LIBRARY})
+  endif()
+  if(DL_LIBRARY)
+    target_link_libraries(test_graph_io_pass10 PRIVATE ${DL_LIBRARY})
+  endif()
+  add_test(NAME test_graph_io_pass10 COMMAND test_graph_io_pass10)
+  set_tests_properties(test_graph_io_pass10 PROPERTIES TIMEOUT 40)
+
   add_executable(test_graph_ownership tests/test_graph_ownership.cpp)
   target_compile_features(test_graph_ownership PRIVATE cxx_std_17)
   target_link_libraries(test_graph_ownership PRIVATE
@@ -279,6 +298,24 @@ if(BUILD_TESTING)
     add_test(NAME test_ffwindow_tk_teardown
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_ffwindow_tk_teardown>")
     set_tests_properties(test_ffwindow_tk_teardown PROPERTIES TIMEOUT 30)
+
+    # Repeated two-root lifecycle, borrowed subwindow commands and nested
+    # Tcl callbacks deleting their owning window. Independent of WSLg.
+    add_executable(test_tk_lifecycle_pass10 tests/test_tk_lifecycle_pass10.cpp)
+    target_compile_features(test_tk_lifecycle_pass10 PRIVATE cxx_std_17)
+    target_link_libraries(test_tk_lifecycle_pass10 PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+    )
+    if(MATH_LIBRARY)
+      target_link_libraries(test_tk_lifecycle_pass10 PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(test_tk_lifecycle_pass10 PRIVATE ${DL_LIBRARY})
+    endif()
+    add_test(NAME test_tk_lifecycle_pass10
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_tk_lifecycle_pass10>")
+    set_tests_properties(test_tk_lifecycle_pass10 PROPERTIES TIMEOUT 45)
 
     add_executable(test_inspector_visibility tests/test_inspector_visibility.cpp)
     target_link_libraries(test_inspector_visibility PRIVATE

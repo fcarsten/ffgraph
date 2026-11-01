@@ -36,3 +36,34 @@ jobs:
 
       - name: Run tests (including Xvfb GUI tests)
         run: ctest --preset debug --output-on-failure --parallel 2
+
+  ubuntu-24-04-asan:
+    name: Ubuntu 24.04 / ASan + UBSan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install build and GUI test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            tcl-dev tk-dev libx11-dev libxpm-dev \
+            xvfb xauth
+
+      - name: Configure (ASan/UBSan)
+        run: cmake --preset asan -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build --preset asan --parallel 2
+
+      - name: Run sanitizer tests (including Xvfb GUI tests)
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: ctest --preset asan --output-on-failure --parallel 1

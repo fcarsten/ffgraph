@@ -1362,11 +1362,22 @@ void GTControl::gtPrintError(char *s )
 
 GTControl::GTControl() {};
 
-GTControl::~GTControl() {};
+GTControl::~GTControl() {
+  for (char* token : allocatedTokens)
+    free(token);
+  // flex++ did not generate a scanner destructor; the final buffer otherwise
+  // survives until process exit, even when the parse has finished.
+  if (yy_current_buffer)
+    yy_delete_buffer(yy_current_buffer);
+}
 
 int GTControl::gtScan()
 {
   int t=GTControl::ScanValue(gtTheTokenValue);
+  if (t == GTParser::KEY)
+    allocatedTokens.push_back(gtTheTokenValue.key);
+  else if (t == GTParser::STRING)
+    allocatedTokens.push_back(gtTheTokenValue.str);
   return t;
 }
 

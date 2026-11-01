@@ -323,6 +323,7 @@ class YY_GTScanner_CLASS YY_GTScanner_INHERIT
 #line 88 "GTScanner.l"
 #include <strstream.h>
 #include <fstream.h>
+#include <vector>
 
 #include <ffgraph/ffError.h>
 #include <ffgraph/FFGraphClass.h>
@@ -339,6 +340,8 @@ class GTControl : private GTScanner, public GTParser
 
  protected:
   int gtScan();
+  // The legacy parser does not destroy semantic values on reduction/error.
+  std::vector<char*> allocatedTokens;
 };
 #line 145 "GTScanner.l"
 #endif

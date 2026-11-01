@@ -88,6 +88,7 @@ anything						.*
 %header{
 #include <strstream.h>
 #include <fstream.h>
+#include <vector>
 
 #include <ffgraph/ffError.h>
 #include <ffgraph/FFGraphClass.h>
@@ -104,6 +105,9 @@ class GTControl : private GTScanner, public GTParser
 
  protected:
   int gtScan();
+  // The legacy grammar does not destroy semantic values on reduction/error.
+  // Own all scanner-allocated KEY/STRING tokens until parsing finishes.
+  std::vector<char*> allocatedTokens;
 };
 %}
 
@@ -188,11 +192,22 @@ void GTControl::gtPrintError(char *s )
 
 GTControl::GTControl() {};
 
-GTControl::~GTControl() {};
+GTControl::~GTControl() {
+  for (char* token : allocatedTokens)
+    free(token);
+  // The checked-in flex++ scanner has no destructor; release its final
+  // buffer explicitly, including when parsing stops on an error.
+  if (yy_current_buffer)
+    yy_delete_buffer(yy_current_buffer);
+}
 
 int GTControl::gtScan()
 {
   int t=GTControl::ScanValue(gtTheTokenValue);
+  if (t == GTParser::KEY)
+    allocatedTokens.push_back(gtTheTokenValue.key);
+  else if (t == GTParser::STRING)
+    allocatedTokens.push_back(gtTheTokenValue.str);
   return t;
 }
 
