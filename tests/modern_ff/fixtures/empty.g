@@ -1,0 +1,1 @@
+GRAPH "empty" = END

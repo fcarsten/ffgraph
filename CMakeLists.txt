@@ -140,6 +140,12 @@ install(TARGETS FFGraph FFGraphic FFlayout FFcontainer ARCHIVE DESTINATION ${CMA
 # Installed FFGraph static archives now depend on this generated parser.
 install(TARGETS ffgraph_modern_gml ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
+option(FFGRAPH_ENABLE_MODERN_FF_PILOT
+  "Build isolated modern FF parser and compatibility tests (production stays legacy)" OFF)
+if(FFGRAPH_ENABLE_MODERN_FF_PILOT)
+  add_subdirectory(tests/modern_ff)
+endif()
+
 if(BUILD_TESTING)
   # Generator has no Bison/Tk dependency; exercise it in the regular suite.
   find_package(Python3 COMPONENTS Interpreter QUIET)
