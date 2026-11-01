@@ -3,12 +3,19 @@
 // Designed for the graph corpus; does not change the application import path.
 #include "gml_events.h"
 #include "gml_graph_adapter.h"
+
 #include "../graph_corpus/graph_snapshot.h"
 
 #include <ffgraph/FFGraph.h>
 #include <ffgraph/FFGraphClass.h>
 #include <ffgraph/FFGraphicEdge.h>
 #include <ffgraph/FFGraphicNode.h>
+
+#include <globdefs.h>
+#include <stream.h>
+#include <container/AVLMap.h>
+#include "GTParser.h"
+#include "GTScanner.h" // Explicit legacy reference, independent of load() selection.
 
 #include <cstdio>
 #include <filesystem>
@@ -44,8 +51,9 @@ std::string readFile(const fs::path& path) {
   return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
-// Historical GTControl selects GML based on the extension. Use an OS-created
-// unique filename, so parallel CTest processes never collide.
+// Use an OS-created unique GML filename so parallel CTest runs do not collide.
+// Never dispatch the legacy side through FFGraphClass::load(): that API now
+// selects the modern backend by default.
 struct TempGml {
   fs::path path;
   explicit TempGml(const std::string& bytes) {
@@ -79,7 +87,10 @@ ffgraph_test::GraphSnapshot compareGraph(const fs::path& path, int repeats,
     FFGraph legacy(YES), modern(YES);
     initialise(legacy);
     initialise(modern);
-    legacy->load(String(temp.path.string()), YES);
+    std::ifstream legacy_input(temp.path, std::ios::binary);
+    check(legacy_input.good(), "cannot open temporary GML for legacy importer");
+    GTControl legacy_parser;
+    legacy_parser.Parse(legacy_input, legacy.operator->());
     const auto parsed = ffgraph_gml::parse(bytes);
     check(parsed.ok, "modern syntax rejection: " + parsed.events.error);
     const auto applied = ffgraph_gml::applyToGraph(parsed, *modern.operator->());

@@ -24,7 +24,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
-            build-essential cmake ninja-build pkg-config \
+            build-essential cmake ninja-build pkg-config bison flex \
             tcl-dev tk-dev libx11-dev libxpm-dev \
             xvfb xauth
 
@@ -52,7 +52,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
-            build-essential cmake ninja-build pkg-config \
+            build-essential cmake ninja-build pkg-config bison flex \
             tcl-dev tk-dev libx11-dev libxpm-dev \
             xvfb xauth
 
@@ -67,3 +67,33 @@ jobs:
           ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: ctest --preset asan --output-on-failure --parallel 1
+
+  legacy-gml-fallback:
+    name: Legacy GML fallback / Ubuntu 24.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install parser and GUI build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential cmake ninja-build pkg-config bison flex \
+            tcl-dev tk-dev libx11-dev libxpm-dev
+      - name: Configure retained legacy GML backend
+        run: >-
+          cmake -S . -B build/gml-legacy -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+          -DFFGRAPH_GML_BACKEND=legacy
+          -DFFGRAPH_ENABLE_MODERN_GML=ON
+      - name: Build fallback and parity regressions
+        run: >-
+          cmake --build build/gml-legacy --parallel 2
+          --target test_gml_production_backend_pass11
+          test_gml_differential_corpus_pass11 test_graph_io_pass10
+      - name: Validate fallback and format round trips
+        run: >-
+          ctest --test-dir build/gml-legacy --output-on-failure
+          -R '^test_(gml_production_backend_pass11|gml_differential_corpus_pass11|graph_io_pass10)$'

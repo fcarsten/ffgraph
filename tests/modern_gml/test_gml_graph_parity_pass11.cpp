@@ -4,12 +4,19 @@
 #include "gml_events.h"
 #include "gml_graph_adapter.h"
 
+
 #include <ffgraph/FFEdgeClass.h>
 #include <ffgraph/FFGraph.h>
 #include <ffgraph/FFGraphClass.h>
 #include <ffgraph/FFGraphicEdge.h>
 #include <ffgraph/FFGraphicNode.h>
 #include <ffgraph/FFNodeClass.h>
+
+#include <globdefs.h>
+#include <stream.h>
+#include <container/AVLMap.h>
+#include "GTParser.h"
+#include "GTScanner.h" // Explicit legacy reference, independent of load() selection.
 
 #include <algorithm>
 #include <cstdio>
@@ -93,7 +100,10 @@ void compare(const char* label, const std::string& fixture) {
     FFGraph legacy(YES), modern(YES);
     initialise(legacy);
     initialise(modern);
-    legacy->load(String(file.path.string()), YES);
+    std::ifstream legacy_input(file.path, std::ios::binary);
+    require(legacy_input.good(), "open fixture for legacy importer");
+    GTControl legacy_parser;
+    legacy_parser.Parse(legacy_input, legacy.operator->());
     const auto parsed = ffgraph_gml::parse(fixture);
     require(parsed.ok, std::string(label) + ": modern parse: " + parsed.events.error);
     const auto applied = ffgraph_gml::applyToGraph(parsed, *modern.operator->());

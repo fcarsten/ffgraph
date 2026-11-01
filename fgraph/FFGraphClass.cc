@@ -44,8 +44,13 @@ extern "C" {
 #include <container/AVLMap.h>
 #include "FFParser.h"
 #include "FFScanner.h"
+#ifdef FFGRAPH_GML_BACKEND_MODERN
+#include "modern/gml_events.h"
+#include "modern/gml_graph_adapter.h"
+#else
 #include "GTParser.h"
 #include "GTScanner.h"
+#endif
 #include "RomeParser.h"
 #include "RomeScanner.h"
 
@@ -1391,8 +1396,16 @@ void FFGraphClass::load(const String& buffer, BOOL datei)
    FENSTER->setUpdate(NO);
   }
  
- for(Pix i=knotenSet.first(); i!=0; knotenSet.next(i))
-  knotenSet(i)->setValue(-1);
+ // The modern GML backend resets existing IDs only after complete syntax
+ // and semantic validation; all other format paths retain the old reset.
+#ifdef FFGRAPH_GML_BACKEND_MODERN
+ const BOOL deferredGmlReset = datei && buffer.contains(".gml");
+#else
+ const BOOL deferredGmlReset = NO;
+#endif
+ if (!deferredGmlReset)
+  for(Pix i=knotenSet.first(); i!=0; knotenSet.next(i))
+   knotenSet(i)->setValue(-1);
  
  if(datei)
   {
@@ -1406,8 +1419,24 @@ void FFGraphClass::load(const String& buffer, BOOL datei)
     {
      if(buffer.contains(".gml"))
       {
+#ifdef FFGRAPH_GML_BACKEND_MODERN
+       std::ostringstream contents;
+       contents << ifdatei.rdbuf();
+       if (ifdatei.bad())
+        ffError(USER_ERROR, "Error reading GML file");
+       else
+        {
+         const ffgraph_gml::Result parsed = ffgraph_gml::parse(contents.str());
+         const ffgraph_gml::ApplyResult applied =
+           ffgraph_gml::applyToGraph(parsed, *this, true);
+         if (!applied.ok)
+          ffError(USER_ERROR,
+                  String("Invalid GML file: ") + applied.error.c_str());
+        }
+#else
        GTControl gtParser;
        gtParser.Parse(ifdatei, this);
+#endif
       }
      else if(buffer.contains(".g"))
       graphParser.Parse(ifdatei, this);

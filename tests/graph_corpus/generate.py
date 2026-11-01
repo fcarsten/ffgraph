@@ -421,23 +421,52 @@ def write_corpus(root: Path, files: dict[str, bytes], *, check: bool, force: boo
             raise SystemExit("Refusing to replace non-directory or symlink")
         # CMake/Ninja can pre-create the output directory before the first
         # generation. An empty directory has no prior corpus to replace.
-        # For nonempty directories, still require our complete prior footprint:
+        # For nonempty directories, require either our complete prior footprint
+        # or an exact, manifest-free subset of the current generated output.
         # `--force` must never remove unrelated user files.
         if any(root.iterdir()):
             try:
-                previous = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
-                if previous.get("format_version") != VERSION or \
-                   previous.get("grammar") != "fgraph/modern/modern_gml.y and modern_gml.l":
-                    raise ValueError("unrecognised manifest")
-                owned = {"manifest.json", "cases.tsv"}
-                for case in previous["cases"]:
-                    owned.add(case["file"])
-                    if case.get("oracle"):
-                        owned.add(case["oracle"])
-                present = {p.relative_to(root).as_posix() for p in root.rglob("*")
-                           if p.is_file() or p.is_symlink()}
-                if owned != present:
-                    raise ValueError("unknown or missing files in corpus directory")
+                manifest_path = root / "manifest.json"
+                if not manifest_path.exists() and not manifest_path.is_symlink():
+                    # A build may have created base/ and variant/ directories,
+                    # or been interrupted before writing the final manifest.
+                    # Only adopt a partial tree if every existing path is a
+                    # known output and every existing file matches the expected
+                    # bytes. Never delete arbitrary files or follow symlinks.
+                    owned_dirs = set()
+                    for filename in files:
+                        parent = Path(filename).parent
+                        while parent != Path("."):
+                            owned_dirs.add(parent.as_posix())
+                            parent = parent.parent
+                    for existing in root.rglob("*"):
+                        name = existing.relative_to(root).as_posix()
+                        if existing.is_symlink():
+                            raise ValueError(f"symlink in unfinished corpus: {name}")
+                        if existing.is_dir():
+                            if name not in owned_dirs:
+                                raise ValueError(f"unknown directory in unfinished corpus: {name}")
+                        elif not existing.is_file() or name not in files or \
+                             existing.read_bytes() != files[name]:
+                            raise ValueError(f"unknown or changed file in unfinished corpus: {name}")
+                    # All existing content is known and identical to this run.
+                    # The remaining files can be regenerated safely.
+                    previous = None
+                else:
+                    previous = json.loads(manifest_path.read_text(encoding="utf-8"))
+                if previous is not None:
+                    if previous.get("format_version") != VERSION or \
+                       previous.get("grammar") != "fgraph/modern/modern_gml.y and modern_gml.l":
+                        raise ValueError("unrecognised manifest")
+                    owned = {"manifest.json", "cases.tsv"}
+                    for case in previous["cases"]:
+                        owned.add(case["file"])
+                        if case.get("oracle"):
+                            owned.add(case["oracle"])
+                    present = {p.relative_to(root).as_posix() for p in root.rglob("*")
+                               if p.is_file() or p.is_symlink()}
+                    if owned != present:
+                        raise ValueError("unknown or missing files in corpus directory")
             except (OSError, ValueError, KeyError, TypeError) as exc:
                 raise SystemExit(f"Refusing unsafe --force replacement of {root}: {exc}") from exc
             shutil.rmtree(root)

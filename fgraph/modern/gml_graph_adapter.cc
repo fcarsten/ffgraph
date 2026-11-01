@@ -19,11 +19,12 @@ namespace {
 struct ShadowNode { int value; };
 struct ShadowEdge { ShadowNode* source; ShadowNode* target; };
 
-ApplyResult preflight(const Events& events, FFGraphClass& graph) {
+ApplyResult preflight(const Events& events, FFGraphClass& graph,
+                      bool resetExistingNodeIds) {
   // deque keeps node references stable while the synthetic graph grows.
   std::deque<ShadowNode> nodes;
   for (Pix p = graph.allNodes().first(); p; graph.allNodes().next(p))
-    nodes.push_back({graph.allNodes()(p)->getValue()});
+    nodes.push_back({resetExistingNodeIds ? -1 : graph.allNodes()(p)->getValue()});
 
   std::unordered_map<int, ShadowNode*> by_id;
   ShadowNode* current_node = nullptr;
@@ -83,7 +84,8 @@ ApplyResult preflight(const Events& events, FFGraphClass& graph) {
 }
 } // namespace
 
-ApplyResult applyToGraph(const Result& parsed, FFGraphClass& graph) {
+ApplyResult applyToGraph(const Result& parsed, FFGraphClass& graph,
+                         bool resetExistingNodeIds) {
   if (!parsed.ok)
     return {false, parsed.events.error.empty() ? "GML syntax error"
                                                : parsed.events.error};
@@ -92,8 +94,16 @@ ApplyResult applyToGraph(const Result& parsed, FFGraphClass& graph) {
   // The commit phase below intentionally retains the established cursor
   // semantics.  This is a semantic-atomicity guarantee, not rollback of
   // allocation failures or exceptions thrown by graph event listeners.
-  const ApplyResult validated = preflight(parsed.events, graph);
+  const ApplyResult validated = preflight(parsed.events, graph,
+                                          resetExistingNodeIds);
   if (!validated.ok) return validated;
+
+  // The historical load() API clears old numeric node IDs for each import.
+  // Do it only after complete syntax and semantic validation, not on errors.
+  if (resetExistingNodeIds) {
+    for (Pix p = graph.allNodes().first(); p; graph.allNodes().next(p))
+      graph.allNodes()(p)->setValue(-1);
+  }
 
   // GTParser has one current node and one current edge, not a scope stack.
   // A nested graphics/unknown list leaves those cursors unchanged. Mimic

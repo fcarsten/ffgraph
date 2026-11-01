@@ -20,16 +20,26 @@ if(FFGRAPH_SANITIZERS)
   add_link_options(-fsanitize=address,undefined)
 endif()
 
-# The modern GML parser/scanner is deliberately opt-in until a full
-# token/diagnostic and graph-output parity audit is complete. It is an
-# independent library, not linked into FFGraph or the application.
-option(FFGRAPH_ENABLE_MODERN_GML "Build and test experimental GNU Bison/Flex GML parser" OFF)
+# Pass 11: select the production GML backend. Modern Bison/Flex is the
+# default. The checked-in GT parser remains available for a short migration
+# window and for differential tests; FF/Rome are not being migrated here.
+set(FFGRAPH_GML_BACKEND "modern" CACHE STRING "Production GML importer (modern or legacy)")
+set_property(CACHE FFGRAPH_GML_BACKEND PROPERTY STRINGS modern legacy)
+if(NOT FFGRAPH_GML_BACKEND MATCHES "^(modern|legacy)$")
+  message(FATAL_ERROR "FFGRAPH_GML_BACKEND must be modern or legacy")
+endif()
+option(FFGRAPH_ENABLE_MODERN_GML "Build/test modern GNU Bison/Flex GML parser" ON)
+if(FFGRAPH_GML_BACKEND STREQUAL "modern" AND NOT FFGRAPH_ENABLE_MODERN_GML)
+  message(FATAL_ERROR
+    "The modern production GML backend requires FFGRAPH_ENABLE_MODERN_GML=ON. "
+    "Use -DFFGRAPH_GML_BACKEND=legacy to build without Bison/Flex.")
+endif()
 if(FFGRAPH_ENABLE_MODERN_GML)
   add_subdirectory(tests/modern_gml)
 endif()
 
-# Build the checked-in legacy bison++/flex++ outputs verbatim.
-# Grammar regeneration is deliberately NOT an implicit build dependency.
+# Other legacy parser sources remain checked-in; regeneration is not an
+# implicit dependency for the FF and Rome formats.
 add_library(FFcontainer STATIC
   container/FFStacks.cc
   container/FFVHSets.cc
@@ -44,8 +54,6 @@ add_library(FFcontainer STATIC
 add_library(FFGraph STATIC
   fgraph/RomeParser.cc
   fgraph/RomeScanner.cc
-  fgraph/GTParser.cc
-  fgraph/GTScanner.cc
   fgraph/ffError.cc
   fgraph/FFParser.cc
   fgraph/FFScanner.cc
@@ -60,6 +68,23 @@ add_library(FFGraph STATIC
   fgraph/FFTIEdgeLabel.cc
   fgraph/FFTIGraphLabel.cc
 )
+# Retain the legacy generated GML sources only for the explicit fallback or
+# differential tests. Normal modern production builds (-DBUILD_TESTING=OFF)
+# no longer compile or link the old GML parser/scanner.
+if(FFGRAPH_GML_BACKEND STREQUAL "legacy" OR
+   (BUILD_TESTING AND FFGRAPH_ENABLE_MODERN_GML))
+  target_sources(FFGraph PRIVATE fgraph/GTParser.cc fgraph/GTScanner.cc)
+endif()
+# Share one graph adapter implementation between production and parity tests.
+# The modern parser target is generated at build time by Bison/Flex.
+if(FFGRAPH_ENABLE_MODERN_GML)
+  target_sources(FFGraph PRIVATE fgraph/modern/gml_graph_adapter.cc)
+  target_link_libraries(FFGraph PUBLIC ffgraph_modern_gml)
+endif()
+if(FFGRAPH_GML_BACKEND STREQUAL "modern")
+  target_compile_definitions(FFGraph PRIVATE FFGRAPH_GML_BACKEND_MODERN=1)
+endif()
+
 add_library(FFlayout STATIC
   flayout/FFShow.cc
   flayout/FFRandom.cc
@@ -130,6 +155,10 @@ install(CODE "execute_process(COMMAND \"${CMAKE_COMMAND}\" -E create_symlink ffg
 install(DIRECTORY lib/ffgraph DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY include/ffgraph/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ffgraph FILES_MATCHING PATTERN "*.h")
 install(TARGETS FFGraph FFGraphic FFlayout FFcontainer ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+if(FFGRAPH_ENABLE_MODERN_GML)
+  # Installed FFGraph static archives now depend on this generated parser.
+  install(TARGETS ffgraph_modern_gml ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
 
 if(BUILD_TESTING)
   # Generator has no Bison/Tk dependency; exercise it in the regular suite.
@@ -186,6 +215,30 @@ if(BUILD_TESTING)
     set_tests_properties(${test_name} PROPERTIES TIMEOUT 30)
   endforeach()
 
+  # Exercise the public FFGraphClass::load() entry point using the selected
+  # production backend (not the event-to-graph adapter directly).
+  if(FFGRAPH_ENABLE_MODERN_GML)
+    add_executable(test_gml_production_backend_pass11
+      tests/modern_gml/test_gml_production_backend_pass11.cpp)
+    target_compile_features(test_gml_production_backend_pass11 PRIVATE cxx_std_17)
+    if(FFGRAPH_GML_BACKEND STREQUAL "modern")
+      target_compile_definitions(test_gml_production_backend_pass11 PRIVATE
+        FFGRAPH_TEST_MODERN_GML=1)
+    endif()
+    target_link_libraries(test_gml_production_backend_pass11 PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+    if(MATH_LIBRARY)
+      target_link_libraries(test_gml_production_backend_pass11 PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(test_gml_production_backend_pass11 PRIVATE ${DL_LIBRARY})
+    endif()
+    add_test(NAME test_gml_production_backend_pass11
+      COMMAND test_gml_production_backend_pass11)
+    set_tests_properties(test_gml_production_backend_pass11 PROPERTIES TIMEOUT 45)
+  endif()
+
   # Pass 10: end-to-end sgraph/GML load-modify-save-reload coverage,
   # including the bundled historical graph. This target needs no display.
   # Pass 11: optional GML graph-output differential test. Production keeps
@@ -193,8 +246,7 @@ if(BUILD_TESTING)
   # before it can be considered for a runtime importer switch.
   if(FFGRAPH_ENABLE_MODERN_GML)
     add_executable(test_gml_graph_parity_pass11
-      tests/modern_gml/test_gml_graph_parity_pass11.cpp
-      fgraph/modern/gml_graph_adapter.cc)
+      tests/modern_gml/test_gml_graph_parity_pass11.cpp)
     target_compile_features(test_gml_graph_parity_pass11 PRIVATE cxx_std_17)
     target_include_directories(test_gml_graph_parity_pass11 PRIVATE fgraph/modern)
     target_link_libraries(test_gml_graph_parity_pass11 PRIVATE
@@ -264,8 +316,7 @@ if(BUILD_TESTING)
     add_test(NAME test_graph_snapshot_pass11 COMMAND test_graph_snapshot_pass11)
     set_tests_properties(test_graph_snapshot_pass11 PROPERTIES TIMEOUT 15)
     add_executable(test_gml_differential_corpus_pass11
-      tests/modern_gml/test_gml_differential_corpus_pass11.cpp
-      fgraph/modern/gml_graph_adapter.cc)
+      tests/modern_gml/test_gml_differential_corpus_pass11.cpp)
     target_compile_features(test_gml_differential_corpus_pass11 PRIVATE cxx_std_17)
     target_include_directories(test_gml_differential_corpus_pass11 PRIVATE fgraph/modern)
     target_link_libraries(test_gml_differential_corpus_pass11 PRIVATE
@@ -281,8 +332,7 @@ if(BUILD_TESTING)
     # Semantic validation must not mutate an existing graph on failure.
     # Builds with real graph classes, independently of Bison/Flex event input.
     add_executable(test_gml_semantic_atomicity_pass11
-      tests/modern_gml/test_gml_semantic_atomicity_pass11.cpp
-      fgraph/modern/gml_graph_adapter.cc)
+      tests/modern_gml/test_gml_semantic_atomicity_pass11.cpp)
     target_compile_features(test_gml_semantic_atomicity_pass11 PRIVATE cxx_std_17)
     target_include_directories(test_gml_semantic_atomicity_pass11 PRIVATE fgraph/modern)
     target_link_libraries(test_gml_semantic_atomicity_pass11 PRIVATE
