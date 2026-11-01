@@ -2045,9 +2045,10 @@ void FFTclBasicWindow::showEdges(BOOL flag)
 void FFTclBasicWindow::changeLabel(FFGraphicEdge *e, const String& label)
 {
   const char *l = (const char *)label;
-  const char *lid = (const char *)e->getLabelId();
+  // The edge getter returns by value; retain its storage through Tcl evaluation.
+  const String lid = e->getLabelId();
   
-  if(FF_TclEvalObjv(interp, {"changeText", (const char *)canvas, lid, l}) != TCL_OK)
+  if(FF_TclEvalObjv(interp, {"changeText", (const char *)canvas, lid.c_str(), l}) != TCL_OK)
    ffError(CF_TCL, Tcl_GetStringResult(interp));
   
   if(e==currentE)

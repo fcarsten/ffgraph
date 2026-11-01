@@ -111,6 +111,9 @@ extern void *malloc(), *realloc();
 
 extern AVLSet<String> unmatchedLabels;
 
+// IDENTIFIER text is owned by FFScanner through parse success or failure.
+// Semantic actions borrow it; never free parser-stack token pointers here.
+
   /* Stacksize for yacc	*/
 
 #define	YYMAXDEPTH 2000
@@ -1252,7 +1255,6 @@ case 3:
   if ((yyvsp[-5].text != NULL) && (strlen(yyvsp[-5].text) > 0) &&
       (parseFFGraph->getName() == ""))
     parseFFGraph->setName(String(yyvsp[-5].text));
-  free(yyvsp[-5].text); 
  ;
     break;}
 case 4:
@@ -1285,8 +1287,6 @@ case 11:
       cerr << "Graph has no Label of Type: " << yyvsp[-1].text << endl;
       unmatchedLabels.add(String(yyvsp[-1].text));
     }
-  free(yyvsp[-1].text);
-  free(yyvsp[0].text);
 ;
     break;}
 case 12:
@@ -1363,7 +1363,6 @@ case 25:
   if (yyvsp[0].text != NULL)
     {
       current_node->setName(String(yyvsp[0].text));
-      free(yyvsp[0].text);
     }
 ;
     break;}
@@ -1405,7 +1404,6 @@ case 37:
 {
   if((*current_node)() != NULL)
 	  (*current_node)()->setColor(String(yyvsp[0].text));  
-  free(yyvsp[0].text);
 ;
     break;}
 case 38:
@@ -1420,8 +1418,6 @@ case 38:
       cerr << "Node has no Label of Type: " << yyvsp[-1].text << endl;
       unmatchedLabels.add(String(yyvsp[-1].text));
     }
-  free(yyvsp[-1].text);
-  free(yyvsp[0].text);
 ;
     break;}
 case 39:
@@ -1432,8 +1428,6 @@ case 39:
       (*current_node)()->changeToIcon(String(yyvsp[-1].text)); 
       (*current_node)()->setMask(String(yyvsp[0].text)); 
     }
-  free(yyvsp[-1].text);
-  free(yyvsp[0].text);
 ;
     break;}
 case 40:
@@ -1450,7 +1444,6 @@ case 41:
 {
   if((*current_node)() != NULL)
     (*current_node)()->changeToIcon(String(yyvsp[0].text)); 
-  free(yyvsp[0].text);
 ;
     break;}
 case 42:
@@ -1460,8 +1453,6 @@ case 42:
     {
       (*current_node)()->changeToIcon(String(yyvsp[-1].text), String(yyvsp[0].text)); 
     }
-  free(yyvsp[-1].text);
-  free(yyvsp[0].text);
 ;
     break;}
 case 43:
@@ -1469,7 +1460,6 @@ case 43:
 {
   if((*current_node)() != NULL)
     (*current_node)()->changeToIcon(String(yyvsp[0].text)); 
-  free(yyvsp[0].text);
 ;
     break;}
 case 44:
@@ -1479,8 +1469,6 @@ case 44:
     {
       (*current_node)()->setMask(String(yyvsp[-1].text), String(yyvsp[0].text)); 
     }
-  free(yyvsp[-1].text);
-  free(yyvsp[0].text);
 ;
     break;}
 case 45:
@@ -1488,7 +1476,6 @@ case 45:
 {
   if((*current_node)() != NULL)
     (*current_node)()->setMask(String(yyvsp[0].text)); 
-  free(yyvsp[0].text);
 ;
     break;}
 case 48:
@@ -1525,7 +1512,6 @@ case 50:
   if (yyvsp[0].text != NULL)
    {
     current_edge->setName(String(yyvsp[0].text));  
-    free(yyvsp[0].text);
    }
 ;
     break;}
@@ -1534,7 +1520,6 @@ case 58:
 {
   if((*current_edge)() != NULL)
 	  (*current_edge)()->setColor(String(yyvsp[0].text));  	
-  free(yyvsp[0].text);
 ;
     break;}
 case 59:
@@ -1557,8 +1542,6 @@ case 60:
       cerr << "Edge has no Label of Type: " << yyvsp[-1].text << endl;
       unmatchedLabels.add(String(yyvsp[-1].text));
     }
-  free(yyvsp[-1].text);
-  free(yyvsp[0].text);
 ;
     break;}
 case 63:
@@ -1577,7 +1560,7 @@ case 65:
     break;}
 case 70:
 #line 431 "FFParser.y"
-{ free(yyvsp[0].text);;
+{ /* borrowed token text */;
     break;}
 }
 

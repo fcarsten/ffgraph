@@ -1,5 +1,9 @@
 # Pass 12 — isolated GNU Bison/Flex FF pilot
 
+Follow-up: [baseline failure fixes](FFGRAPH-PASS12-FF-BASELINE-FIXES.md)
+records subsequent fixes and the toolkit leaks exposed after GUI tests could
+finish. The results below describe the original pilot checkpoint.
+
 Date: 1 November 2026. Branch: `pass12-modern-ff-parser`.
 Base: `bc2e51a3c7001a78106148fa0af82d01735bad43` (legacy GML retirement).
 No commit, push, tag, production-parser switch or legacy removal was performed.

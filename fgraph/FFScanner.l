@@ -14,6 +14,7 @@
 #include <String.h>
 #include <stream.h>
 #include <strstream.h>
+#include <list>
 
 #include <ffgraph/FFGraphClass.h>
 #include <ffgraph/FFNodeClass.h>
@@ -35,6 +36,10 @@ void yyerror(char *s)
 #define LEXDEBUG
 %}
 
+%header{
+#include <list>
+%}
+
 %define LEX ScanValue
 %define INPUT iInputCode
 %define INPUT_NOCODE
@@ -42,6 +47,7 @@ void yyerror(char *s)
 %define MEMBERS \
         protected: \
         String stringValue; \
+        std::list<String> tokenText; \
         String escapesym(char c); \
         istream* iIn; \
 			int lineCount;
@@ -99,7 +105,8 @@ class FFControl : private FFScanner, public FFParser
 <INITIAL>\" {BEGIN (string); stringValue = "";}
 
 <string>\" {BEGIN (INITIAL); 
-						fflval.text = strdup((const char *)stringValue);
+						tokenText.push_back(stringValue);
+						fflval.text = tokenText.back().data();
 						return FFParser::IDENTIFIER;}
 <string>[^\"\\]+ {stringValue += (const char *)yytext; }
 <string>"\\\\" {stringValue += "\\"; }
@@ -221,6 +228,8 @@ void FFControl::Parse(const String& iString, FFGraphClass *g)
   parseFFGraph=g;
   lineCount=0;
 
+  tokenText.clear();
+
   unmatchedLabels.clear();
   
   iIn = input = new istrstream ((const char*)iString, iString.length ());
@@ -232,6 +241,8 @@ void FFControl::Parse(istream& input, FFGraphClass *g)
 {
   parseFFGraph= g;
   lineCount=0;
+
+  tokenText.clear();
   
   iIn = &input;
   iParse();

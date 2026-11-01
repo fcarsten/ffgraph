@@ -39,6 +39,9 @@ extern void *malloc(), *realloc();
 
 extern AVLSet<String> unmatchedLabels;
 
+// IDENTIFIER text is owned by FFScanner through parse success or failure.
+// Semantic actions borrow it; never free parser-stack token pointers here.
+
   /* Stacksize for yacc	*/
 
 #define	YYMAXDEPTH 2000
@@ -98,7 +101,6 @@ graph :	GRAPH IDENTIFIER '=' directedness graph_internals list_of_nodes END
   if (($2 != NULL) && (strlen($2) > 0) &&
       (parseFFGraph->getName() == ""))
     parseFFGraph->setName(String($2));
-  free($2); 
  }
  ;
 
@@ -135,8 +137,6 @@ ffGraphArg : FF_LABEL IDENTIFIER IDENTIFIER
       cerr << "Graph has no Label of Type: " << $2 << endl;
       unmatchedLabels.add(String($2));
     }
-  free($2);
-  free($3);
 }
 | FF_LABELOFFSET NUMBER NUMBER 
 {
@@ -211,7 +211,6 @@ nodelabel : IDENTIFIER
   if ($1 != NULL)
     {
       current_node->setName(String($1));
-      free($1);
     }
 }
  ;
@@ -253,7 +252,6 @@ ffNodeArg : UNKNOWN_INTERNAL unknown_internal
 {
   if((*current_node)() != NULL)
 	  (*current_node)()->setColor(String($2));  
-  free($2);
 }
 | FF_LABEL IDENTIFIER IDENTIFIER
 {
@@ -266,8 +264,6 @@ ffNodeArg : UNKNOWN_INTERNAL unknown_internal
       cerr << "Node has no Label of Type: " << $2 << endl;
       unmatchedLabels.add(String($2));
     }
-  free($2);
-  free($3);
 }
 | FF_ICON IDENTIFIER IDENTIFIER
 {
@@ -276,8 +272,6 @@ ffNodeArg : UNKNOWN_INTERNAL unknown_internal
       (*current_node)()->changeToIcon(String($2)); 
       (*current_node)()->setMask(String($3)); 
     }
-  free($2);
-  free($3);
 }	
 | FF_RADIUS NUMBER
 {
@@ -290,7 +284,6 @@ ffNodeArg : UNKNOWN_INTERNAL unknown_internal
 {
   if((*current_node)() != NULL)
     (*current_node)()->changeToIcon(String($2)); 
-  free($2);
 }	
 | FF_NEW_ICON IDENTIFIER IDENTIFIER
 {
@@ -298,14 +291,11 @@ ffNodeArg : UNKNOWN_INTERNAL unknown_internal
     {
       (*current_node)()->changeToIcon(String($2), String($3)); 
     }
-  free($2);
-  free($3);
 }	
 | FF_NEW_ICON IDENTIFIER 
 {
   if((*current_node)() != NULL)
     (*current_node)()->changeToIcon(String($2)); 
-  free($2);
 }	
 | FF_NEW_MASK IDENTIFIER IDENTIFIER
 {
@@ -313,14 +303,11 @@ ffNodeArg : UNKNOWN_INTERNAL unknown_internal
     {
       (*current_node)()->setMask(String($2), String($3)); 
     }
-  free($2);
-  free($3);
 }	
 | FF_NEW_MASK IDENTIFIER 
 {
   if((*current_node)() != NULL)
     (*current_node)()->setMask(String($2)); 
-  free($2);
 }	
  ;
 
@@ -361,7 +348,6 @@ edgelabel : IDENTIFIER
   if ($1 != NULL)
    {
     current_edge->setName(String($1));  
-    free($1);
    }
 }
  ;
@@ -381,7 +367,6 @@ ffEdgeArg : EDGEPLACE edgenumberlist
 {
   if((*current_edge)() != NULL)
 	  (*current_edge)()->setColor(String($2));  	
-  free($2);
 }
 | FF_WEIGHT NUMBER
 {
@@ -400,8 +385,6 @@ ffEdgeArg : EDGEPLACE edgenumberlist
       cerr << "Edge has no Label of Type: " << $2 << endl;
       unmatchedLabels.add(String($2));
     }
-  free($2);
-  free($3);
 }
 | UNKNOWN_INTERNAL unknown_internal
  ;  
@@ -428,7 +411,7 @@ numbers_and_strings :
  ;
 
 number_or_string :	  NUMBER
-| IDENTIFIER { free($1);}
+| IDENTIFIER { /* borrowed token text */}
  ;
 %%
 //static	int	yyerror (char *string)

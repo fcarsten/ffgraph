@@ -7,6 +7,8 @@
 #include <ffgraph/FFGraphicNode.h>
 #include <ffgraph/FFGraphicEdge.h>
 #include <String.h>
+#include "FFParser.h"
+#include "FFScanner.h"
 
 #include <cstdlib>
 #include <cstdio>
@@ -14,6 +16,7 @@
 #include <fstream>
 #include <iostream>
 #include <set>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <unistd.h>
@@ -51,6 +54,46 @@ void checkCounts(FFGraphClass* graph, int nodes, int edges) {
     FFEdge edge = graph->allEdges()(p);
     require(graph->allNodes().contains(edge->source()) &&
             graph->allNodes().contains(edge->target()), "valid edge endpoints");
+  }
+}
+class ErrorControl final : public FFControl {
+public:
+  int errors = 0;
+  void PrintError(char*) override { ++errors; }
+};
+void legacyMalformedInputs() {
+  // Retained stack symbols, incomplete label/icon actions, ignored strings and
+  // unexpected lookahead all used to leak strdup tokens on error. Exercise
+  // both FFControl APIs; ASan/LSan checks ownership after each control dies.
+  const char* invalid[] = {
+    "GRAPH \"bad\" = 1 \"partially created\";",
+    "GRAPH \"g\" = {$ FF_L \"unfinished type\"",
+    "GRAPH \"g\" = 1 {$ FF_C \"red\"",
+    "GRAPH \"g\" = 1 {$ FF_NI \"icon\" \"selected\" FF_NM \"mask\"",
+    "GRAPH \"g\" = 1 \"n\" 2 {$ FF_L \"unfinished type\"",
+    "GRAPH \"g\" = END \"unexpected lookahead\"",
+    "GRAPH \"g\" = 1 \"unterminated",
+    "GRAPH \"g\" = {$ CUSTOM 1 \"ignored\" 2"
+  };
+  for (int repeat = 0; repeat < 20; ++repeat) {
+    for (const char* input : invalid) {
+      for (bool stream : {false, true}) {
+        FFGraph graph(YES);
+        ErrorControl control;
+        if (stream) {
+          std::istringstream source(input);
+          control.Parse(source, graph.operator->());
+        } else {
+          control.Parse(String(input), graph.operator->());
+        }
+        require(control.errors == 1, "legacy malformed input reports an error");
+      }
+    }
+    FFGraph recovered(YES);
+    ErrorControl control;
+    control.Parse("GRAPH \"recovered\" = 1 \"n\" 1 \"loop\"; END", recovered.operator->());
+    require(control.errors == 0, "valid legacy parse after failures");
+    checkCounts(recovered.operator->(), 1, 1);
   }
 }
 void sgraphRoundTrip() {
@@ -130,6 +173,7 @@ void sampleGraph() {
 }
 #endif
 int main() {
+  legacyMalformedInputs();
   sgraphRoundTrip();
   gmlRoundTrip();
 #ifdef FFGRAPH_TEST_SOURCE_DIR

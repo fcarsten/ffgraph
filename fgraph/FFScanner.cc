@@ -210,6 +210,7 @@ int read();
 #include <stream.h>
 #include <sstream>
 #include <string>
+#include <list>
 
 #include <ffgraph/FFGraphClass.h>
 #include <ffgraph/FFNodeClass.h>
@@ -783,7 +784,8 @@ case 2:
 case 3:
 #line 100 "FFScanner.l"
 {BEGIN (INITIAL); 
-						fflval.text = strdup((const char *)stringValue);
+						tokenText.push_back(stringValue);
+						fflval.text = tokenText.back().data();
 						return FFParser::IDENTIFIER;}
 	YY_BREAK
 case 4:
@@ -1604,6 +1606,8 @@ void FFControl::Parse(const String& iString, FFGraphClass *g)
   parseFFGraph=g;
   lineCount=0;
 
+  tokenText.clear();
+
   unmatchedLabels.clear();
   
   iIn = input = new std::istringstream (std::basic_string<char>(iString.data(), iString.size()));
@@ -1615,6 +1619,8 @@ void FFControl::Parse(istream& input, FFGraphClass *g)
 {
   parseFFGraph= g;
   lineCount=0;
+
+  tokenText.clear();
   
   iIn = &input;
   iParse();
