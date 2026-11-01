@@ -1,4 +1,4 @@
-#include <cassert>
+#include "test_check.h"
 #include <vector>
 #include "DLList.h"
 
@@ -17,16 +17,16 @@ int main() {
   list.next(last);
 
   list.ins_after(first, 2);
-  assert((values(list) == std::vector<int>{1, 2, 3}));
+  FF_CHECK((values(list) == std::vector<int>{1, 2, 3}));
   list.ins_before(last, 4);
-  assert((values(list) == std::vector<int>{1, 2, 4, 3}));
+  FF_CHECK((values(list) == std::vector<int>{1, 2, 4, 3}));
 
   // Existing handles remain valid across insertion.
-  assert(list(first) == 1);
-  assert(list(last) == 3);
+  FF_CHECK(list(first) == 1);
+  FF_CHECK(list(last) == 3);
 
   list.ins_before(nullptr, 5);
-  assert((values(list) == std::vector<int>{1, 2, 4, 3, 5}));
+  FF_CHECK((values(list) == std::vector<int>{1, 2, 4, 3, 5}));
   list.ins_after(nullptr, 6);
-  assert((values(list) == std::vector<int>{1, 2, 4, 3, 5, 6}));
+  FF_CHECK((values(list) == std::vector<int>{1, 2, 4, 3, 5, 6}));
 }

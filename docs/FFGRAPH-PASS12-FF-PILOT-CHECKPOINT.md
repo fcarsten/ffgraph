@@ -1,5 +1,10 @@
 # Pass 12 — isolated GNU Bison/Flex FF pilot
 
+Current status: modern FF is now mandatory; see the
+[legacy retirement report](FFGRAPH-PASS12-FF-LEGACY-RETIREMENT.md).
+The latest [verification checkpoint](FFGRAPH-PASS12-VERIFICATION-HARDENING.md)
+and [Rome baseline](FFGRAPH-PASS12-ROME-BASELINE.md) prepare the next stage.
+
 Follow-up: [baseline failure fixes](FFGRAPH-PASS12-FF-BASELINE-FIXES.md)
 records subsequent fixes and the toolkit leaks exposed after GUI tests could
 finish. The results below describe the original pilot checkpoint.

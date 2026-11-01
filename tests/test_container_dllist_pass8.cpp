@@ -1,5 +1,5 @@
 #include <DLList.h>
-#include <cassert>
+#include "test_check.h"
 #include <stdexcept>
 #include <vector>
 
@@ -22,14 +22,14 @@ int main() {
   Item::copies_until_throw = 1;
   bool failed = false;
   try { a = b; } catch (const std::runtime_error&) { failed = true; }
-  assert(failed);
-  assert(a.length() == 2 && a.front().value == 1 && a.rear().value == 2);
+  FF_CHECK(failed);
+  FF_CHECK(a.length() == 2 && a.front().value == 1 && a.rear().value == 2);
   Item::copies_until_throw = -1;
   a = b;
-  assert(a.length() == 3 && a.front().value == 3 && a.rear().value == 5);
+  FF_CHECK(a.length() == 3 && a.front().value == 3 && a.rear().value == 5);
   a = a;
-  assert(a.length() == 3 && a.front().value == 3 && a.rear().value == 5);
-  Pix p = a.first(); a.next(p); assert(a(p).value == 4);
+  FF_CHECK(a.length() == 3 && a.front().value == 3 && a.rear().value == 5);
+  Pix p = a.first(); a.next(p); FF_CHECK(a(p).value == 4);
   a.del(p);
-  assert(a.length() == 2 && p && a(p).value == 5);
+  FF_CHECK(a.length() == 2 && p && a(p).value == 5);
 }

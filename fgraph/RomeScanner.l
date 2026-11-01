@@ -118,8 +118,10 @@ class RomeControl : private RomeScanner, public RomeParser
 }
 
 {quotation_mark}{character_in_string}*{quotation_mark}	{
- romelval.str = strdup((const char *)(yytext+1));
- romelval.str[strlen(romelval.str)-1] = (char)0;
+ // STRING and KEY are always rejected by the Rome grammar. Keep their
+ // text in scanner-owned storage while the parser reports that error.
+ stringValue = String((const char *)(yytext+1), strlen((const char *)yytext)-2);
+ romelval.str = stringValue.data();
  
  return RomeParser::STRING;
 }
@@ -131,7 +133,8 @@ class RomeControl : private RomeScanner, public RomeParser
 {hash_mark}             return RomeParser::HASHMARK;
 {newline}              return RomeParser::NEWLINE;
 [a-zA-Z_][a-zA-Z0-9_:]*	{
- romelval.key = strdup((const char *)yytext);
+ stringValue = (const char *)yytext;
+ romelval.key = stringValue.data();
  return RomeParser::KEY;
 }
 
@@ -188,7 +191,9 @@ void RomeControl::romePrintError(char *s )
 
 RomeControl::RomeControl() {};
 
-RomeControl::~RomeControl() {};
+RomeControl::~RomeControl() {
+  if (yy_current_buffer) yy_delete_buffer(yy_current_buffer);
+}
 
 int RomeControl::romeScan()
 {

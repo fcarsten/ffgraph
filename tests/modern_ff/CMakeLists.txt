@@ -31,5 +31,5 @@ if(BUILD_TESTING)
   add_test(NAME test_ff_corpus_oracle_pass12 COMMAND test_ff_graph_regression_pass12 --corpus)
   add_test(NAME test_ff_modern_failures_pass12 COMMAND test_ff_graph_regression_pass12 --parser-failures)
   set_tests_properties(test_ff_graph_regression_pass12 test_ff_corpus_oracle_pass12
-    test_ff_modern_failures_pass12 PROPERTIES TIMEOUT 120)
+    test_ff_modern_failures_pass12 PROPERTIES TIMEOUT 120 LABELS headless)
 endif()

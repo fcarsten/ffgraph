@@ -149,6 +149,13 @@ target_link_libraries(FFGraph PUBLIC ffgraph_modern_ff)
 install(TARGETS ffgraph_modern_ff ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 if(BUILD_TESTING)
+  add_executable(test_check_ndebug tests/test_check_ndebug.cpp)
+  target_compile_features(test_check_ndebug PRIVATE cxx_std_17)
+  target_compile_definitions(test_check_ndebug PRIVATE NDEBUG)
+  add_test(NAME test_check_ndebug
+    COMMAND "${CMAKE_COMMAND}" "-DTEST_BINARY=$<TARGET_FILE:test_check_ndebug>"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/check_ndebug.cmake")
+
   # Generator has no Bison/Tk dependency; exercise it in the regular suite.
   find_package(Python3 COMPONENTS Interpreter QUIET)
   if(Python3_Interpreter_FOUND)
@@ -429,6 +436,15 @@ if(BUILD_TESTING)
   add_test(NAME test_ff_production_backend_pass12 COMMAND test_ff_production_backend_pass12)
   set_tests_properties(test_ff_production_backend_pass12 PROPERTIES TIMEOUT 40)
 
+  add_executable(test_rome_baseline_pass12 tests/test_rome_baseline_pass12.cpp)
+  target_compile_definitions(test_rome_baseline_pass12 PRIVATE
+    FFGRAPH_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  target_link_libraries(test_rome_baseline_pass12 PRIVATE
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+  add_test(NAME test_rome_baseline_pass12 COMMAND test_rome_baseline_pass12)
+  set_tests_properties(test_rome_baseline_pass12 PROPERTIES TIMEOUT 40)
+
   add_executable(test_graph_ownership tests/test_graph_ownership.cpp)
   target_compile_features(test_graph_ownership PRIVATE cxx_std_17)
   target_link_libraries(test_graph_ownership PRIVATE
@@ -648,4 +664,20 @@ if(BUILD_TESTING)
     add_test(NAME test_inspector_visibility
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_inspector_visibility>")
   endif()
+endif()
+
+if(BUILD_TESTING)
+  # Parser subdirectories label their own tests, also in standalone builds.
+  get_property(headless_tests DIRECTORY PROPERTY TESTS)
+  set_tests_properties(${headless_tests} PROPERTIES LABELS headless)
+  # All tests requiring Xvfb belong to the GUI partition, including stress tests.
+  foreach(gui_test IN ITEMS
+      test_ffwindow_tk_teardown test_load_window_lifetime_pass11
+      test_ff_window_oracle_pass12 test_gui_file_workflow_pass11
+      test_ff_gui_file_workflow_pass12 test_gui_large_file_workflow_pass11
+      test_tk_lifecycle_pass10 test_inspector_visibility)
+    if(TEST ${gui_test})
+      set_tests_properties(${gui_test} PROPERTIES LABELS gui)
+    endif()
+  endforeach()
 endif()

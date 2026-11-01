@@ -5,7 +5,7 @@ extern void (*lib_error_handler)(const char*, const char*);
 #include "../container/MFSet.cc"
 #include "../container/MFMap.cc"
 #include "../container/MFBag.cc"
-#include <cassert>
+#include "test_check.h"
 #include <set>
 #include <random>
 
@@ -17,35 +17,35 @@ int main() {
   Pix erased = set.add(11);
   Pix retained = set.add(22);
   set.del(11);
-  assert(!set.owns(erased)); // never dereference an invalid Pix
+  FF_CHECK(!set.owns(erased)); // never dereference an invalid Pix
   Pix stale = erased;
   set.next(stale);
-  assert(!stale);
-  assert(set.owns(retained) && set(retained) == 22);
+  FF_CHECK(!stale);
+  FF_CHECK(set.owns(retained) && set(retained) == 22);
   set.resize(1000);
-  assert(set.owns(retained) && set(retained) == 22);
+  FF_CHECK(set.owns(retained) && set(retained) == 22);
   set.clear();
-  assert(!set.owns(retained));
+  FF_CHECK(!set.owns(retained));
   bool threw = false;
   try { (void)set(retained); } catch (const std::out_of_range&) { threw = true; }
-  assert(threw);
-  assert(set.OK());
+  FF_CHECK(threw);
+  FF_CHECK(set.OK());
 
   // Pointer-to-element Pix are stable across rehashes (unordered containers).
   VHMap<int, int> map(-1);
   map[10] = 42;
   Pix mp = map.seek(10);
   map.resize(1000);
-  assert(map.owns(mp) && map.key(mp) == 10 && map.contents(mp) == 42);
+  FF_CHECK(map.owns(mp) && map.key(mp) == 10 && map.contents(mp) == 42);
   map.del(10);
-  assert(!map.owns(mp));
+  FF_CHECK(!map.owns(mp));
   VHBag<int> bag;
   Pix bp = bag.add(10);
   bag.add(10);
   bag.resize(1000);
-  assert(bag.owns(bp) && bag(bp) == 10);
+  FF_CHECK(bag.owns(bp) && bag(bp) == 10);
   bag.remove(10);
-  assert(!bag.owns(bp));
+  FF_CHECK(!bag.owns(bp));
 
   // Keep the address-membership index synchronised through set algebra,
   // assignment and deterministic random insert/erase/rehash operations.
@@ -65,7 +65,7 @@ int main() {
       random_set.resize(static_cast<int>(rng() % 400 + 1));
     } else if (operation == 6) {
       VOHSet<int> copy(random_set);
-      assert(copy.OK() && copy.length() == random_set.length());
+      FF_CHECK(copy.OK() && copy.length() == random_set.length());
       random_set = copy;
     } else if (operation == 7) {
       VOHSet<int> subset;
@@ -81,21 +81,21 @@ int main() {
       random_set |= additions;
       reference.insert(item); reference.insert(149);
     }
-    assert(random_set.OK() && random_set.length() == static_cast<int>(reference.size()));
+    FF_CHECK(random_set.OK() && random_set.length() == static_cast<int>(reference.size()));
     int visited = 0;
     for (Pix cur = random_set.first(); cur; random_set.next(cur)) {
-      assert(random_set.owns(cur));
-      assert(reference.count(random_set(cur)));
+      FF_CHECK(random_set.owns(cur));
+      FF_CHECK(reference.count(random_set(cur)));
       ++visited;
     }
-    assert(visited == random_set.length());
+    FF_CHECK(visited == random_set.length());
   }
   VOHSet<int> self;
   self.add(1); self.add(2);
   self |= self;
-  assert(self.length() == 2 && self.OK());
+  FF_CHECK(self.length() == 2 && self.OK());
   self &= self;
-  assert(self.length() == 2 && self.OK());
+  FF_CHECK(self.length() == 2 && self.OK());
   self -= self;
-  assert(self.empty() && self.OK());
+  FF_CHECK(self.empty() && self.OK());
 }

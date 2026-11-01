@@ -670,8 +670,10 @@ case 2:
 case 3:
 #line 119 "RomeScanner.l"
 {
- romelval.str = strdup((const char *)(yytext+1));
- romelval.str[strlen(romelval.str)-1] = (char)0;
+ // STRING and KEY are always rejected by the Rome grammar. Keep their
+ // text in scanner-owned storage while the parser reports that error.
+ stringValue = String((const char *)(yytext+1), strlen((const char *)yytext)-2);
+ romelval.str = stringValue.data();
  
  return RomeParser::STRING;
 }
@@ -703,7 +705,8 @@ return RomeParser::NEWLINE;
 case 10:
 #line 132 "RomeScanner.l"
 {
- romelval.key = strdup((const char *)yytext);
+ stringValue = (const char *)yytext;
+ romelval.key = stringValue.data();
  return RomeParser::KEY;
 }
 	YY_BREAK
@@ -1370,7 +1373,9 @@ void RomeControl::romePrintError(char *s )
 
 RomeControl::RomeControl() {};
 
-RomeControl::~RomeControl() {};
+RomeControl::~RomeControl() {
+  if (yy_current_buffer) yy_delete_buffer(yy_current_buffer);
+}
 
 int RomeControl::romeScan()
 {

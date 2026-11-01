@@ -26,6 +26,7 @@ Release:
 ```sh
 cmake --preset release
 cmake --build --preset release --parallel
+ctest --preset release
 ```
 
 Sanitizers (GCC/Clang):
@@ -35,6 +36,27 @@ cmake --preset asan
 cmake --build --preset asan --parallel
 ctest --preset asan
 ```
+
+All test checks remain active in Release builds. With `xvfb` and `xauth`
+installed, CTest also registers GUI tests. Every test has either the `headless`
+or `gui` label; `ctest -N -L gui --test-dir build/asan` lists GUI coverage.
+
+The strict `asan` preset enables leak detection for the entire suite. On the
+Ubuntu 24.04 system Tk 8.6.14 build, four GUI tests report Tk/Xft/fontconfig
+shutdown leaks, also reproduced without ffgraph. Use these explicit partitions
+to distinguish application runtime checks from toolkit leak diagnostics:
+
+```sh
+ctest --preset asan-headless   # Strict ASan/UBSan and leak detection
+ctest --preset asan-gui        # GUI ASan/UBSan runtime checks; leaks disabled
+ctest --preset asan-gui-leaks  # Strict GUI leak diagnostics; known failures
+```
+
+CI requires Debug, Release, strict headless sanitizers and GUI runtime checks.
+Only the separate strict GUI leak diagnostic step permits failure; its output
+is retained in sanitizer log artifacts. There are no leak suppressions. A GUI
+runtime pass does not establish leak freedom. See
+`docs/FFGRAPH-PASS12-VERIFICATION-HARDENING.md` for measured results and limits.
 
 Install with a custom prefix:
 

@@ -1,5 +1,5 @@
 # Generator, oracle and GUI lifecycle checks for the sole production GML
-# backend (GNU Bison/Flex). FF/Rome parsers remain unchanged.
+# backend (GNU Bison/Flex). FF is also modern; Rome remains historical.
 name: Modern GML generator and parity
 on:
   workflow_dispatch:
@@ -75,14 +75,34 @@ jobs:
         run: >-
           cmake --build build/gml-parity-asan --parallel 2
           --target test_gml_graph_regression_pass11 test_graph_corpus_metamorphic_pass11 test_gml_corpus_oracle_pass11 test_gml_semantic_atomicity_pass11 test_gml_production_backend_pass11 test_gui_file_workflow_pass11
-      - name: Check graph oracles and metamorphic invariants under sanitizers
+      - name: Check headless graph oracles and metamorphic invariants under sanitizers
         env:
           ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: >-
           ctest --test-dir build/gml-parity-asan
-          -R '^test_(gml_graph_regression|graph_corpus_metamorphic|gml_corpus_oracle|gml_metamorphic_oracle|gml_semantic_atomicity|gml_production_backend|gui_file_workflow)_pass11$'
+          -R '^test_(gml_graph_regression|graph_corpus_metamorphic|gml_corpus_oracle|gml_metamorphic_oracle|gml_semantic_atomicity|gml_production_backend)_pass11$'
           --output-on-failure
+
+      - name: Check GUI workflow ASan/UBSan runtime errors
+        if: ${{ !cancelled() }}
+        env:
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: >-
+          ctest --test-dir build/gml-parity-asan
+          -R '^test_gui_file_workflow_pass11$' --output-on-failure
+
+      # Same explicit toolkit-leak diagnostic policy as ci.yml.
+      - name: Report strict GUI workflow leak diagnostics
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: >-
+          ctest --test-dir build/gml-parity-asan
+          -R '^test_gui_file_workflow_pass11$' --output-on-failure
 
   comprehensive-gml-standard:
     runs-on: ubuntu-24.04

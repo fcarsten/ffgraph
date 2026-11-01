@@ -74,4 +74,6 @@ if(BUILD_TESTING)
   target_link_libraries(test_gml_modern_pass11 PRIVATE ffgraph_modern_gml)
   add_test(NAME test_gml_modern_pass11 COMMAND test_gml_modern_pass11)
   set_tests_properties(test_gml_modern_pass11 PROPERTIES TIMEOUT 30)
+  set_tests_properties(test_gml_corpus_python_pass11 test_gml_corpus_pass11
+    test_gml_modern_pass11 PROPERTIES LABELS headless)
 endif()
