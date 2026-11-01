@@ -216,6 +216,83 @@ if(BUILD_TESTING)
     set_tests_properties(test_gml_generated_graph_parity_pass11 PROPERTIES TIMEOUT 120)
   endif()
 
+  # Comprehensive generated-grammar/import differential checks.  These use
+  # the *real* Bison/Flex event parser and the unmodified GTControl importer;
+  # no production parser switch.  A separate profile controls run-time cost.
+  if(FFGRAPH_ENABLE_MODERN_GML)
+    set(FFGRAPH_GML_DIFFERENTIAL_PROFILE "smoke" CACHE STRING
+      "Generated GML differential corpus profile (smoke, standard, stress)")
+    set_property(CACHE FFGRAPH_GML_DIFFERENTIAL_PROFILE PROPERTY STRINGS
+      smoke standard stress)
+    if(NOT FFGRAPH_GML_DIFFERENTIAL_PROFILE MATCHES "^(smoke|standard|stress)$")
+      message(FATAL_ERROR "Unsupported FFGRAPH_GML_DIFFERENTIAL_PROFILE")
+    endif()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    set(FFGRAPH_DIFF_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus")
+    set(FFGRAPH_DIFF_GRAPHS
+      "${CMAKE_CURRENT_BINARY_DIR}/gml-differential-${FFGRAPH_GML_DIFFERENTIAL_PROFILE}")
+    set(FFGRAPH_DIFF_META
+      "${CMAKE_CURRENT_BINARY_DIR}/gml-differential-metamorphic-${FFGRAPH_GML_DIFFERENTIAL_PROFILE}")
+    file(GLOB FFGRAPH_DIFF_SAMPLES CONFIGURE_DEPENDS
+      "${FFGRAPH_DIFF_SOURCE}/samples/*.gml")
+    add_custom_command(
+      OUTPUT "${FFGRAPH_DIFF_GRAPHS}/manifest.json"
+      COMMAND "${Python3_EXECUTABLE}" "${FFGRAPH_DIFF_SOURCE}/generate.py"
+        --output-dir "${FFGRAPH_DIFF_GRAPHS}"
+        --profile "${FFGRAPH_GML_DIFFERENTIAL_PROFILE}"
+        --examples-dir "${FFGRAPH_DIFF_SOURCE}/samples" --force
+      DEPENDS "${FFGRAPH_DIFF_SOURCE}/generate.py" ${FFGRAPH_DIFF_SAMPLES}
+      COMMENT "Generate complete GML differential graph/syntax corpus"
+      VERBATIM)
+    add_custom_command(
+      OUTPUT "${FFGRAPH_DIFF_META}/manifest.json"
+      COMMAND "${Python3_EXECUTABLE}" "${FFGRAPH_DIFF_SOURCE}/metamorphic.py"
+        --output-dir "${FFGRAPH_DIFF_META}"
+        --profile "${FFGRAPH_GML_DIFFERENTIAL_PROFILE}" --force
+      DEPENDS "${FFGRAPH_DIFF_SOURCE}/generate.py" "${FFGRAPH_DIFF_SOURCE}/metamorphic.py"
+      COMMENT "Generate paired metamorphic differential GML corpus"
+      VERBATIM)
+    add_custom_target(ffgraph_gml_differential_fixtures DEPENDS
+      "${FFGRAPH_DIFF_GRAPHS}/manifest.json"
+      "${FFGRAPH_DIFF_META}/manifest.json")
+    add_executable(test_graph_snapshot_pass11
+      tests/graph_corpus/test_graph_snapshot_pass11.cpp)
+    target_compile_features(test_graph_snapshot_pass11 PRIVATE cxx_std_17)
+    target_include_directories(test_graph_snapshot_pass11 PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}/include"
+      "${CMAKE_CURRENT_SOURCE_DIR}")
+    add_test(NAME test_graph_snapshot_pass11 COMMAND test_graph_snapshot_pass11)
+    set_tests_properties(test_graph_snapshot_pass11 PROPERTIES TIMEOUT 15)
+    add_executable(test_gml_differential_corpus_pass11
+      tests/modern_gml/test_gml_differential_corpus_pass11.cpp
+      fgraph/modern/gml_graph_adapter.cc)
+    target_compile_features(test_gml_differential_corpus_pass11 PRIVATE cxx_std_17)
+    target_include_directories(test_gml_differential_corpus_pass11 PRIVATE fgraph/modern)
+    target_link_libraries(test_gml_differential_corpus_pass11 PRIVATE
+      ffgraph_modern_gml
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+    if(MATH_LIBRARY)
+      target_link_libraries(test_gml_differential_corpus_pass11 PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(test_gml_differential_corpus_pass11 PRIVATE ${DL_LIBRARY})
+    endif()
+    add_dependencies(test_gml_differential_corpus_pass11 ffgraph_gml_differential_fixtures)
+    add_test(NAME test_gml_differential_corpus_pass11
+      COMMAND test_gml_differential_corpus_pass11 graphs "${FFGRAPH_DIFF_GRAPHS}" 2)
+    add_test(NAME test_gml_differential_metamorphic_pass11
+      COMMAND test_gml_differential_corpus_pass11 metamorphic "${FFGRAPH_DIFF_META}" 2)
+    if(FFGRAPH_GML_DIFFERENTIAL_PROFILE STREQUAL "stress")
+      set(FFGRAPH_DIFF_TIMEOUT 900)
+    else()
+      set(FFGRAPH_DIFF_TIMEOUT 300)
+    endif()
+    set_tests_properties(test_gml_differential_corpus_pass11
+      test_gml_differential_metamorphic_pass11
+      PROPERTIES TIMEOUT ${FFGRAPH_DIFF_TIMEOUT})
+  endif()
+
   # Opt-in end-to-end graph importer and bounded spring-layout regression
   # against exactly the same deterministic parser/graph corpus.
   option(FFGRAPH_ENABLE_CORPUS_LAYOUT_TESTS
