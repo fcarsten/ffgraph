@@ -131,6 +131,37 @@ contents and IDs. GUI File → Load still creates its window before parsing.
 Known Tk/fontconfig leaks can fail strict leak-enabled GUI sanitizer checks;
 see `docs/FFGRAPH-PASS12-FF-LEGACY-RETIREMENT.md` for measured results and limits.
 
+## Rome parser pilot (opt-in GNU Bison/Flex)
+
+Rome still uses its checked-in legacy parser in the application. The isolated
+modern pilot builds libraries and tests only; it does not select a new GUI
+backend, change filename dispatch, or install an additional runtime dependency.
+
+```sh
+cmake --preset debug -DFFGRAPH_ENABLE_MODERN_ROME_PILOT=ON
+cmake --build --preset debug --parallel 2
+ctest --preset debug -R '^test_rome_' --output-on-failure
+
+cmake --preset asan -DFFGRAPH_ENABLE_MODERN_ROME_PILOT=ON
+cmake --build --preset asan --parallel 2
+ctest --preset asan-headless -R '^test_rome_' --output-on-failure
+```
+
+The option defaults to OFF; an explicitly enabled value persists in that build
+directory. Use `-DFFGRAPH_ENABLE_MODERN_ROME_PILOT=OFF` to disable it again.
+Pilot tests compare actual legacy/modern graph construction, independent source
+graphs, merge behavior and rejected-input state. Modern rejection leaves the
+graph unchanged; legacy Rome still permits partial imports. See
+`docs/FFGRAPH-PASS12-ROME-PILOT-CHECKPOINT.md` for all observed differences.
+
+The generated parser can also be built/tested without Tcl/Tk, X11 or ffgraph:
+
+```sh
+cmake -S tests/modern_rome -B build/modern-rome -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/modern-rome --parallel 2
+ctest --test-dir build/modern-rome --output-on-failure
+```
+
 ## GML parser (GNU Bison/Flex)
 
 The retired Bison++ `GTParser`/`GTScanner` has been removed from the current

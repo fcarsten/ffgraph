@@ -1,5 +1,9 @@
 # Pass 12 — Rome semantic baseline and scanner cleanup
 
+Follow-up: the [isolated modern pilot](FFGRAPH-PASS12-ROME-PILOT-CHECKPOINT.md)
+has since been implemented. The results below describe the earlier baseline
+and scanner-cleanup checkpoint.
+
 Date: 1 November 2026. Baseline commit: `f033d04`, branch
 `pass12-modern-ff-parser`. This is preparation for an isolated modern Rome pilot.
 The production Rome parser and grammar remain historical; no modern Rome

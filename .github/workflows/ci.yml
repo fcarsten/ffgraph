@@ -33,7 +33,8 @@ jobs:
             xvfb xauth
 
       - name: Configure
-        run: cmake --preset ${{ matrix.preset }} -DBUILD_TESTING=ON
+        # Enable the isolated Rome targets; production still uses legacy Rome.
+        run: cmake --preset ${{ matrix.preset }} -DBUILD_TESTING=ON -DFFGRAPH_ENABLE_MODERN_ROME_PILOT=ON
 
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }} --parallel 2
@@ -61,7 +62,7 @@ jobs:
             xvfb xauth
 
       - name: Configure (ASan/UBSan)
-        run: cmake --preset asan -DBUILD_TESTING=ON
+        run: cmake --preset asan -DBUILD_TESTING=ON -DFFGRAPH_ENABLE_MODERN_ROME_PILOT=ON
 
       - name: Build
         run: cmake --build --preset asan --parallel 2

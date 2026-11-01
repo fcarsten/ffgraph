@@ -11,8 +11,9 @@ build, including BUILD_TESTING=OFF. Both legacy implementations have been
 retired after generated-parser, graph construction, failure and GUI testing.
 There is no legacy FF/GML build selector or automatic fallback.
 
-The last committed baseline when this checkpoint began was `f033d04` on
-`pass12-modern-ff-parser`. The local annotated tag
+The Rome pilot began at committed baseline `11a9304` on
+`pass12-modern-rome-parser`, with the verification checkpoint already committed.
+The local annotated tag
 `ffgraph-pre-legacy-ff-removal` points to
 `65e5498c40116c0ec85bccb3bbab5d060f098f57`, preserving the old FF parser/scanner.
 Do not move that tag to a newer commit. Nothing in this checkpoint was committed
@@ -43,25 +44,34 @@ See `FFGRAPH-PASS12-VERIFICATION-HARDENING.md` for actual measurements and comma
 Use the exact environment and reports to judge these results. Remote GitHub
 Actions and interactive WSLg use are separate verification tasks.
 
-## Next implementation checkpoint: isolated modern Rome pilot
+## Rome pilot completed; next checkpoint: opt-in integration
 
-Rome still uses checked-in Bison++/flex++ output in production. Its migration
-has not begun. Start with `FFGRAPH-PASS12-ROME-BASELINE.md`, the actual
-`fgraph/RomeParser.y`, `RomeScanner.l`, generated files, and
-`FFGraphClass::load()`; preserve the scanner cleanup already covered by tests.
+The isolated pilot is now implemented; see
+`FFGRAPH-PASS12-ROME-PILOT-CHECKPOINT.md`. The opt-in
+`FFGRAPH_ENABLE_MODERN_ROME_PILOT` option adds generated parser/adapter libraries
+and four headless tests. Production still uses checked-in Bison++/flex++ Rome
+output even when the pilot is ON. The parser also builds standalone without Tk.
+No production backend selector or GUI modern Rome loading path exists yet.
+
+The next checkpoint is **opt-in production integration**, following review of
+the pilot's differences: failure atomicity, checked integer range, actual error
+locations and long-line handling. Start with the pilot report, baseline report,
+the actual grammar/scanner sources and `FFGraphClass::load()`. Keep the legacy
+backend available; preserve the tested scanner cleanup and FF/GML behavior.
 
 1. Extend the synthetic corpus with representative real Rome graphs when
    available. Freeze independent graph expectations before replacing any code.
    Cover duplicate IDs, ignored metadata, absent endpoints, forward references,
    loops, parallel edges, comments, CRLF, EOF, numeric limits and malformed input.
-2. Build an isolated, opt-in GNU Bison/Flex parser/scanner in the build tree.
-   Keep the current production parser selected. Use owned semantic values and
-   explicit parse results; add syntax/range diagnostics and malformed-input tests.
-3. Compare actual node/edge construction with the real legacy parser and
-   independent expectations. Parsing success alone is insufficient. Exercise
-   file dispatch and both direct legacy entry points; public string load is FF.
-   Document any differences in partial-load behavior, diagnostics and numeric
-   rejection before integrating. Do not preserve undefined numeric overflow.
+2. The pilot already uses owned typed records, checked integers and per-call
+   reentrant scanner state. It passes generated-parser tests, live comparisons
+   with the real legacy implementation and independent graph oracles. Retain
+   these checks and extend them when integration reveals additional requirements.
+3. Decide whether to accept unchanged-on-rejection imports for modern Rome.
+   Legacy Rome changes IDs/directedness and keeps parsed prefixes on failure.
+   The pilot deliberately does not replay failed input. Keep the difference
+   explicit in integration tests and documentation; do not preserve undefined
+   numeric overflow or silently truncate long input lines.
 4. Integrate via an explicit backend choice, then verify Debug, meaningful
    Release, strict headless ASan/UBSan/leaks, GUI runtime and GUI leak diagnostics.
    Retain FF/GML regression and GUI workflows throughout.

@@ -13,6 +13,8 @@ find_library(DL_LIBRARY NAMES dl)
 
 option(FFGRAPH_SANITIZERS "Enable address and undefined-behavior sanitizers (GCC/Clang)" OFF)
 option(FFGRAPH_GUI_STRESS_TESTS "Enable slower, large-graph Tk/Xvfb workflow tests" OFF)
+option(FFGRAPH_ENABLE_MODERN_ROME_PILOT
+  "Build isolated GNU Bison/Flex Rome pilot and compatibility tests" OFF)
 # Reject a stale selection rather than silently replacing the requested backend.
 if(DEFINED FFGRAPH_FF_BACKEND AND NOT FFGRAPH_FF_BACKEND STREQUAL "modern")
   message(FATAL_ERROR
@@ -664,6 +666,11 @@ if(BUILD_TESTING)
     add_test(NAME test_inspector_visibility
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_inspector_visibility>")
   endif()
+endif()
+
+if(FFGRAPH_ENABLE_MODERN_ROME_PILOT)
+  # Deliberately not linked into FFGraph or the application yet.
+  add_subdirectory(tests/modern_rome)
 endif()
 
 if(BUILD_TESTING)

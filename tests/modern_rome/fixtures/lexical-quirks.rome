@@ -1,0 +1,6 @@
+@+1,0;
+"2 0
+# Unmatched quotes and dots are historically ignored when not a full token
+3. 0
+10 999 1 2
+11 0 3 1
