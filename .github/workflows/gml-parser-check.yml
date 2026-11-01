@@ -36,3 +36,40 @@ jobs:
           ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
           UBSAN_OPTIONS: halt_on_error=1
         run: ctest --test-dir build/modern-gml-asan --output-on-failure
+
+  graph-output-parity:
+    # Separate from the Tcl-free pilot: builds the historical importer and
+    # compares real FFGraphClass nodes/edges to modern event replay.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install graph build and generator dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential cmake ninja-build pkg-config bison flex \
+            tcl-dev tk-dev libx11-dev libxpm-dev
+      - name: Configure opt-in modern GML graph comparison
+        run: >-
+          cmake -S . -B build/gml-parity -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+          -DFFGRAPH_ENABLE_MODERN_GML=ON
+      - name: Build differential test (including generated parser)
+        run: cmake --build build/gml-parity --target test_gml_graph_parity_pass11 --parallel 2
+      - name: Compare graph outputs against legacy GTControl
+        run: ctest --test-dir build/gml-parity -R '^test_gml_graph_parity_pass11$' --output-on-failure
+      - name: Configure differential test with ASan/UBSan
+        run: >-
+          cmake -S . -B build/gml-parity-asan -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+          -DFFGRAPH_ENABLE_MODERN_GML=ON -DFFGRAPH_SANITIZERS=ON
+      - name: Build sanitizer differential test
+        run: cmake --build build/gml-parity-asan --target test_gml_graph_parity_pass11 --parallel 2
+      - name: Check graph-output parity and leaks under sanitizers
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: ctest --test-dir build/gml-parity-asan -R '^test_gml_graph_parity_pass11$' --output-on-failure

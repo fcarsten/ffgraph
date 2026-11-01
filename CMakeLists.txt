@@ -180,6 +180,29 @@ if(BUILD_TESTING)
 
   # Pass 10: end-to-end sgraph/GML load-modify-save-reload coverage,
   # including the bundled historical graph. This target needs no display.
+  # Pass 11: optional GML graph-output differential test. Production keeps
+  # GTControl; the Bison/Flex path must match real legacy graph semantics
+  # before it can be considered for a runtime importer switch.
+  if(FFGRAPH_ENABLE_MODERN_GML)
+    add_executable(test_gml_graph_parity_pass11
+      tests/modern_gml/test_gml_graph_parity_pass11.cpp
+      fgraph/modern/gml_graph_adapter.cc)
+    target_compile_features(test_gml_graph_parity_pass11 PRIVATE cxx_std_17)
+    target_include_directories(test_gml_graph_parity_pass11 PRIVATE fgraph/modern)
+    target_link_libraries(test_gml_graph_parity_pass11 PRIVATE
+      ffgraph_modern_gml
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+    if(MATH_LIBRARY)
+      target_link_libraries(test_gml_graph_parity_pass11 PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(test_gml_graph_parity_pass11 PRIVATE ${DL_LIBRARY})
+    endif()
+    add_test(NAME test_gml_graph_parity_pass11 COMMAND test_gml_graph_parity_pass11)
+    set_tests_properties(test_gml_graph_parity_pass11 PROPERTIES TIMEOUT 45)
+  endif()
+
   add_executable(test_graph_io_pass10 tests/test_graph_io_pass10.cpp)
   target_compile_features(test_graph_io_pass10 PRIVATE cxx_std_17)
   target_compile_definitions(test_graph_io_pass10 PRIVATE
