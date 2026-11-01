@@ -13,6 +13,12 @@ find_library(DL_LIBRARY NAMES dl)
 
 option(FFGRAPH_SANITIZERS "Enable address and undefined-behavior sanitizers (GCC/Clang)" OFF)
 option(FFGRAPH_GUI_STRESS_TESTS "Enable slower, large-graph Tk/Xvfb workflow tests" OFF)
+set(FFGRAPH_FF_BACKEND "legacy" CACHE STRING "FF/sgraph loading backend (legacy or modern)")
+set_property(CACHE FFGRAPH_FF_BACKEND PROPERTY STRINGS legacy modern)
+if(NOT FFGRAPH_FF_BACKEND MATCHES "^(legacy|modern)$")
+  message(FATAL_ERROR "Unsupported FFGRAPH_FF_BACKEND: ${FFGRAPH_FF_BACKEND} (use legacy or modern)")
+endif()
+message(STATUS "FF/sgraph backend: ${FFGRAPH_FF_BACKEND}")
 if(FFGRAPH_SANITIZERS)
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     message(FATAL_ERROR "Sanitizer configuration requires GCC or Clang")
@@ -22,7 +28,7 @@ if(FFGRAPH_SANITIZERS)
 endif()
 
 # GML uses the generated GNU Bison/Flex parser in all CMake builds.
-# FF and Rome still use their checked-in historical parsers.
+# FF has an explicit opt-in modern backend; Rome remains historical.
 # Remove obsolete cache entries from older build directories if necessary:
 #   cmake -S . -B build/... -U FFGRAPH_GML_BACKEND -U FFGRAPH_ENABLE_MODERN_GML
 if(DEFINED FFGRAPH_GML_BACKEND AND FFGRAPH_GML_BACKEND STREQUAL "legacy")
@@ -141,9 +147,15 @@ install(TARGETS FFGraph FFGraphic FFlayout FFcontainer ARCHIVE DESTINATION ${CMA
 install(TARGETS ffgraph_modern_gml ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 option(FFGRAPH_ENABLE_MODERN_FF_PILOT
-  "Build isolated modern FF parser and compatibility tests (production stays legacy)" OFF)
-if(FFGRAPH_ENABLE_MODERN_FF_PILOT)
+  "Build isolated modern FF compatibility tests (does not select the production backend)" OFF)
+if(FFGRAPH_ENABLE_MODERN_FF_PILOT OR FFGRAPH_FF_BACKEND STREQUAL "modern")
   add_subdirectory(tests/modern_ff)
+endif()
+if(FFGRAPH_FF_BACKEND STREQUAL "modern")
+  target_sources(FFGraph PRIVATE fgraph/modern/ff_graph_adapter.cc)
+  target_link_libraries(FFGraph PUBLIC ffgraph_modern_ff)
+  target_compile_definitions(FFGraph PRIVATE FFGRAPH_USE_MODERN_FF=1)
+  install(TARGETS ffgraph_modern_ff ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
 if(BUILD_TESTING)
@@ -420,6 +432,15 @@ if(BUILD_TESTING)
   add_test(NAME test_graph_io_pass10 COMMAND test_graph_io_pass10)
   set_tests_properties(test_graph_io_pass10 PROPERTIES TIMEOUT 40)
 
+  add_executable(test_ff_production_backend_pass12 tests/test_ff_production_backend_pass12.cpp)
+  target_compile_definitions(test_ff_production_backend_pass12 PRIVATE
+    FFGRAPH_TEST_MODERN_FF=$<STREQUAL:${FFGRAPH_FF_BACKEND},modern>)
+  target_link_libraries(test_ff_production_backend_pass12 PRIVATE
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+  add_test(NAME test_ff_production_backend_pass12 COMMAND test_ff_production_backend_pass12)
+  set_tests_properties(test_ff_production_backend_pass12 PROPERTIES TIMEOUT 40)
+
   add_executable(test_graph_ownership tests/test_graph_ownership.cpp)
   target_compile_features(test_graph_ownership PRIVATE cxx_std_17)
   target_link_libraries(test_graph_ownership PRIVATE
@@ -554,6 +575,18 @@ if(BUILD_TESTING)
       TIMEOUT 45
       ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
 
+    add_executable(test_ff_window_parity_pass12 tests/test_ff_window_parity_pass12.cpp)
+    target_compile_definitions(test_ff_window_parity_pass12 PRIVATE
+      FFGRAPH_TEST_MODERN_FF=$<STREQUAL:${FFGRAPH_FF_BACKEND},modern>)
+    target_link_libraries(test_ff_window_parity_pass12 PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+    add_test(NAME test_ff_window_parity_pass12
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_ff_window_parity_pass12>"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/modern_ff/fixtures/gui.g")
+    set_tests_properties(test_ff_window_parity_pass12 PROPERTIES TIMEOUT 60
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+
     # Drive the real "recall modPress l/m/w" Tcl commands with a test file
     # picker. Exercises multiwindow load, merge, cancel, semantic rejection,
     # repeated close/reopen, a larger historical file and nested callbacks.
@@ -579,6 +612,15 @@ if(BUILD_TESTING)
     set_tests_properties(test_gui_file_workflow_pass11 PROPERTIES
       TIMEOUT 120
       ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    if(FFGRAPH_FF_BACKEND STREQUAL "modern")
+      add_test(NAME test_ff_gui_file_workflow_pass12
+        COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_gui_file_workflow_pass11>"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/modern_ff/fixtures/gui.g"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/modern_ff/fixtures/structure.g"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/gui_fixtures/truncated-ff.g")
+      set_tests_properties(test_ff_gui_file_workflow_pass12 PROPERTIES TIMEOUT 120
+        ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    endif()
     if(FFGRAPH_GUI_STRESS_TESTS)
       add_test(NAME test_gui_large_file_workflow_pass11
         COMMAND "${XVFB_RUN_EXECUTABLE}" -a

@@ -1,4 +1,4 @@
-# Isolated Pass 12 pilot. This archive is never linked into ffgraph/FFGraph.
+# Generated FF parser shared by the opt-in production backend and pilot tests.
 find_package(BISON 3.8 REQUIRED)
 find_package(FLEX 2.6 REQUIRED)
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -21,8 +21,13 @@ target_include_directories(ffgraph_modern_ff PUBLIC
 target_compile_options(ffgraph_modern_ff PRIVATE -Wall -Wextra)
 if(BUILD_TESTING)
   add_executable(test_ff_compatibility_pass12
-    test_ff_compatibility_pass12.cpp
-    "${PROJECT_SOURCE_DIR}/fgraph/modern/ff_graph_adapter.cc")
+    test_ff_compatibility_pass12.cpp)
+  # Modern production builds provide the adapter through FFGraph. Keep the
+  # legacy pilot isolated from the application when testing that backend.
+  if(NOT FFGRAPH_FF_BACKEND STREQUAL "modern")
+    target_sources(test_ff_compatibility_pass12 PRIVATE
+      "${PROJECT_SOURCE_DIR}/fgraph/modern/ff_graph_adapter.cc")
+  endif()
   target_link_libraries(test_ff_compatibility_pass12 PRIVATE ffgraph_modern_ff
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
     PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})

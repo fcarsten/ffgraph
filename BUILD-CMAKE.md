@@ -1,10 +1,10 @@
 # CMake build (Ubuntu 24.04)
 
 The CMake build now selects the modern GNU Bison/Flex GML importer by default.
-It generates that parser/scanner in the build tree. The FF and Rome parsers,
-and the temporarily retained GT GML fallback, still use their checked-in
-legacy bison++/flex++ generated C++ sources. The old Makefiles have **not**
-been switched; use CMake for the modern default.
+It generates that parser/scanner in the build tree. FF/sgraph has an explicit
+modern backend option, with legacy FF still the default. Rome uses its
+checked-in legacy parser. The old Makefiles have **not** been switched;
+use CMake for the modern backends.
 
 Install prerequisites:
 
@@ -66,12 +66,49 @@ simultaneous interpreters, and destruction from an active Tcl callback. It is
 registered with CTest automatically when `xvfb-run` is installed. Use the
 `asan` preset for additional memory/undefined-behaviour checks.
 
+## FF/sgraph backend (Pass 12 integration)
+
+The CMake cache selector `FFGRAPH_FF_BACKEND=legacy|modern` controls the real
+application loader for `.g` files and FF string/clipboard imports. Its default
+is `legacy`. It does not affect GML or Rome. This is a build-time choice;
+there is no runtime environment-variable selector or automatic fallback.
+
+To build and run the application with modern FF, from the repository root:
+
+```sh
+cmake -S . -B build/ff-modern -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+  -DBUILD_TESTING=ON -DFFGRAPH_FF_BACKEND=modern
+cmake --build build/ff-modern --parallel 2
+ctest --test-dir build/ff-modern --output-on-failure
+
+FF_LIBDIR="$PWD/lib/ffgraph" FF_ICONDIR="$PWD/lib/ffgraph/icons" \
+  ./build/ff-modern/ffgraph contrib/out.g
+```
+
+Modern selection generates/links the parser even with `BUILD_TESTING=OFF`.
+Generated sources stay in the build tree. When installing a modern FF build,
+the generated parser archive is installed with `FFGraph`.
+
+To return an existing directory to the legacy FF backend, reconfigure with
+`-DFFGRAPH_FF_BACKEND=legacy` and rebuild. Unspecified options retain cached
+values. `FFGRAPH_ENABLE_MODERN_FF_PILOT=ON` still enables isolated compatibility
+tests in a legacy build; enabling the pilot alone does not switch the app.
+Modern builds include these tests automatically when testing is enabled.
+
+Native FF GUI regressions run with Xvfb when available, including actual
+File → Load/Merge/Close/reopen and 2D/3D transform comparisons to `FFControl`.
+Malformed modern FF input reports an error and leaves existing graph contents
+and node IDs intact; legacy partial-load behavior is retained for that backend.
+The GUI still creates a new window before File → Load parses its input.
+Known system Tk/fontconfig leaks can fail leak-enabled GUI sanitizer checks;
+see the Pass 12 baseline-fixes and integration reports for exact results.
+
 ## GML parser (GNU Bison/Flex)
 
 The retired Bison++ `GTParser`/`GTScanner` has been removed from the current
 source tree. The modern generated GML importer is the only CMake backend.
-Bison 3.8+ and Flex 2.6+ are required for all application builds. The `FF`
-and Rome parsers are unchanged.
+Bison 3.8+ and Flex 2.6+ are required for all application builds. FF selection
+is independent; Rome remains unchanged.
 
 ```sh
 # Configure a fresh Debug build

@@ -10,7 +10,11 @@ permissions:
 
 jobs:
   ubuntu-24-04:
-    name: Ubuntu 24.04 / C++17
+    name: Ubuntu 24.04 / C++17 / FF ${{ matrix.ff_backend }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ff_backend: [legacy, modern]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -29,7 +33,7 @@ jobs:
             xvfb xauth
 
       - name: Configure (Debug)
-        run: cmake --preset debug -DBUILD_TESTING=ON
+        run: cmake --preset debug -DBUILD_TESTING=ON -DFFGRAPH_FF_BACKEND=${{ matrix.ff_backend }} -DFFGRAPH_ENABLE_MODERN_FF_PILOT=ON
 
       - name: Build
         run: cmake --build --preset debug --parallel 2
@@ -38,7 +42,11 @@ jobs:
         run: ctest --preset debug --output-on-failure --parallel 2
 
   ubuntu-24-04-asan:
-    name: Ubuntu 24.04 / ASan + UBSan
+    name: Ubuntu 24.04 / ASan + UBSan / FF ${{ matrix.ff_backend }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ff_backend: [legacy, modern]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -57,7 +65,7 @@ jobs:
             xvfb xauth
 
       - name: Configure (ASan/UBSan)
-        run: cmake --preset asan -DBUILD_TESTING=ON
+        run: cmake --preset asan -DBUILD_TESTING=ON -DFFGRAPH_FF_BACKEND=${{ matrix.ff_backend }} -DFFGRAPH_ENABLE_MODERN_FF_PILOT=ON
 
       - name: Build
         run: cmake --build --preset asan --parallel 2

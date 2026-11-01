@@ -10,6 +10,8 @@
 #include <ffgraph/FFEdgeLabel.h>
 #include <ffgraph/FFGraphLabel.h>
 #include <ffgraph/ffError.h>
+#include "FFParser.h"
+#include "FFScanner.h"
 #include <algorithm>
 #include <cstdlib>
 #include <filesystem>
@@ -103,9 +105,16 @@ std::string snapshot(FFGraph& g) {
 }
 int legacyErrors = 0;
 void onError(errGrade, const char*, const char*, int) { ++legacyErrors; }
+void parseLegacy(FFGraph& g, const std::string& input) {
+  // Invoke the real legacy oracle independently of the production selector.
+  for (Pix p = g->allNodes().first(); p; g->allNodes().next(p))
+    g->allNodes()(p)->setValue(-1);
+  FFControl parser;
+  parser.Parse(String(input), g.operator->());
+}
 void loadLegacy(FFGraph& g, const std::string& input) {
   const int before = legacyErrors;
-  g->load(String(input), NO);
+  parseLegacy(g, input);
   check(legacyErrors == before, "legacy syntax error on valid fixture");
 }
 void loadModern(FFGraph& g, const std::string& input) {
@@ -249,7 +258,7 @@ int main(int argc, char** argv) {
   userCharErrorHandler = onError;
   if (argc == 2 && std::string(argv[1]) == "--legacy-malformed") {
     FFGraph g(YES); setup(g, false); g->addNode()->setValue(123);
-    g->load("GRAPH \"bad\" = 1 \"partially created\";", NO);
+    parseLegacy(g, "GRAPH \"bad\" = 1 \"partially created\";");
     check(legacyErrors == 1 && g->getNumNodes() == 2 && g->nodeWithValue(-1),
           "legacy invalid load resets IDs and partially constructs graph");
     std::cout << "Legacy failure is non-atomic (expected baseline); check ASan for token leaks\n";

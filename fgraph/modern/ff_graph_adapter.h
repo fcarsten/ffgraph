@@ -3,7 +3,7 @@
 #include "ff_events.h"
 class FFGraphClass;
 namespace ffgraph_ff {
-// Pilot API only; not wired into FFControl or FFGraphClass::load().
+// Shared by the selectable modern FF importer and compatibility tests.
 // Replay only successful parse() results. Like legacy load(), optional ID reset
 // is for merge imports. Syntax failures leave the destination unchanged.
 // Callback/allocation exceptions during replay are not transactional.

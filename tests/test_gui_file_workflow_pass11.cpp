@@ -1,5 +1,6 @@
 // Exercise the actual Tcl File > Load / Merge / Close commands, not merely
-// FFGraphClass::load() or a manually retained window. Run under Xvfb.
+// FFGraphClass::load() or a manually retained window. Used for GML and the
+// opt-in modern FF backend. Run under Xvfb.
 #include <ffgraph/FFGraph.h>
 #include <ffgraph/FFGraphClass.h>
 #include <ffgraph/FFNodeClass.h>
@@ -71,7 +72,7 @@ void close(TrackedWindow* window) {
 
 int main(int argc, char** argv) {
   if (argc != 4 && argc != 5) {
-    std::cerr << "Usage: test_gui_file_workflow_pass11 valid.gml merge.gml invalid.gml [large.gml]\n";
+    std::cerr << "Usage: test_gui_file_workflow_pass11 valid-graph merge-graph invalid-graph [large-graph]\n";
     return 2;
   }
   Tcl_FindExecutable(argv[0]);
@@ -102,7 +103,7 @@ int main(int argc, char** argv) {
     require(loaded != initialWindow, "new window differs from source");
     const auto oldNodes = nodes(loaded);
     const auto oldEdges = edges(loaded);
-    require(oldNodes > 0 && oldEdges > 0, "GML actually imported");
+    require(oldNodes > 0 && oldEdges > 0, "graph actually imported");
     if (argc == 5)
       require(oldNodes >= 100, "large-corpus fixture was not loaded");
 
@@ -115,8 +116,8 @@ int main(int argc, char** argv) {
     require(edges(loaded) >= oldEdges, "merge retains prior edges");
     require(Tk_GetNumMainWindows() == initial + 2, "merge preserves windows");
 
-    // The modern importer rejects an unresolved edge endpoint during its
-    // semantic preflight. Repeated rejection must preserve the graph and
+    // Modern importers reject invalid syntax (FF) or unresolved edge endpoints
+    // (GML) before graph replay. Repeated rejection must preserve the graph and
     // leave both GUI windows operational.
     const auto mergedNodes = nodes(loaded);
     const auto mergedEdges = edges(loaded);
