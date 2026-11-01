@@ -59,7 +59,7 @@ target_compile_options(ffgraph_modern_gml PRIVATE -Wall -Wextra)
 if(BUILD_TESTING)
   add_test(NAME test_gml_corpus_python_pass11
     COMMAND "${Python3_EXECUTABLE}" -m unittest discover
-            -s "${CMAKE_CURRENT_LIST_DIR}/../graph_corpus" -p test_generate.py)
+            -s "${CMAKE_CURRENT_LIST_DIR}/../graph_corpus" -p "test_*.py")
   set_tests_properties(test_gml_corpus_python_pass11 PROPERTIES TIMEOUT 30)
 
   add_executable(test_gml_corpus_pass11

@@ -104,3 +104,36 @@ and 2 iterations; increase those limits cautiously and separately from CI.
   opt-in library. This corpus does not turn it into the production importer.
 - Random seeds and graph families are defined in `generate.py`; retain the
   version and seed when comparing results across revisions.
+
+## Metamorphic import/layout corpus (Pass 11 follow-up)
+
+The separate `metamorphic.py` generator creates paired GML inputs from curated
+smoke/standard/stress graph families. Its five transformations are node ID
+bijection, reversed node/edge declaration order, reversed undirected edge
+endpoints, XY translation (`+64.125, -32.750`), and uniform XY scaling (`2x`).
+
+```sh
+python3 tests/graph_corpus/metamorphic.py \
+  --output-dir build/metamorphic-smoke --profile smoke --force
+python3 tests/graph_corpus/metamorphic.py \
+  --output-dir build/metamorphic-smoke --profile smoke --check
+python3 -m unittest discover -s tests/graph_corpus -p 'test_*.py' -v
+```
+
+Outputs `base/*.gml`, `variant/*.gml`, `cases.tsv`, and `manifest.json` are
+reproducible and disposable. The smoke profile contains 11 base graphs and 55
+transformation pairs; standard and stress add larger families. The input files
+use a deliberately conservative grammar subset (integer IDs, quoted labels,
+REAL XY and nested graphics). `--force` has the same guarded replacement
+rules as the existing corpus generator.
+
+With `FFGRAPH_ENABLE_CORPUS_LAYOUT_TESTS=ON`, CMake additionally builds and
+runs `test_graph_corpus_metamorphic_pass11`, which loads each pair through the
+production importer and executes bounded spring layouts for both inputs.
+It verifies labelled undirected multigraph structure and initial coordinate
+relations **before** layout, then ensures finite node positions, valid edge
+routes and preserved labelled graph topology **after** layout. It does **not**
+assert exact final coordinates, strict XY equivariance or numeric node/edge ID
+stability: the historical spring layout explicitly renumbers `value` fields.
+Input graph files are undirected; reverse-edge metamorphism is not applicable
+to directed GML semantics. No production parser or layout code is modified.

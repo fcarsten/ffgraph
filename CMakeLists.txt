@@ -137,7 +137,7 @@ if(BUILD_TESTING)
   if(Python3_Interpreter_FOUND)
     add_test(NAME test_graph_corpus_generator_pass11
       COMMAND "${Python3_EXECUTABLE}" -m unittest discover
-              -s "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus" -p test_generate.py)
+              -s "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus" -p "test_*.py")
     set_tests_properties(test_graph_corpus_generator_pass11 PROPERTIES TIMEOUT 30)
   endif()
   foreach(test_name
@@ -248,6 +248,37 @@ if(BUILD_TESTING)
     add_test(NAME test_graph_corpus_layout_pass11
       COMMAND test_graph_corpus_layout_pass11 "${FFGRAPH_LAYOUT_CORPUS}")
     set_tests_properties(test_graph_corpus_layout_pass11 PROPERTIES TIMEOUT 120)
+
+    # Metamorphic input transformations verify parser/import invariants and
+    # bounded layout robustness without relying on exact final XY positions.
+    set(FFGRAPH_METAMORPHIC_CORPUS "${CMAKE_CURRENT_BINARY_DIR}/generated-metamorphic-corpus")
+    add_custom_command(
+      OUTPUT "${FFGRAPH_METAMORPHIC_CORPUS}/manifest.json"
+      COMMAND "${Python3_EXECUTABLE}"
+              "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/metamorphic.py"
+              --output-dir "${FFGRAPH_METAMORPHIC_CORPUS}" --profile smoke --force
+      DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/metamorphic.py"
+              "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/generate.py"
+      COMMENT "Regenerate GML metamorphic import/layout fixtures"
+      VERBATIM)
+    add_custom_target(ffgraph_metamorphic_corpus
+      DEPENDS "${FFGRAPH_METAMORPHIC_CORPUS}/manifest.json")
+    add_executable(test_graph_corpus_metamorphic_pass11
+      tests/test_graph_corpus_metamorphic_pass11.cpp)
+    target_compile_features(test_graph_corpus_metamorphic_pass11 PRIVATE cxx_std_17)
+    target_link_libraries(test_graph_corpus_metamorphic_pass11 PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+    if(MATH_LIBRARY)
+      target_link_libraries(test_graph_corpus_metamorphic_pass11 PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(test_graph_corpus_metamorphic_pass11 PRIVATE ${DL_LIBRARY})
+    endif()
+    add_dependencies(test_graph_corpus_metamorphic_pass11 ffgraph_metamorphic_corpus)
+    add_test(NAME test_graph_corpus_metamorphic_pass11
+      COMMAND test_graph_corpus_metamorphic_pass11 "${FFGRAPH_METAMORPHIC_CORPUS}")
+    set_tests_properties(test_graph_corpus_metamorphic_pass11 PROPERTIES TIMEOUT 180)
   endif()
 
   add_executable(test_graph_io_pass10 tests/test_graph_io_pass10.cpp)
