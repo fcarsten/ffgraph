@@ -1,8 +1,5 @@
-/* Modern Bison 3.x pilot for the Graphlet/GML attribute syntax.
- * NOT the shipped FFGraphClass GML importer: that remains GTControl until
- * behavioural parity (including errors and semantic actions) is verified.
- * The original GTParser.y uses bison++-only directives and cannot be fed
- * directly to GNU Bison.
+/* GNU Bison 3.x grammar for the production Graphlet/GML importer.
+ * The retired Bison++ grammar remains accessible in Git history.
  */
 %define api.pure full
 %define api.prefix {ffgml_}

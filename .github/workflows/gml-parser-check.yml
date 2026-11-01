@@ -1,5 +1,5 @@
-# Generator and differential checks for the default modern production GML
-# backend and the temporarily retained GTControl fallback.
+# Generator, oracle and GUI lifecycle checks for the sole production GML
+# backend (GNU Bison/Flex). FF/Rome parsers remain unchanged.
 name: Modern GML generator and parity
 on:
   workflow_dispatch:
@@ -37,9 +37,9 @@ jobs:
           UBSAN_OPTIONS: halt_on_error=1
         run: ctest --test-dir build/modern-gml-asan --output-on-failure
 
-  graph-output-parity:
-    # Separate from the Tcl-free pilot: builds the historical importer and
-    # compares real FFGraphClass nodes/edges to modern event replay.
+  graph-oracle-regression:
+    # Separate from the Tcl-free parser tests: exercises real FFGraphClass
+    # imports, independent graph oracles, and metamorphic layout invariants.
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -52,38 +52,36 @@ jobs:
           sudo apt-get install --yes --no-install-recommends \
             build-essential cmake ninja-build pkg-config bison flex \
             tcl-dev tk-dev libx11-dev libxpm-dev xvfb xauth
-      - name: Configure opt-in modern GML graph comparison
+      - name: Configure generated GML graph and oracle tests
         run: >-
           cmake -S . -B build/gml-parity -G Ninja
           -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
-          -DFFGRAPH_ENABLE_MODERN_GML=ON
           -DFFGRAPH_ENABLE_CORPUS_LAYOUT_TESTS=ON
-      - name: Build differential and metamorphic layout tests
+      - name: Build oracle and metamorphic layout tests
         run: >-
           cmake --build build/gml-parity --parallel 2
-          --target test_gml_graph_parity_pass11 test_graph_corpus_metamorphic_pass11 test_gml_differential_corpus_pass11 test_gml_semantic_atomicity_pass11 test_gml_production_backend_pass11 test_gui_file_workflow_pass11
-      - name: Compare graph outputs and metamorphic invariants
+          --target test_gml_graph_regression_pass11 test_graph_corpus_metamorphic_pass11 test_gml_corpus_oracle_pass11 test_gml_semantic_atomicity_pass11 test_gml_production_backend_pass11 test_gui_file_workflow_pass11
+      - name: Check graph oracles and metamorphic invariants
         run: >-
           ctest --test-dir build/gml-parity
-          -R '^test_(gml_graph_parity|graph_corpus_metamorphic|gml_differential_corpus|gml_differential_metamorphic|gml_semantic_atomicity|gml_production_backend|gui_file_workflow)_pass11$'
+          -R '^test_(gml_graph_regression|graph_corpus_metamorphic|gml_corpus_oracle|gml_metamorphic_oracle|gml_semantic_atomicity|gml_production_backend|gui_file_workflow)_pass11$'
           --output-on-failure
-      - name: Configure differential test with ASan/UBSan
+      - name: Configure GML oracle tests with ASan/UBSan
         run: >-
           cmake -S . -B build/gml-parity-asan -G Ninja
           -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
-          -DFFGRAPH_ENABLE_MODERN_GML=ON
           -DFFGRAPH_ENABLE_CORPUS_LAYOUT_TESTS=ON -DFFGRAPH_SANITIZERS=ON
-      - name: Build sanitizer differential and metamorphic tests
+      - name: Build sanitizer oracle and metamorphic tests
         run: >-
           cmake --build build/gml-parity-asan --parallel 2
-          --target test_gml_graph_parity_pass11 test_graph_corpus_metamorphic_pass11 test_gml_differential_corpus_pass11 test_gml_semantic_atomicity_pass11 test_gml_production_backend_pass11 test_gui_file_workflow_pass11
-      - name: Check graph-output parity and metamorphic invariants under sanitizers
+          --target test_gml_graph_regression_pass11 test_graph_corpus_metamorphic_pass11 test_gml_corpus_oracle_pass11 test_gml_semantic_atomicity_pass11 test_gml_production_backend_pass11 test_gui_file_workflow_pass11
+      - name: Check graph oracles and metamorphic invariants under sanitizers
         env:
           ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: >-
           ctest --test-dir build/gml-parity-asan
-          -R '^test_(gml_graph_parity|graph_corpus_metamorphic|gml_differential_corpus|gml_differential_metamorphic|gml_semantic_atomicity|gml_production_backend|gui_file_workflow)_pass11$'
+          -R '^test_(gml_graph_regression|graph_corpus_metamorphic|gml_corpus_oracle|gml_metamorphic_oracle|gml_semantic_atomicity|gml_production_backend|gui_file_workflow)_pass11$'
           --output-on-failure
 
   comprehensive-gml-standard:
@@ -93,23 +91,22 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Install generators and legacy graph dependencies
+      - name: Install parser and graph dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
             build-essential cmake ninja-build pkg-config bison flex \
             tcl-dev tk-dev libx11-dev libxpm-dev
-      - name: Configure standard differential corpus
+      - name: Configure standard graph oracle corpus
         run: >-
           cmake -S . -B build/gml-diff-standard -G Ninja
           -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-          -DFFGRAPH_ENABLE_MODERN_GML=ON
           -DFFGRAPH_GML_DIFFERENTIAL_PROFILE=standard
-      - name: Compile differential corpus harness
+      - name: Compile independent graph oracle harness
         run: >-
           cmake --build build/gml-diff-standard --parallel 2
-          --target test_gml_differential_corpus_pass11
-      - name: Run standard graph and metamorphic parity checks
+          --target test_gml_corpus_oracle_pass11
+      - name: Run standard graph and metamorphic oracle checks
         run: >-
           ctest --test-dir build/gml-diff-standard
-          -R '^test_gml_differential_.*_pass11$' --output-on-failure
+          -R '^test_gml_(corpus|metamorphic)_oracle_pass11$' --output-on-failure

@@ -74,16 +74,15 @@ cmake --build build/modern-gml --parallel 2
 ctest --test-dir build/modern-gml --output-on-failure
 ```
 
-Full ffgraph, with historical import and optional spring tests (requires Tcl/Tk,
-X11, Xpm development packages, Bison and Flex only when enabling modern GML):
+Full ffgraph with modern GML and optional spring tests (requires Tcl/Tk,
+X11, Xpm development packages, Bison and Flex):
 
 ```sh
 cmake -S . -B build/corpus -G Ninja -DBUILD_TESTING=ON \
-  -DFFGRAPH_ENABLE_MODERN_GML=ON \
   -DFFGRAPH_ENABLE_CORPUS_LAYOUT_TESTS=ON
 cmake --build build/corpus --target test_graph_corpus_layout_pass11 \
-  test_gml_graph_parity_pass11 test_gml_corpus_pass11 --parallel 2
-ctest --test-dir build/corpus -R 'graph_corpus|gml_corpus|generated_graph_parity' \
+  test_gml_graph_regression_pass11 test_gml_corpus_pass11 --parallel 2
+ctest --test-dir build/corpus -R 'graph_corpus|gml_corpus|generated_graph_regression' \
   --output-on-failure
 ```
 
@@ -97,11 +96,12 @@ and 2 iterations; increase those limits cautiously and separately from CI.
   GML documents.
 - Graphs are generated with undirected topology and may contain loops and
   parallel edges. Input GML `directed 0` is intentional.
-- The generator's independent parser is stricter than the production legacy
-  scanner about unknown characters. In particular, a historical AGD options
-  file is classified by the pilot's grammar, not by a dedicated options parser.
-- The currently modern GML event-parser adapter remains an experimental,
-  opt-in library. This corpus does not turn it into the production importer.
+- `options.gml` is an AGD configuration document, not a graph. It is retained
+  as a grammar rejection fixture, not imported as a graph.
+- The Bison/Flex GML importer is the only production GML backend; old GT
+  parser sources can be retrieved from the pre-retirement Git revision.
+- The independent graph TSV oracles are permanent regression references.
+  Parser-vs-parser differential checks ended with legacy GT retirement.
 - Random seeds and graph families are defined in `generate.py`; retain the
   version and seed when comparing results across revisions.
 

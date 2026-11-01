@@ -69,7 +69,6 @@ void verifyValidFile() {
   }
 }
 
-#ifdef FFGRAPH_TEST_MODERN_GML
 void verifyRejectedFile(const std::string& source) {
   FFGraph graph(YES);
   FFNode original = graph->addNode();
@@ -85,14 +84,11 @@ void verifyRejectedFile(const std::string& source) {
     require(original->getName() == "do-not-modify", "failed import preserves label");
   }
 }
-#endif
 } // namespace
 
 int main() {
   verifyValidFile();
-#ifdef FFGRAPH_TEST_MODERN_GML
   verifyRejectedFile("graph [ node [ id 1 ] edge [ source 1 target 999 ] ]");
   verifyRejectedFile("graph [ node [ id 1 ]");
-#endif
   std::cout << "production GML backend integration passed\n";
 }

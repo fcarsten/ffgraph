@@ -7,8 +7,8 @@ class FFGraphClass;
 
 namespace ffgraph_gml {
 
-// Shared event-to-graph bridge for the production modern GML importer and
-// differential comparison against the retained GTControl implementation.
+// Event-to-graph bridge for the production GNU Bison/Flex GML importer.
+// Oracle and GUI tests exercise this same implementation.
 struct ApplyResult {
   bool ok = false;
   std::string error;

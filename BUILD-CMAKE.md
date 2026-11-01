@@ -66,28 +66,32 @@ simultaneous interpreters, and destruction from an active Tcl callback. It is
 registered with CTest automatically when `xvfb-run` is installed. Use the
 `asan` preset for additional memory/undefined-behaviour checks.
 
-GML production backend selection (CMake):
+## GML parser (GNU Bison/Flex)
+
+The retired Bison++ `GTParser`/`GTScanner` has been removed from the current
+source tree. The modern generated GML importer is the only CMake backend.
+Bison 3.8+ and Flex 2.6+ are required for all application builds. The `FF`
+and Rome parsers are unchanged.
 
 ```sh
-# Default modern GML backend (requires Bison >=3.8 and Flex >=2.6)
-cmake -S . -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-  -DFFGRAPH_GML_BACKEND=modern -DFFGRAPH_ENABLE_MODERN_GML=ON
+# Configure a fresh Debug build
+cmake -S . -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
 
-# Temporary fallback to GTControl; keep new parser built for parity tests
-cmake -S . -B build/legacy-gml -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-  -DFFGRAPH_GML_BACKEND=legacy -DFFGRAPH_ENABLE_MODERN_GML=ON
+# Existing Pass 11 build directory: discard obsolete cached backend selections
+cmake -S . -B build/gml-modern-default -G Ninja \
+  -U FFGRAPH_GML_BACKEND -U FFGRAPH_ENABLE_MODERN_GML \
+  -DBUILD_TESTING=ON
 
-# Fallback without any generator packages (disables modern GML tests)
-cmake -S . -B build/legacy-no-generators -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-  -DFFGRAPH_GML_BACKEND=legacy -DFFGRAPH_ENABLE_MODERN_GML=OFF
+cmake --build build/gml-modern-default --parallel 2
+ctest --test-dir build/gml-modern-default --output-on-failure
 ```
 
-To exercise the actual production load path, run:
+The generated-file corpus can be configured with
+`FFGRAPH_GML_DIFFERENTIAL_PROFILE=smoke|standard|stress` (the historical cache
+variable name is retained for build-directory compatibility). Tests called
+`test_gml_corpus_oracle_pass11` and `test_gml_metamorphic_oracle_pass11` now
+compare the production parser against independent graph oracles rather than
+against a second legacy implementation.
 
-```sh
-cmake --build build/debug --target test_gml_production_backend_pass11
-ctest --test-dir build/debug -R '^test_gml_production_backend_pass11$' --output-on-failure
-```
-
-Keep the legacy parser in a tagged Git commit before deleting its checked-in
-files. See `docs/FFGRAPH-PASS11-GML-PRODUCTION-SWITCH.md` for migration gates.
+Historical GT source files can be recovered with `git show` using a commit/tag
+from before removal; see `docs/FFGRAPH-PASS11-GML-LEGACY-RETIREMENT.md`.

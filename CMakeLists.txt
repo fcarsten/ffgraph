@@ -21,23 +21,16 @@ if(FFGRAPH_SANITIZERS)
   add_link_options(-fsanitize=address,undefined)
 endif()
 
-# Pass 11: select the production GML backend. Modern Bison/Flex is the
-# default. The checked-in GT parser remains available for a short migration
-# window and for differential tests; FF/Rome are not being migrated here.
-set(FFGRAPH_GML_BACKEND "modern" CACHE STRING "Production GML importer (modern or legacy)")
-set_property(CACHE FFGRAPH_GML_BACKEND PROPERTY STRINGS modern legacy)
-if(NOT FFGRAPH_GML_BACKEND MATCHES "^(modern|legacy)$")
-  message(FATAL_ERROR "FFGRAPH_GML_BACKEND must be modern or legacy")
-endif()
-option(FFGRAPH_ENABLE_MODERN_GML "Build/test modern GNU Bison/Flex GML parser" ON)
-if(FFGRAPH_GML_BACKEND STREQUAL "modern" AND NOT FFGRAPH_ENABLE_MODERN_GML)
+# GML uses the generated GNU Bison/Flex parser in all CMake builds.
+# FF and Rome still use their checked-in historical parsers.
+# Remove obsolete cache entries from older build directories if necessary:
+#   cmake -S . -B build/... -U FFGRAPH_GML_BACKEND -U FFGRAPH_ENABLE_MODERN_GML
+if(DEFINED FFGRAPH_GML_BACKEND AND FFGRAPH_GML_BACKEND STREQUAL "legacy")
   message(FATAL_ERROR
-    "The modern production GML backend requires FFGRAPH_ENABLE_MODERN_GML=ON. "
-    "Use -DFFGRAPH_GML_BACKEND=legacy to build without Bison/Flex.")
+    "Legacy GML has been retired. Reconfigure without FFGRAPH_GML_BACKEND=legacy "
+    "(cmake -U FFGRAPH_GML_BACKEND -U FFGRAPH_ENABLE_MODERN_GML ...).")
 endif()
-if(FFGRAPH_ENABLE_MODERN_GML)
-  add_subdirectory(tests/modern_gml)
-endif()
+add_subdirectory(tests/modern_gml)
 
 # Other legacy parser sources remain checked-in; regeneration is not an
 # implicit dependency for the FF and Rome formats.
@@ -69,22 +62,10 @@ add_library(FFGraph STATIC
   fgraph/FFTIEdgeLabel.cc
   fgraph/FFTIGraphLabel.cc
 )
-# Retain the legacy generated GML sources only for the explicit fallback or
-# differential tests. Normal modern production builds (-DBUILD_TESTING=OFF)
-# no longer compile or link the old GML parser/scanner.
-if(FFGRAPH_GML_BACKEND STREQUAL "legacy" OR
-   (BUILD_TESTING AND FFGRAPH_ENABLE_MODERN_GML))
-  target_sources(FFGraph PRIVATE fgraph/GTParser.cc fgraph/GTScanner.cc)
-endif()
-# Share one graph adapter implementation between production and parity tests.
-# The modern parser target is generated at build time by Bison/Flex.
-if(FFGRAPH_ENABLE_MODERN_GML)
-  target_sources(FFGraph PRIVATE fgraph/modern/gml_graph_adapter.cc)
-  target_link_libraries(FFGraph PUBLIC ffgraph_modern_gml)
-endif()
-if(FFGRAPH_GML_BACKEND STREQUAL "modern")
-  target_compile_definitions(FFGraph PRIVATE FFGRAPH_GML_BACKEND_MODERN=1)
-endif()
+# Share the modern graph adapter between FFGraphClass::load() and tests.
+# Parser/scanner output remains generated in the build directory.
+target_sources(FFGraph PRIVATE fgraph/modern/gml_graph_adapter.cc)
+target_link_libraries(FFGraph PUBLIC ffgraph_modern_gml)
 
 add_library(FFlayout STATIC
   flayout/FFShow.cc
@@ -156,10 +137,8 @@ install(CODE "execute_process(COMMAND \"${CMAKE_COMMAND}\" -E create_symlink ffg
 install(DIRECTORY lib/ffgraph DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY include/ffgraph/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ffgraph FILES_MATCHING PATTERN "*.h")
 install(TARGETS FFGraph FFGraphic FFlayout FFcontainer ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-if(FFGRAPH_ENABLE_MODERN_GML)
-  # Installed FFGraph static archives now depend on this generated parser.
-  install(TARGETS ffgraph_modern_gml ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-endif()
+# Installed FFGraph static archives now depend on this generated parser.
+install(TARGETS ffgraph_modern_gml ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 if(BUILD_TESTING)
   # Generator has no Bison/Tk dependency; exercise it in the regular suite.
@@ -216,153 +195,142 @@ if(BUILD_TESTING)
     set_tests_properties(${test_name} PROPERTIES TIMEOUT 30)
   endforeach()
 
-  # Exercise the public FFGraphClass::load() entry point using the selected
-  # production backend (not the event-to-graph adapter directly).
-  if(FFGRAPH_ENABLE_MODERN_GML)
-    add_executable(test_gml_production_backend_pass11
-      tests/modern_gml/test_gml_production_backend_pass11.cpp)
-    target_compile_features(test_gml_production_backend_pass11 PRIVATE cxx_std_17)
-    if(FFGRAPH_GML_BACKEND STREQUAL "modern")
-      target_compile_definitions(test_gml_production_backend_pass11 PRIVATE
-        FFGRAPH_TEST_MODERN_GML=1)
-    endif()
-    target_link_libraries(test_gml_production_backend_pass11 PRIVATE
-      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY})
-    if(MATH_LIBRARY)
-      target_link_libraries(test_gml_production_backend_pass11 PRIVATE ${MATH_LIBRARY})
-    endif()
-    if(DL_LIBRARY)
-      target_link_libraries(test_gml_production_backend_pass11 PRIVATE ${DL_LIBRARY})
-    endif()
-    add_test(NAME test_gml_production_backend_pass11
-      COMMAND test_gml_production_backend_pass11)
-    set_tests_properties(test_gml_production_backend_pass11 PROPERTIES TIMEOUT 45)
+  # Exercise the public FFGraphClass::load() entry point independently of
+  # direct event replay.
+  add_executable(test_gml_production_backend_pass11
+    tests/modern_gml/test_gml_production_backend_pass11.cpp)
+  target_compile_features(test_gml_production_backend_pass11 PRIVATE cxx_std_17)
+  target_link_libraries(test_gml_production_backend_pass11 PRIVATE
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+  if(MATH_LIBRARY)
+    target_link_libraries(test_gml_production_backend_pass11 PRIVATE ${MATH_LIBRARY})
   endif()
+  if(DL_LIBRARY)
+    target_link_libraries(test_gml_production_backend_pass11 PRIVATE ${DL_LIBRARY})
+  endif()
+  add_test(NAME test_gml_production_backend_pass11
+    COMMAND test_gml_production_backend_pass11)
+  set_tests_properties(test_gml_production_backend_pass11 PROPERTIES TIMEOUT 45)
 
   # Pass 10: end-to-end sgraph/GML load-modify-save-reload coverage,
   # including the bundled historical graph. This target needs no display.
-  # Pass 11: optional GML graph-output differential test. Production keeps
-  # GTControl; the Bison/Flex path must match real legacy graph semantics
-  # before it can be considered for a runtime importer switch.
-  if(FFGRAPH_ENABLE_MODERN_GML)
-    add_executable(test_gml_graph_parity_pass11
-      tests/modern_gml/test_gml_graph_parity_pass11.cpp)
-    target_compile_features(test_gml_graph_parity_pass11 PRIVATE cxx_std_17)
-    target_include_directories(test_gml_graph_parity_pass11 PRIVATE fgraph/modern)
-    target_link_libraries(test_gml_graph_parity_pass11 PRIVATE
-      ffgraph_modern_gml
-      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY})
-    if(MATH_LIBRARY)
-      target_link_libraries(test_gml_graph_parity_pass11 PRIVATE ${MATH_LIBRARY})
-    endif()
-    if(DL_LIBRARY)
-      target_link_libraries(test_gml_graph_parity_pass11 PRIVATE ${DL_LIBRARY})
-    endif()
-    add_test(NAME test_gml_graph_parity_pass11 COMMAND test_gml_graph_parity_pass11)
-    set_tests_properties(test_gml_graph_parity_pass11 PROPERTIES TIMEOUT 45)
-    add_dependencies(test_gml_graph_parity_pass11 ffgraph_gml_corpus_smoke)
-    add_test(NAME test_gml_generated_graph_parity_pass11
-      COMMAND test_gml_graph_parity_pass11
-              "${CMAKE_CURRENT_BINARY_DIR}/tests/modern_gml/corpus-smoke")
-    set_tests_properties(test_gml_generated_graph_parity_pass11 PROPERTIES TIMEOUT 120)
+  # Golden regression cases plus generated graph-oracle checks.
+  # Legacy GTControl was retired; reference expectations are data, not code.
+  add_executable(test_gml_graph_regression_pass11
+    tests/modern_gml/test_gml_graph_regression_pass11.cpp)
+  target_compile_features(test_gml_graph_regression_pass11 PRIVATE cxx_std_17)
+  target_include_directories(test_gml_graph_regression_pass11 PRIVATE fgraph/modern)
+  target_link_libraries(test_gml_graph_regression_pass11 PRIVATE
+    ffgraph_modern_gml
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+  if(MATH_LIBRARY)
+    target_link_libraries(test_gml_graph_regression_pass11 PRIVATE ${MATH_LIBRARY})
   endif()
+  if(DL_LIBRARY)
+    target_link_libraries(test_gml_graph_regression_pass11 PRIVATE ${DL_LIBRARY})
+  endif()
+  add_test(NAME test_gml_graph_regression_pass11 COMMAND test_gml_graph_regression_pass11)
+  set_tests_properties(test_gml_graph_regression_pass11 PROPERTIES TIMEOUT 45)
+  add_dependencies(test_gml_graph_regression_pass11 ffgraph_gml_corpus_smoke)
+  add_test(NAME test_gml_generated_graph_regression_pass11
+    COMMAND test_gml_graph_regression_pass11
+            "${CMAKE_CURRENT_BINARY_DIR}/tests/modern_gml/corpus-smoke")
+  set_tests_properties(test_gml_generated_graph_regression_pass11 PROPERTIES TIMEOUT 120)
 
-  # Comprehensive generated-grammar/import differential checks.  These use
-  # the *real* Bison/Flex event parser and the unmodified GTControl importer;
-  # no production parser switch.  A separate profile controls run-time cost.
-  if(FFGRAPH_ENABLE_MODERN_GML)
-    set(FFGRAPH_GML_DIFFERENTIAL_PROFILE "smoke" CACHE STRING
-      "Generated GML differential corpus profile (smoke, standard, stress)")
-    set_property(CACHE FFGRAPH_GML_DIFFERENTIAL_PROFILE PROPERTY STRINGS
-      smoke standard stress)
-    if(NOT FFGRAPH_GML_DIFFERENTIAL_PROFILE MATCHES "^(smoke|standard|stress)$")
-      message(FATAL_ERROR "Unsupported FFGRAPH_GML_DIFFERENTIAL_PROFILE")
-    endif()
-    find_package(Python3 COMPONENTS Interpreter REQUIRED)
-    set(FFGRAPH_DIFF_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus")
-    set(FFGRAPH_DIFF_GRAPHS
-      "${CMAKE_CURRENT_BINARY_DIR}/gml-differential-${FFGRAPH_GML_DIFFERENTIAL_PROFILE}")
-    set(FFGRAPH_DIFF_META
-      "${CMAKE_CURRENT_BINARY_DIR}/gml-differential-metamorphic-${FFGRAPH_GML_DIFFERENTIAL_PROFILE}")
-    file(GLOB FFGRAPH_DIFF_SAMPLES CONFIGURE_DEPENDS
-      "${FFGRAPH_DIFF_SOURCE}/samples/*.gml")
-    add_custom_command(
-      OUTPUT "${FFGRAPH_DIFF_GRAPHS}/manifest.json"
-      COMMAND "${Python3_EXECUTABLE}" "${FFGRAPH_DIFF_SOURCE}/generate.py"
-        --output-dir "${FFGRAPH_DIFF_GRAPHS}"
-        --profile "${FFGRAPH_GML_DIFFERENTIAL_PROFILE}"
-        --examples-dir "${FFGRAPH_DIFF_SOURCE}/samples" --force
-      DEPENDS "${FFGRAPH_DIFF_SOURCE}/generate.py" ${FFGRAPH_DIFF_SAMPLES}
-      COMMENT "Generate complete GML differential graph/syntax corpus"
-      VERBATIM)
-    add_custom_command(
-      OUTPUT "${FFGRAPH_DIFF_META}/manifest.json"
-      COMMAND "${Python3_EXECUTABLE}" "${FFGRAPH_DIFF_SOURCE}/metamorphic.py"
-        --output-dir "${FFGRAPH_DIFF_META}"
-        --profile "${FFGRAPH_GML_DIFFERENTIAL_PROFILE}" --force
-      DEPENDS "${FFGRAPH_DIFF_SOURCE}/generate.py" "${FFGRAPH_DIFF_SOURCE}/metamorphic.py"
-      COMMENT "Generate paired metamorphic differential GML corpus"
-      VERBATIM)
-    add_custom_target(ffgraph_gml_differential_fixtures DEPENDS
-      "${FFGRAPH_DIFF_GRAPHS}/manifest.json"
-      "${FFGRAPH_DIFF_META}/manifest.json")
-    add_executable(test_graph_snapshot_pass11
-      tests/graph_corpus/test_graph_snapshot_pass11.cpp)
-    target_compile_features(test_graph_snapshot_pass11 PRIVATE cxx_std_17)
-    target_include_directories(test_graph_snapshot_pass11 PRIVATE
-      "${CMAKE_CURRENT_SOURCE_DIR}/include"
-      "${CMAKE_CURRENT_SOURCE_DIR}")
-    add_test(NAME test_graph_snapshot_pass11 COMMAND test_graph_snapshot_pass11)
-    set_tests_properties(test_graph_snapshot_pass11 PROPERTIES TIMEOUT 15)
-    add_executable(test_gml_differential_corpus_pass11
-      tests/modern_gml/test_gml_differential_corpus_pass11.cpp)
-    target_compile_features(test_gml_differential_corpus_pass11 PRIVATE cxx_std_17)
-    target_include_directories(test_gml_differential_corpus_pass11 PRIVATE fgraph/modern)
-    target_link_libraries(test_gml_differential_corpus_pass11 PRIVATE
-      ffgraph_modern_gml
-      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY})
-    if(MATH_LIBRARY)
-      target_link_libraries(test_gml_differential_corpus_pass11 PRIVATE ${MATH_LIBRARY})
-    endif()
-    if(DL_LIBRARY)
-      target_link_libraries(test_gml_differential_corpus_pass11 PRIVATE ${DL_LIBRARY})
-    endif()
-    # Semantic validation must not mutate an existing graph on failure.
-    # Builds with real graph classes, independently of Bison/Flex event input.
-    add_executable(test_gml_semantic_atomicity_pass11
-      tests/modern_gml/test_gml_semantic_atomicity_pass11.cpp)
-    target_compile_features(test_gml_semantic_atomicity_pass11 PRIVATE cxx_std_17)
-    target_include_directories(test_gml_semantic_atomicity_pass11 PRIVATE fgraph/modern)
-    target_link_libraries(test_gml_semantic_atomicity_pass11 PRIVATE
-      ffgraph_modern_gml
-      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY})
-    if(MATH_LIBRARY)
-      target_link_libraries(test_gml_semantic_atomicity_pass11 PRIVATE ${MATH_LIBRARY})
-    endif()
-    if(DL_LIBRARY)
-      target_link_libraries(test_gml_semantic_atomicity_pass11 PRIVATE ${DL_LIBRARY})
-    endif()
-    add_test(NAME test_gml_semantic_atomicity_pass11
-      COMMAND test_gml_semantic_atomicity_pass11)
-    set_tests_properties(test_gml_semantic_atomicity_pass11 PROPERTIES TIMEOUT 45)
-    add_dependencies(test_gml_differential_corpus_pass11 ffgraph_gml_differential_fixtures)
-    add_test(NAME test_gml_differential_corpus_pass11
-      COMMAND test_gml_differential_corpus_pass11 graphs "${FFGRAPH_DIFF_GRAPHS}" 2)
-    add_test(NAME test_gml_differential_metamorphic_pass11
-      COMMAND test_gml_differential_corpus_pass11 metamorphic "${FFGRAPH_DIFF_META}" 2)
-    if(FFGRAPH_GML_DIFFERENTIAL_PROFILE STREQUAL "stress")
-      set(FFGRAPH_DIFF_TIMEOUT 900)
-    else()
-      set(FFGRAPH_DIFF_TIMEOUT 300)
-    endif()
-    set_tests_properties(test_gml_differential_corpus_pass11
-      test_gml_differential_metamorphic_pass11
-      PROPERTIES TIMEOUT ${FFGRAPH_DIFF_TIMEOUT})
+  # Corpus: compare production loads and direct event replay, and check
+  # generated graphs against independent oracle data (not legacy code).
+  # A separate profile controls run-time cost.
+  set(FFGRAPH_GML_DIFFERENTIAL_PROFILE "smoke" CACHE STRING
+    "Generated GML differential corpus profile (smoke, standard, stress)")
+  set_property(CACHE FFGRAPH_GML_DIFFERENTIAL_PROFILE PROPERTY STRINGS
+    smoke standard stress)
+  if(NOT FFGRAPH_GML_DIFFERENTIAL_PROFILE MATCHES "^(smoke|standard|stress)$")
+    message(FATAL_ERROR "Unsupported FFGRAPH_GML_DIFFERENTIAL_PROFILE")
   endif()
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  set(FFGRAPH_DIFF_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus")
+  set(FFGRAPH_DIFF_GRAPHS
+    "${CMAKE_CURRENT_BINARY_DIR}/gml-differential-${FFGRAPH_GML_DIFFERENTIAL_PROFILE}")
+  set(FFGRAPH_DIFF_META
+    "${CMAKE_CURRENT_BINARY_DIR}/gml-differential-metamorphic-${FFGRAPH_GML_DIFFERENTIAL_PROFILE}")
+  file(GLOB FFGRAPH_DIFF_SAMPLES CONFIGURE_DEPENDS
+    "${FFGRAPH_DIFF_SOURCE}/samples/*.gml")
+  add_custom_command(
+    OUTPUT "${FFGRAPH_DIFF_GRAPHS}/manifest.json"
+    COMMAND "${Python3_EXECUTABLE}" "${FFGRAPH_DIFF_SOURCE}/generate.py"
+      --output-dir "${FFGRAPH_DIFF_GRAPHS}"
+      --profile "${FFGRAPH_GML_DIFFERENTIAL_PROFILE}"
+      --examples-dir "${FFGRAPH_DIFF_SOURCE}/samples" --force
+    DEPENDS "${FFGRAPH_DIFF_SOURCE}/generate.py" ${FFGRAPH_DIFF_SAMPLES}
+    COMMENT "Generate complete GML differential graph/syntax corpus"
+    VERBATIM)
+  add_custom_command(
+    OUTPUT "${FFGRAPH_DIFF_META}/manifest.json"
+    COMMAND "${Python3_EXECUTABLE}" "${FFGRAPH_DIFF_SOURCE}/metamorphic.py"
+      --output-dir "${FFGRAPH_DIFF_META}"
+      --profile "${FFGRAPH_GML_DIFFERENTIAL_PROFILE}" --force
+    DEPENDS "${FFGRAPH_DIFF_SOURCE}/generate.py" "${FFGRAPH_DIFF_SOURCE}/metamorphic.py"
+    COMMENT "Generate paired metamorphic differential GML corpus"
+    VERBATIM)
+  add_custom_target(ffgraph_gml_differential_fixtures DEPENDS
+    "${FFGRAPH_DIFF_GRAPHS}/manifest.json"
+    "${FFGRAPH_DIFF_META}/manifest.json")
+  add_executable(test_graph_snapshot_pass11
+    tests/graph_corpus/test_graph_snapshot_pass11.cpp)
+  target_compile_features(test_graph_snapshot_pass11 PRIVATE cxx_std_17)
+  target_include_directories(test_graph_snapshot_pass11 PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}")
+  add_test(NAME test_graph_snapshot_pass11 COMMAND test_graph_snapshot_pass11)
+  set_tests_properties(test_graph_snapshot_pass11 PROPERTIES TIMEOUT 15)
+  add_executable(test_gml_corpus_oracle_pass11
+    tests/modern_gml/test_gml_corpus_oracle_pass11.cpp)
+  target_compile_features(test_gml_corpus_oracle_pass11 PRIVATE cxx_std_17)
+  target_include_directories(test_gml_corpus_oracle_pass11 PRIVATE fgraph/modern)
+  target_link_libraries(test_gml_corpus_oracle_pass11 PRIVATE
+    ffgraph_modern_gml
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+  if(MATH_LIBRARY)
+    target_link_libraries(test_gml_corpus_oracle_pass11 PRIVATE ${MATH_LIBRARY})
+  endif()
+  if(DL_LIBRARY)
+    target_link_libraries(test_gml_corpus_oracle_pass11 PRIVATE ${DL_LIBRARY})
+  endif()
+  # Semantic validation must not mutate an existing graph on failure.
+  # Builds with real graph classes, independently of Bison/Flex event input.
+  add_executable(test_gml_semantic_atomicity_pass11
+    tests/modern_gml/test_gml_semantic_atomicity_pass11.cpp)
+  target_compile_features(test_gml_semantic_atomicity_pass11 PRIVATE cxx_std_17)
+  target_include_directories(test_gml_semantic_atomicity_pass11 PRIVATE fgraph/modern)
+  target_link_libraries(test_gml_semantic_atomicity_pass11 PRIVATE
+    ffgraph_modern_gml
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+  if(MATH_LIBRARY)
+    target_link_libraries(test_gml_semantic_atomicity_pass11 PRIVATE ${MATH_LIBRARY})
+  endif()
+  if(DL_LIBRARY)
+    target_link_libraries(test_gml_semantic_atomicity_pass11 PRIVATE ${DL_LIBRARY})
+  endif()
+  add_test(NAME test_gml_semantic_atomicity_pass11
+    COMMAND test_gml_semantic_atomicity_pass11)
+  set_tests_properties(test_gml_semantic_atomicity_pass11 PROPERTIES TIMEOUT 45)
+  add_dependencies(test_gml_corpus_oracle_pass11 ffgraph_gml_differential_fixtures)
+  add_test(NAME test_gml_corpus_oracle_pass11
+    COMMAND test_gml_corpus_oracle_pass11 graphs "${FFGRAPH_DIFF_GRAPHS}" 2)
+  add_test(NAME test_gml_metamorphic_oracle_pass11
+    COMMAND test_gml_corpus_oracle_pass11 metamorphic "${FFGRAPH_DIFF_META}" 2)
+  if(FFGRAPH_GML_DIFFERENTIAL_PROFILE STREQUAL "stress")
+    set(FFGRAPH_DIFF_TIMEOUT 900)
+  else()
+    set(FFGRAPH_DIFF_TIMEOUT 300)
+  endif()
+  set_tests_properties(test_gml_corpus_oracle_pass11
+    test_gml_metamorphic_oracle_pass11
+    PROPERTIES TIMEOUT ${FFGRAPH_DIFF_TIMEOUT})
 
   # Opt-in end-to-end graph importer and bounded spring-layout regression
   # against exactly the same deterministic parser/graph corpus.
@@ -583,41 +551,39 @@ if(BUILD_TESTING)
     # Drive the real "recall modPress l/m/w" Tcl commands with a test file
     # picker. Exercises multiwindow load, merge, cancel, semantic rejection,
     # repeated close/reopen, a larger historical file and nested callbacks.
-    # Modern-only: the failure-atomicity assertion is not a legacy guarantee.
-    if(FFGRAPH_GML_BACKEND STREQUAL "modern")
-      add_executable(test_gui_file_workflow_pass11
-        tests/test_gui_file_workflow_pass11.cpp)
-      target_link_libraries(test_gui_file_workflow_pass11 PRIVATE
-        "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-        PkgConfig::TK X11::X11 ${XPM_LIBRARY}
-      )
-      if(MATH_LIBRARY)
-        target_link_libraries(test_gui_file_workflow_pass11 PRIVATE ${MATH_LIBRARY})
-      endif()
-      if(DL_LIBRARY)
-        target_link_libraries(test_gui_file_workflow_pass11 PRIVATE ${DL_LIBRARY})
-      endif()
-      add_test(NAME test_gui_file_workflow_pass11
+    # Failure atomicity and window ownership are production guarantees.
+    add_executable(test_gui_file_workflow_pass11
+      tests/test_gui_file_workflow_pass11.cpp)
+    target_link_libraries(test_gui_file_workflow_pass11 PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+    )
+    if(MATH_LIBRARY)
+      target_link_libraries(test_gui_file_workflow_pass11 PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(test_gui_file_workflow_pass11 PRIVATE ${DL_LIBRARY})
+    endif()
+    add_test(NAME test_gui_file_workflow_pass11
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a
+              "$<TARGET_FILE:test_gui_file_workflow_pass11>"
+              "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase.gml"
+              "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase3.gml"
+              "${CMAKE_CURRENT_SOURCE_DIR}/tests/gui_fixtures/invalid-edge-target.gml")
+    set_tests_properties(test_gui_file_workflow_pass11 PROPERTIES
+      TIMEOUT 120
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    if(FFGRAPH_GUI_STRESS_TESTS)
+      add_test(NAME test_gui_large_file_workflow_pass11
         COMMAND "${XVFB_RUN_EXECUTABLE}" -a
                 "$<TARGET_FILE:test_gui_file_workflow_pass11>"
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase.gml"
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase3.gml"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tests/gui_fixtures/invalid-edge-target.gml")
-      set_tests_properties(test_gui_file_workflow_pass11 PROPERTIES
-        TIMEOUT 120
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/gui_fixtures/invalid-edge-target.gml"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase2.gml")
+      set_tests_properties(test_gui_large_file_workflow_pass11 PROPERTIES
+        TIMEOUT 300
         ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
-      if(FFGRAPH_GUI_STRESS_TESTS)
-        add_test(NAME test_gui_large_file_workflow_pass11
-          COMMAND "${XVFB_RUN_EXECUTABLE}" -a
-                  "$<TARGET_FILE:test_gui_file_workflow_pass11>"
-                  "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase.gml"
-                  "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase3.gml"
-                  "${CMAKE_CURRENT_SOURCE_DIR}/tests/gui_fixtures/invalid-edge-target.gml"
-                  "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase2.gml")
-        set_tests_properties(test_gui_large_file_workflow_pass11 PROPERTIES
-          TIMEOUT 300
-          ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
-      endif()
     endif()
 
     add_executable(test_tk_lifecycle_pass10 tests/test_tk_lifecycle_pass10.cpp)

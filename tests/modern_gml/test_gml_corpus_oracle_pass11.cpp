@@ -1,6 +1,6 @@
-// End-to-end differential test. Both importers run on identical bytes:
-// GTControl -> FFGraphClass versus generated Bison/Flex -> events -> adapter.
-// Designed for the graph corpus; does not change the application import path.
+// Post-retirement regression: production GML import and direct event replay
+// must agree, and independent TSV oracles must agree with both. This is not
+// legacy-vs-modern parity: the historical GTControl implementation is gone.
 #include "gml_events.h"
 #include "gml_graph_adapter.h"
 
@@ -13,9 +13,6 @@
 
 #include <globdefs.h>
 #include <stream.h>
-#include <container/AVLMap.h>
-#include "GTParser.h"
-#include "GTScanner.h" // Explicit legacy reference, independent of load() selection.
 
 #include <cstdio>
 #include <filesystem>
@@ -51,28 +48,6 @@ std::string readFile(const fs::path& path) {
   return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
-// Use an OS-created unique GML filename so parallel CTest runs do not collide.
-// Never dispatch the legacy side through FFGraphClass::load(): that API now
-// selects the modern backend by default.
-struct TempGml {
-  fs::path path;
-  explicit TempGml(const std::string& bytes) {
-    std::string pattern = (fs::temp_directory_path() / "ffgraph-differential-XXXXXX").string();
-    int fd = mkstemp(pattern.data());
-    check(fd >= 0, "mkstemp failed");
-    close(fd);
-    path = pattern + ".gml";
-    if (std::rename(pattern.c_str(), path.c_str()) != 0) {
-      std::remove(pattern.c_str());
-      throw std::runtime_error("failed to rename temporary GML file");
-    }
-    std::ofstream out(path, std::ios::binary);
-    out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
-    check(out.good(), "failed to write temporary GML file");
-  }
-  ~TempGml() { std::error_code ignore; fs::remove(path, ignore); }
-};
-
 void initialise(FFGraph& graph) {
   graph->setNodeIndex(graph->addNodeLabel(new FFGraphicNode));
   graph->setEdgeIndex(graph->addEdgeLabel(new FFGraphicEdge));
@@ -81,33 +56,32 @@ void initialise(FFGraph& graph) {
 ffgraph_test::GraphSnapshot compareGraph(const fs::path& path, int repeats,
                                          const ffgraph_test::GraphSnapshot* oracle = nullptr) {
   const std::string bytes = readFile(path);
-  TempGml temp(bytes);
   ffgraph_test::GraphSnapshot first;
   for (int iteration = 0; iteration < repeats; ++iteration) {
-    FFGraph legacy(YES), modern(YES);
-    initialise(legacy);
-    initialise(modern);
-    std::ifstream legacy_input(temp.path, std::ios::binary);
-    check(legacy_input.good(), "cannot open temporary GML for legacy importer");
-    GTControl legacy_parser;
-    legacy_parser.Parse(legacy_input, legacy.operator->());
+    FFGraph production(YES), replay(YES);
+    initialise(production);
+    initialise(replay);
+    // The production load path must exercise FFGraphClass::load(), not just
+    // the event adapter. The direct replay is an integration cross-check,
+    // while the generator's TSV oracle is an independent source of truth.
+    production->load(String(path.c_str()), YES);
     const auto parsed = ffgraph_gml::parse(bytes);
     check(parsed.ok, "modern syntax rejection: " + parsed.events.error);
-    const auto applied = ffgraph_gml::applyToGraph(parsed, *modern.operator->());
+    const auto applied = ffgraph_gml::applyToGraph(parsed, *replay.operator->());
     check(applied.ok, "modern graph adapter rejected input: " + applied.error);
-    const auto reference = ffgraph_test::capture(*legacy.operator->());
-    const auto candidate = ffgraph_test::capture(*modern.operator->());
-    check(ffgraph_test::difference(reference, candidate).empty(),
-          "legacy/modern mismatch: " + ffgraph_test::difference(reference, candidate));
+    const auto actual = ffgraph_test::capture(*production.operator->());
+    const auto candidate = ffgraph_test::capture(*replay.operator->());
+    check(ffgraph_test::difference(actual, candidate).empty(),
+          "production/direct replay mismatch: " + ffgraph_test::difference(actual, candidate));
     if (oracle) {
-      check(ffgraph_test::difference(*oracle, reference).empty(),
-            "legacy/oracle mismatch: " + ffgraph_test::difference(*oracle, reference));
+      check(ffgraph_test::difference(*oracle, actual).empty(),
+            "production/oracle mismatch: " + ffgraph_test::difference(*oracle, actual));
       check(ffgraph_test::difference(*oracle, candidate).empty(),
-            "modern/oracle mismatch: " + ffgraph_test::difference(*oracle, candidate));
+            "replay/oracle mismatch: " + ffgraph_test::difference(*oracle, candidate));
     }
-    if (iteration == 0) first = reference;
-    else check(ffgraph_test::difference(first, reference).empty(),
-               "nondeterministic legacy import across repeated loads");
+    if (iteration == 0) first = actual;
+    else check(ffgraph_test::difference(first, actual).empty(),
+               "nondeterministic production import across repeated loads");
   }
   return first;
 }
@@ -192,7 +166,7 @@ size_t metamorphicCorpus(const fs::path& root, int repeats) {
     }
   }
   check(pairs >= 55, "too few metamorphic pairs");
-  std::cout << "metamorphic corpus: " << pairs << " pairs, both importers, "
+  std::cout << "metamorphic corpus: " << pairs << " pairs, production/direct replay, "
             << repeats << " repeats\n";
   return pairs;
 }
@@ -209,7 +183,7 @@ int main(int argc, char** argv) {
     else throw std::runtime_error("unknown corpus mode: " + mode);
     return 0;
   } catch (const std::exception& error) {
-    std::cerr << "Pass11 comprehensive GML differential: " << error.what() << '\n';
+    std::cerr << "Pass11 GML oracle regression: " << error.what() << '\n';
     return 1;
   }
 }
