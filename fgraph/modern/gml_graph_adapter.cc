@@ -5,14 +5,95 @@
 #include <ffgraph/FFGraphicNode.h>
 #include <ffgraph/FFNodeClass.h>
 
+#include <deque>
+#include <optional>
 #include <unordered_map>
 
 namespace ffgraph_gml {
+
+namespace {
+// Model only the parts of GTParser's cursor state that can cause semantic
+// rejection.  In particular, new nodes start with value -1, and the ID map
+// retains old keys when a node receives a second `id` attribute.  Neither
+// graph members nor graph labels are touched during this pass.
+struct ShadowNode { int value; };
+struct ShadowEdge { ShadowNode* source; ShadowNode* target; };
+
+ApplyResult preflight(const Events& events, FFGraphClass& graph) {
+  // deque keeps node references stable while the synthetic graph grows.
+  std::deque<ShadowNode> nodes;
+  for (Pix p = graph.allNodes().first(); p; graph.allNodes().next(p))
+    nodes.push_back({graph.allNodes()(p)->getValue()});
+
+  std::unordered_map<int, ShadowNode*> by_id;
+  ShadowNode* current_node = nullptr;
+  std::optional<ShadowEdge> current_edge;
+
+  const auto resolve = [&](int value) -> ShadowNode* {
+    const auto mapped = by_id.find(value);
+    if (mapped != by_id.end()) return mapped->second;
+    // This models graph.nodeWithValue(), including existing destination
+    // nodes and as-yet-uncommitted nodes.  Duplicate IDs are not newly
+    // rejected, to retain the legacy importer's permissive behaviour.
+    for (ShadowNode& node : nodes)
+      if (node.value == value) return &node;
+    return nullptr;
+  };
+
+  for (const Event& event : events.values) {
+    if (event.kind == Event::Kind::Begin) {
+      if (event.key == "graph") {
+        current_node = nullptr;
+        current_edge.reset();
+      } else if (event.key == "node") {
+        current_edge.reset();
+        nodes.push_back({-1});
+        current_node = &nodes.back();
+      } else if (event.key == "edge") {
+        if (!current_node)
+          return {false, "GML edge without a preceding node"};
+        current_edge = ShadowEdge{current_node, current_node};
+      }
+      continue;
+    }
+    if (event.kind != Event::Kind::Integer) continue;
+
+    if (event.key == "id" && !current_edge && current_node) {
+      current_node->value = event.integer;
+      by_id[event.integer] = current_node;
+    }
+    if (!current_edge) continue;
+
+    if (event.key == "source" &&
+        current_edge->source->value != event.integer) {
+      if (current_node && current_node->value != event.integer)
+        current_node = resolve(event.integer);
+      if (!current_node)
+        return {false, "Unknown GML edge source ID"};
+      current_edge->source = current_node;
+    } else if (event.key == "target" &&
+               current_edge->target->value != event.integer) {
+      ShadowNode* target = resolve(event.integer);
+      if (!target)
+        return {false, "Unknown GML edge target ID"};
+      current_edge->target = target;
+    }
+  }
+  return {true, {}};
+}
+} // namespace
 
 ApplyResult applyToGraph(const Result& parsed, FFGraphClass& graph) {
   if (!parsed.ok)
     return {false, parsed.events.error.empty() ? "GML syntax error"
                                                : parsed.events.error};
+
+  // Semantic failures must be detected before touching the destination.
+  // The commit phase below intentionally retains the established cursor
+  // semantics.  This is a semantic-atomicity guarantee, not rollback of
+  // allocation failures or exceptions thrown by graph event listeners.
+  const ApplyResult validated = preflight(parsed.events, graph);
+  if (!validated.ok) return validated;
 
   // GTParser has one current node and one current edge, not a scope stack.
   // A nested graphics/unknown list leaves those cursors unchanged. Mimic

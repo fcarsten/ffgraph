@@ -15,8 +15,11 @@ struct ApplyResult {
   std::string error;
 };
 
-// Only successful parses are applied: an invalid/truncated parse leaves the
-// supplied graph untouched. An empty successful event stream is valid.
+// Syntax failures and semantic validation failures leave the supplied graph
+// untouched. The preflight simulates cursor and node-ID resolution before
+// committing events. An empty successful event stream is valid.
+// This is not a general strong exception guarantee: allocation failures or
+// exceptions from graph callbacks during the commit phase are not rolled back.
 ApplyResult applyToGraph(const Result& parsed, FFGraphClass& graph);
 
 }  // namespace ffgraph_gml

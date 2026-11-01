@@ -278,6 +278,26 @@ if(BUILD_TESTING)
     if(DL_LIBRARY)
       target_link_libraries(test_gml_differential_corpus_pass11 PRIVATE ${DL_LIBRARY})
     endif()
+    # Semantic validation must not mutate an existing graph on failure.
+    # Builds with real graph classes, independently of Bison/Flex event input.
+    add_executable(test_gml_semantic_atomicity_pass11
+      tests/modern_gml/test_gml_semantic_atomicity_pass11.cpp
+      fgraph/modern/gml_graph_adapter.cc)
+    target_compile_features(test_gml_semantic_atomicity_pass11 PRIVATE cxx_std_17)
+    target_include_directories(test_gml_semantic_atomicity_pass11 PRIVATE fgraph/modern)
+    target_link_libraries(test_gml_semantic_atomicity_pass11 PRIVATE
+      ffgraph_modern_gml
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+    if(MATH_LIBRARY)
+      target_link_libraries(test_gml_semantic_atomicity_pass11 PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(test_gml_semantic_atomicity_pass11 PRIVATE ${DL_LIBRARY})
+    endif()
+    add_test(NAME test_gml_semantic_atomicity_pass11
+      COMMAND test_gml_semantic_atomicity_pass11)
+    set_tests_properties(test_gml_semantic_atomicity_pass11 PROPERTIES TIMEOUT 45)
     add_dependencies(test_gml_differential_corpus_pass11 ffgraph_gml_differential_fixtures)
     add_test(NAME test_gml_differential_corpus_pass11
       COMMAND test_gml_differential_corpus_pass11 graphs "${FFGRAPH_DIFF_GRAPHS}" 2)
