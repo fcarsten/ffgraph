@@ -541,6 +541,10 @@ int FFTclBasicWindow::recall(Tcl_Interp *, int , const char **c)
         FFTclBasicWindow *neuF = (FFTclBasicWindow *)this->proto();
         
         tmpG->createGraphic((FFGraphWindow *)neuF);
+        // A graph window is a non-owning label. Without a retained FFGraph
+        // handle, tmpG's destructor at the end of this callback destroys
+        // both the newly loaded graph and its briefly visible window.
+        FFWindow::retainGraph(tmpG);
         tmpG->load(file, YES);
         neuF->setFileName(file);
        }

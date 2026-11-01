@@ -28,6 +28,8 @@ extern "C" {
 
 #include <String.h>
 
+class FFGraph;
+
 class FFWindow 
 {
 protected:
@@ -45,6 +47,11 @@ protected:
   // Both functions must run on the thread owning the Tcl/Tk event loop.
   static void collectPendingInterpreters();
   static void mainLoop();
+
+  // Keep a graph opened into a new top-level window alive after its Tcl
+  // command callback returns. Released when its graphic is closed, or on
+  // exit from the Tk main loop.
+  static void retainGraph(const FFGraph& graph);
 
   Tcl_Interp *getInterpreter()
    {return interp;}

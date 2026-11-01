@@ -557,6 +557,28 @@ if(BUILD_TESTING)
 
     # Repeated two-root lifecycle, borrowed subwindow commands and nested
     # Tcl callbacks deleting their owning window. Independent of WSLg.
+    # File > Load must keep a newly loaded graph/window alive after its
+    # temporary FFGraph handle goes out of scope. Test with a real Tk root.
+    add_executable(test_load_window_lifetime_pass11
+      tests/test_load_window_lifetime_pass11.cpp)
+    target_link_libraries(test_load_window_lifetime_pass11 PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+    )
+    if(MATH_LIBRARY)
+      target_link_libraries(test_load_window_lifetime_pass11 PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(test_load_window_lifetime_pass11 PRIVATE ${DL_LIBRARY})
+    endif()
+    add_test(NAME test_load_window_lifetime_pass11
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a
+              "$<TARGET_FILE:test_load_window_lifetime_pass11>"
+              "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase.gml")
+    set_tests_properties(test_load_window_lifetime_pass11 PROPERTIES
+      TIMEOUT 45
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+
     add_executable(test_tk_lifecycle_pass10 tests/test_tk_lifecycle_pass10.cpp)
     target_compile_features(test_tk_lifecycle_pass10 PRIVATE cxx_std_17)
     target_link_libraries(test_tk_lifecycle_pass10 PRIVATE

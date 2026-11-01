@@ -46,6 +46,10 @@ extern "C" {
 #include <stream.h>
 #include <sstream>
 #include <vector>
+#include <list>
+
+#include <ffgraph/FFGraph.h>
+#include <ffgraph/FFGraphClass.h>
 
 #include <ffgraph/FFWindow.h>
 #include <ffgraph/FFTclCompat.h>
@@ -248,19 +252,44 @@ namespace {
 // immediate Tcl_DeleteInterp() can abort with active evaluations.
 // The queue is drained at the top level of the event loop instead.
 std::vector<Tcl_Interp*> pendingInterpreterDeletion;
+// A GUI window is a label owned by FFGraphClass, not a reference-counted
+// owner of the graph. File > Load creates a short-lived local FFGraph handle;
+// retain one reference outside the Tcl command until that window closes.
+std::list<FFGraph> retainedWindowGraphs;
+
+void releaseClosedWindowGraphs()
+{
+  for (auto it = retainedWindowGraphs.begin();
+       it != retainedWindowGraphs.end(); )
+  {
+    if ((*it)->getWindow() == nullptr)
+      it = retainedWindowGraphs.erase(it);
+    else
+      ++it;
+  }
+}
+}
+
+void FFWindow::retainGraph(const FFGraph& graph)
+{
+  retainedWindowGraphs.push_back(graph);
 }
 
 void FFWindow::collectPendingInterpreters()
 {
-  // Deleting one interpreter can cause other windows to be destroyed.
-  // Continue until no newly queued interpreters remain.
-  while (!pendingInterpreterDeletion.empty())
+  // Releasing a graph can delete its window label and queue another Tcl
+  // interpreter. Keep draining until both cleanup phases are complete.
+  do
   {
-    std::vector<Tcl_Interp*> batch;
-    batch.swap(pendingInterpreterDeletion);
-    for (Tcl_Interp* interpreter : batch)
-      Tcl_DeleteInterp(interpreter);
-  }
+    while (!pendingInterpreterDeletion.empty())
+    {
+      std::vector<Tcl_Interp*> batch;
+      batch.swap(pendingInterpreterDeletion);
+      for (Tcl_Interp* interpreter : batch)
+        Tcl_DeleteInterp(interpreter);
+    }
+    releaseClosedWindowGraphs();
+  } while (!pendingInterpreterDeletion.empty());
 }
 
 void FFWindow::mainLoop()
@@ -273,6 +302,9 @@ void FFWindow::mainLoop()
     Tcl_DoOneEvent(0);
     collectPendingInterpreters();
   }
+  // Tcl may destroy the last Tk root without removing its C++ graph label.
+  // No graph window can still be displayed once the main loop has ended.
+  retainedWindowGraphs.clear();
   collectPendingInterpreters();
 }
 
