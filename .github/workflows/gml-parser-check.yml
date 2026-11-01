@@ -51,7 +51,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
             build-essential cmake ninja-build pkg-config bison flex \
-            tcl-dev tk-dev libx11-dev libxpm-dev
+            tcl-dev tk-dev libx11-dev libxpm-dev xvfb xauth
       - name: Configure opt-in modern GML graph comparison
         run: >-
           cmake -S . -B build/gml-parity -G Ninja
@@ -61,11 +61,11 @@ jobs:
       - name: Build differential and metamorphic layout tests
         run: >-
           cmake --build build/gml-parity --parallel 2
-          --target test_gml_graph_parity_pass11 test_graph_corpus_metamorphic_pass11 test_gml_differential_corpus_pass11 test_gml_semantic_atomicity_pass11 test_gml_production_backend_pass11
+          --target test_gml_graph_parity_pass11 test_graph_corpus_metamorphic_pass11 test_gml_differential_corpus_pass11 test_gml_semantic_atomicity_pass11 test_gml_production_backend_pass11 test_gui_file_workflow_pass11
       - name: Compare graph outputs and metamorphic invariants
         run: >-
           ctest --test-dir build/gml-parity
-          -R '^test_(gml_graph_parity|graph_corpus_metamorphic|gml_differential_corpus|gml_differential_metamorphic|gml_semantic_atomicity|gml_production_backend)_pass11$'
+          -R '^test_(gml_graph_parity|graph_corpus_metamorphic|gml_differential_corpus|gml_differential_metamorphic|gml_semantic_atomicity|gml_production_backend|gui_file_workflow)_pass11$'
           --output-on-failure
       - name: Configure differential test with ASan/UBSan
         run: >-
@@ -76,14 +76,14 @@ jobs:
       - name: Build sanitizer differential and metamorphic tests
         run: >-
           cmake --build build/gml-parity-asan --parallel 2
-          --target test_gml_graph_parity_pass11 test_graph_corpus_metamorphic_pass11 test_gml_differential_corpus_pass11 test_gml_semantic_atomicity_pass11 test_gml_production_backend_pass11
+          --target test_gml_graph_parity_pass11 test_graph_corpus_metamorphic_pass11 test_gml_differential_corpus_pass11 test_gml_semantic_atomicity_pass11 test_gml_production_backend_pass11 test_gui_file_workflow_pass11
       - name: Check graph-output parity and metamorphic invariants under sanitizers
         env:
           ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: >-
           ctest --test-dir build/gml-parity-asan
-          -R '^test_(gml_graph_parity|graph_corpus_metamorphic|gml_differential_corpus|gml_differential_metamorphic|gml_semantic_atomicity|gml_production_backend)_pass11$'
+          -R '^test_(gml_graph_parity|graph_corpus_metamorphic|gml_differential_corpus|gml_differential_metamorphic|gml_semantic_atomicity|gml_production_backend|gui_file_workflow)_pass11$'
           --output-on-failure
 
   comprehensive-gml-standard:

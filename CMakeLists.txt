@@ -12,6 +12,7 @@ find_library(MATH_LIBRARY NAMES m)
 find_library(DL_LIBRARY NAMES dl)
 
 option(FFGRAPH_SANITIZERS "Enable address and undefined-behavior sanitizers (GCC/Clang)" OFF)
+option(FFGRAPH_GUI_STRESS_TESTS "Enable slower, large-graph Tk/Xvfb workflow tests" OFF)
 if(FFGRAPH_SANITIZERS)
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     message(FATAL_ERROR "Sanitizer configuration requires GCC or Clang")
@@ -578,6 +579,46 @@ if(BUILD_TESTING)
     set_tests_properties(test_load_window_lifetime_pass11 PROPERTIES
       TIMEOUT 45
       ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+
+    # Drive the real "recall modPress l/m/w" Tcl commands with a test file
+    # picker. Exercises multiwindow load, merge, cancel, semantic rejection,
+    # repeated close/reopen, a larger historical file and nested callbacks.
+    # Modern-only: the failure-atomicity assertion is not a legacy guarantee.
+    if(FFGRAPH_GML_BACKEND STREQUAL "modern")
+      add_executable(test_gui_file_workflow_pass11
+        tests/test_gui_file_workflow_pass11.cpp)
+      target_link_libraries(test_gui_file_workflow_pass11 PRIVATE
+        "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+        PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+      )
+      if(MATH_LIBRARY)
+        target_link_libraries(test_gui_file_workflow_pass11 PRIVATE ${MATH_LIBRARY})
+      endif()
+      if(DL_LIBRARY)
+        target_link_libraries(test_gui_file_workflow_pass11 PRIVATE ${DL_LIBRARY})
+      endif()
+      add_test(NAME test_gui_file_workflow_pass11
+        COMMAND "${XVFB_RUN_EXECUTABLE}" -a
+                "$<TARGET_FILE:test_gui_file_workflow_pass11>"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase.gml"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase3.gml"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/gui_fixtures/invalid-edge-target.gml")
+      set_tests_properties(test_gui_file_workflow_pass11 PROPERTIES
+        TIMEOUT 120
+        ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+      if(FFGRAPH_GUI_STRESS_TESTS)
+        add_test(NAME test_gui_large_file_workflow_pass11
+          COMMAND "${XVFB_RUN_EXECUTABLE}" -a
+                  "$<TARGET_FILE:test_gui_file_workflow_pass11>"
+                  "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase.gml"
+                  "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase3.gml"
+                  "${CMAKE_CURRENT_SOURCE_DIR}/tests/gui_fixtures/invalid-edge-target.gml"
+                  "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus/samples/nase2.gml")
+        set_tests_properties(test_gui_large_file_workflow_pass11 PROPERTIES
+          TIMEOUT 300
+          ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+      endif()
+    endif()
 
     add_executable(test_tk_lifecycle_pass10 tests/test_tk_lifecycle_pass10.cpp)
     target_compile_features(test_tk_lifecycle_pass10 PRIVATE cxx_std_17)
