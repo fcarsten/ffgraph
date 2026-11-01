@@ -148,6 +148,28 @@ if(BUILD_TESTING)
   endforeach()
   # FFGraph handles use intrusive reference counts. Exercise assignment and
   # destruction against the real model, not a mock of FFGraphClass.
+  # Pass 9: graph incidence/value-copy invariants and headless routing/layout
+  # regression tests. No GUI window or external graph fixture required.
+  foreach(test_name
+      test_graph_invariants_pass9
+      test_graph_geometry_pass9
+      test_graph_layout_pass9)
+    add_executable(${test_name} tests/${test_name}.cpp)
+    target_compile_features(${test_name} PRIVATE cxx_std_17)
+    target_link_libraries(${test_name} PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+    )
+    if(MATH_LIBRARY)
+      target_link_libraries(${test_name} PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(${test_name} PRIVATE ${DL_LIBRARY})
+    endif()
+    add_test(NAME ${test_name} COMMAND ${test_name})
+    set_tests_properties(${test_name} PROPERTIES TIMEOUT 30)
+  endforeach()
+
   add_executable(test_graph_ownership tests/test_graph_ownership.cpp)
   target_compile_features(test_graph_ownership PRIVATE cxx_std_17)
   target_link_libraries(test_graph_ownership PRIVATE

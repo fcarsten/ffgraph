@@ -24,6 +24,7 @@ extern "C" {
 #include <globdefs.h>
 #include <stream.h>
 #include <sstream>
+#include <unordered_map>
 // #include <strstream.h>
 
 #include <ffgraph/FFGraphClass.h>
@@ -174,12 +175,6 @@ FFGraphClass *FFGraphClass::copy(FFGraphClass *graph,
    tmpGraph = new FFGraphClass(bare);
    tmpGraph->incNumOfReps();
   }
- else
-  {
-   const FFSet<FFNode>& s= graph->allNodes();
-   for(Pix p=s.first(); p!=0; s.next(p))
-    s(p)->setValue(-1);
-  }
  
  if(!bare)
   {
@@ -203,52 +198,36 @@ FFGraphClass *FFGraphClass::copy(FFGraphClass *graph,
  
  tmpGraph->_setDirected(directed);
  
- FFNode neuN, oldN;
- FFEdge neuE, oldE;
- int j=0;
- FFNode *refArray = new FFNode[teilMenge->length()+1];
- 
+ // Map node identity rather than temporarily overwriting the source node's
+ // user-visible value. Values are graph data, not scratch indices; the old
+ // implementation also renumbered every source edge during copying.
+ std::unordered_map<FFNode, FFNode> copiedNodes;
+ copiedNodes.reserve(teilMenge->length());
+
  for(i= teilMenge->first(); i != 0; teilMenge->next(i))
   {
-   oldN= (*teilMenge)(i);
-   oldN->setValue(++j );
-   
-   neuN= tmpGraph->addNode();
-   refArray[j] = neuN;
-   
+   FFNode oldN = (*teilMenge)(i);
+   FFNode neuN = tmpGraph->addNode();
+   copiedNodes.emplace(oldN, neuN);
    neuN->copyDataFrom(oldN, bare);
-    
+
    if(oldN == startNode)
-    {
-     tmpGraph->setStartNode(neuN);
-    }
+    tmpGraph->setStartNode(neuN);
    if(endKnotenSet.contains(oldN))
-    {
-     tmpGraph->addEndNode(neuN);
-    }
+    tmpGraph->addEndNode(neuN);
   }
-  
- j=0;
-  
+
  for(i = kantenSet.first(); i!=0; kantenSet.next(i))
   {
-   oldE = kantenSet(i);
-   FFNode targetNeu= 0;
-   FFNode sourceNeu= 0;
-    
-   oldE->setValue(++j);
-    
-   if(teilMenge->contains(kantenSet(i)->source()) &&
-      teilMenge->contains(kantenSet(i)->target()))
+   FFEdge oldE = kantenSet(i);
+   const auto source = copiedNodes.find(oldE->source());
+   const auto target = copiedNodes.find(oldE->target());
+   if(source != copiedNodes.end() && target != copiedNodes.end())
     {
-     targetNeu = refArray[oldE->target()->getValue()];
-     sourceNeu = refArray[oldE->source()->getValue()];
-     
-     neuE= tmpGraph->addEdge(sourceNeu, targetNeu);
+     FFEdge neuE = tmpGraph->addEdge(source->second, target->second);
      neuE->copyDataFrom(oldE, bare);
     }
   }
- delete [] refArray;
  // Return the raw pointer with its original zero-reference-count semantics;
  // the caller's FFGraph wrapper will acquire the owning reference.
  if(temporaryGraphReference)
@@ -301,9 +280,9 @@ FFNode FFGraphClass::getStartNode()
 
 BOOL FFGraphClass::addEndNode(FFNode n)
 {
- if(n->derGraph != this)
+ if(!contains(n))
   return NO;
-  
+
  endKnotenSet.add(n);
  labelEventStruct theEvent;
  theEvent.node=n;
@@ -315,7 +294,7 @@ BOOL FFGraphClass::setEndNodes(const FFSet<FFNode>& s)
 {
  for(Pix i=s.first(); i!=0; s.next(i))
   {
-   if(s(i)->derGraph != this)
+   if(!contains(s(i)))
     return NO;
   }
 
@@ -763,7 +742,9 @@ FFGraphClass::FFGraphClass(BOOL bare)
 
 void FFGraphClass::removeNode(FFNode node)
 {
- if(node->derGraph != this)
+ // Check membership before dereferencing; a null, foreign or removed
+ // pointer is not necessarily safe to inspect.
+ if(!contains(node))
   {
    ffError(RUNTIME_ERROR, "Versuch nichtexistenten Knoten zu loeschen");
    return;
@@ -808,7 +789,7 @@ void FFGraphClass::removeNode(FFNode node)
 
 void FFGraphClass::removeEdge(FFEdge edge)
 {
- if(edge->derGraph != this)
+ if(!contains(edge))
   {
    ffError(RUNTIME_ERROR, "Versuch nichtexistente Kante zu loeschen");
    return;
@@ -851,7 +832,7 @@ FFNode FFGraphClass::addNode(const FFPoint& tmpP)
 
 FFEdge FFGraphClass::addEdge(FFNode s, FFNode t)
 {
- if((s->derGraph != this) || (t->derGraph != this) )
+ if(!contains(s) || !contains(t))
   {
    ffError(RUNTIME_ERROR, "Source oder Target Knoten existieren nicht");
    return NULL;
