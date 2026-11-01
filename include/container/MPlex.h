@@ -6,6 +6,9 @@
 #include <vector>
 #include <stdexcept>
 #include <utility>
+#include <limits>
+#include <cstdint>
+#include <algorithm>
 
 // Compatibility implementation of the old GNU libg++ MPlex API.
 // Slots retain their integer indices and can be logically deleted/undeleted;
@@ -79,8 +82,13 @@ public:
   explicit MPlex(int chunk_size) { init_empty(0, chunk_size); }
   MPlex(int low, int chunk_size) { init_empty(low, chunk_size); }
   MPlex(int low, int high, const Type initval, int chunk_size = 0) {
-    init_empty(low, chunk_size > 0 ? chunk_size : high - low + 1);
-    if (high < low) return;
+    if (high < low) { init_empty(low, chunk_size); return; }
+    // The fence is one past the final slot, and all indices use signed int.
+    const std::int64_t span = static_cast<std::int64_t>(high) - low + 1;
+    if (high == std::numeric_limits<int>::max() ||
+        span > std::numeric_limits<int>::max())
+      throw std::out_of_range("MPlex: index range exceeds int bounds");
+    init_empty(low, chunk_size > 0 ? chunk_size : static_cast<int>(span));
     for (int i = low; i <= high; ++i) {
       slots_.emplace(i, Slot(initval, true));
       this->fnc = i + 1;
@@ -94,7 +102,9 @@ public:
   }
   void operator=(const MPlex& other) {
     if (this == &other) return;
-    slots_ = other.slots_;
+    // Build the replacement before touching existing slots or bounds.
+    std::map<int, Slot> copy(other.slots_);
+    slots_.swap(copy);
     unused_ = other.unused_;
     this->lo = other.lo;
     this->fnc = other.fnc;
@@ -132,6 +142,8 @@ public:
   int high() const override {
     for (auto it = slots_.rbegin(); it != slots_.rend(); ++it)
       if (it->second.present) return it->first;
+    if (this->lo == std::numeric_limits<int>::min())
+      throw std::out_of_range("MPlex: empty high sentinel outside int bounds");
     return this->lo - 1;
   }
   Pix first() const override {
@@ -162,6 +174,8 @@ public:
   }
   void prevInt(int& idx) const override {
     auto it = prev_present(idx);
+    if (it == slots_.cend() && this->lo == std::numeric_limits<int>::min())
+      throw std::out_of_range("MPlex: predecessor outside int bounds");
     idx = it == slots_.cend() ? this->lo - 1 : it->first;
   }
   void nextInt(int& idx) const override {
@@ -177,17 +191,27 @@ public:
     require_slot(idx); return Pix(const_cast<Type*>(&slots_.at(idx).value));
   }
 
-  int can_add_high() const override { return 1; }
-  int can_add_low() const override { return 1; }
-  int full() const override { return 0; }
+  int can_add_high() const override {
+    return this->fnc < std::numeric_limits<int>::max() &&
+           static_cast<std::int64_t>(this->fnc) - this->lo < std::numeric_limits<int>::max();
+  }
+  int can_add_low() const override {
+    return this->lo > std::numeric_limits<int>::min() &&
+           static_cast<std::int64_t>(this->fnc) - this->lo < std::numeric_limits<int>::max();
+  }
+  int full() const override { return !can_add_high() && !can_add_low(); }
   int add_high(const Type elem) override {
-    const int idx = this->fnc++;
+    if (!can_add_high()) throw std::out_of_range("MPlex: cannot grow high beyond int bounds");
+    const int idx = this->fnc;
     slots_.emplace(idx, Slot(elem, true));
+    ++this->fnc; // commit only after successful allocation/copy
     return idx;
   }
   int add_low(const Type elem) override {
-    const int idx = --this->lo;
+    if (!can_add_low()) throw std::out_of_range("MPlex: cannot grow low beyond int bounds");
+    const int idx = this->lo - 1;
     slots_.emplace(idx, Slot(elem, true));
+    this->lo = idx; // commit only after successful allocation/copy
     return idx;
   }
   int del_high() override {
@@ -213,16 +237,23 @@ public:
   }
   void clear() override { slots_.clear(); this->fnc = this->lo; unused_ = 0; }
   int reset_low(int newlow) override {
-    const int old = this->lo, delta = newlow - old;
+    const int old = this->lo;
+    const std::int64_t delta = static_cast<std::int64_t>(newlow) - old;
+    const std::int64_t newfence = static_cast<std::int64_t>(this->fnc) + delta;
+    if (newfence > std::numeric_limits<int>::max() ||
+        newfence < std::numeric_limits<int>::min())
+      throw std::out_of_range("MPlex: shifted fence outside int bounds");
     if (delta) {
+      // Node extraction preserves value addresses, hence existing Pix values.
       std::map<int, Slot> shifted;
       while (!slots_.empty()) {
         auto node = slots_.extract(slots_.begin());
-        node.key() += delta;
+        node.key() = static_cast<int>(static_cast<std::int64_t>(node.key()) + delta);
         shifted.insert(std::move(node));
       }
       slots_.swap(shifted);
-      this->lo += delta; this->fnc += delta;
+      this->lo = newlow;
+      this->fnc = static_cast<int>(newfence);
     }
     return old;
   }
@@ -248,9 +279,10 @@ public:
   }
   void prepend(const MFPlex<Type>& other) override {
     std::vector<Type> values;
-    for (int i = other.high(); i > other.ecnef(); other.prevInt(i))
+    for (int i = other.low(); i < other.fence(); other.nextInt(i))
       values.push_back(other[i]);
-    for (const Type& value : values) add_low(value);
+    // Adding at the low end naturally reverses order. Snapshot first for aliasing.
+    for (auto it = values.rbegin(); it != values.rend(); ++it) add_low(*it);
   }
 
   int count() const { return static_cast<int>(slots_.size()) - unused_; }
@@ -299,11 +331,14 @@ public:
     return idx;
   }
   int OK() const {
-    if (this->fnc < this->lo || static_cast<int>(slots_.size()) != this->fnc - this->lo) return 0;
+    const std::int64_t span = static_cast<std::int64_t>(this->fnc) - this->lo;
+    if (span < 0 || span > std::numeric_limits<int>::max() ||
+        slots_.size() != static_cast<std::size_t>(span)) return 0;
     int holes = 0;
-    for (int i = this->lo; i < this->fnc; ++i) {
-      auto it = slots_.find(i); if (it == slots_.end()) return 0;
-      if (!it->second.present) ++holes;
+    int expected = this->lo;
+    for (const auto& entry : slots_) {
+      if (entry.first != expected++) return 0;
+      if (!entry.second.present) ++holes;
     }
     return holes == unused_;
   }

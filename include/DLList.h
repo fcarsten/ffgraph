@@ -31,7 +31,13 @@ public:
   DLList() = default;
   DLList(const DLList& other) { copy_from(other); }
   DLList(DLList&&) noexcept = default;
-  DLList& operator=(const DLList& other) { if (this != &other) { clear(); copy_from(other); } return *this; }
+  DLList& operator=(const DLList& other) {
+    if (this != &other) {
+      DLList copy(other); // failed element copies leave *this untouched
+      items_.swap(copy.items_); // list node/iterator addresses are preserved
+    }
+    return *this;
+  }
   DLList& operator=(DLList&&) noexcept = default;
   ~DLList() = default;
 

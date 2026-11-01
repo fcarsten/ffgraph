@@ -129,6 +129,12 @@ if(BUILD_TESTING)
     test_hash_pointer_compat
     test_hashset_stl
     test_mplex_stl
+    test_mplex_priority1
+    test_container_mplex_pass8
+    test_container_hash_pix_pass8
+    test_container_avl_pass8
+    test_container_avlmap_pass8
+    test_container_dllist_pass8
     test_string_compat
     test_strstream_compat
     test_vhbag_stl

@@ -1,4 +1,7 @@
 #include <vector>
+#include <cstdint>
+#include <limits>
+#include <stdexcept>
 #if __GNUG__ >= 2
 #  pragma implementation
 #endif
@@ -248,6 +251,8 @@ int MFPlex<Type>::chunk_size() const
 template<class Type>
 int MFPlex<Type>::ecnef () const
 {
+  if (lo == std::numeric_limits<int>::min())
+    throw std::out_of_range("MFPlex: predecessor outside int bounds");
   return lo - 1;
 }
 
@@ -261,7 +266,10 @@ int MFPlex<Type>::fence () const
 template<class Type>
 int MFPlex<Type>::length () const
 {
-  return fnc - lo;
+  const std::int64_t span = static_cast<std::int64_t>(fnc) - lo;
+  if (span < 0 || span > std::numeric_limits<int>::max())
+    throw std::out_of_range("MFPlex: length exceeds int bounds");
+  return static_cast<int>(span);
 }
 
 template<class Type>
@@ -334,11 +342,19 @@ MFIChunk<Type>::MFIChunk(Type*     d,
 template<class Type>
 void MFIChunk<Type>:: re_index(int lo)
 {
-  int delta = lo - low;
-  base += delta;
-  low += delta;
-  fence += delta;
-  top += delta;
+  const std::int64_t delta = static_cast<std::int64_t>(lo) - low;
+  const auto shifted = [delta](int value) {
+    const std::int64_t result = static_cast<std::int64_t>(value) + delta;
+    if (result < std::numeric_limits<int>::min() ||
+        result > std::numeric_limits<int>::max())
+      throw std::out_of_range("MFIChunk: reindex outside int bounds");
+    return static_cast<int>(result);
+  };
+  const int newbase = shifted(base), newfence = shifted(fence), newtop = shifted(top);
+  base = newbase;
+  low = lo;
+  fence = newfence;
+  top = newtop;
 }
 
 
@@ -491,19 +507,37 @@ void MFPlex<Type>::invalidate()
 template<class Type>
 int MFPlex<Type>::reset_low(int l)
 {
-  int old = lo;
-  int diff = l - lo;
-  if (diff != 0)
-  {
-    lo += diff;
-    fnc += diff;
+  const int old = lo;
+  const std::int64_t delta = static_cast<std::int64_t>(l) - lo;
+  const std::int64_t newfence = static_cast<std::int64_t>(fnc) + delta;
+  if (newfence < std::numeric_limits<int>::min() ||
+      newfence > std::numeric_limits<int>::max())
+    throw std::out_of_range("MFPlex: shifted fence outside int bounds");
+  if (delta == 0) return old;
+  // Validate every chunk before modifying any indices. Empty MPlex-backed
+  // MFPlex instances have no chunks, and are valid objects too.
+  if (hd) {
     MFIChunk<Type>* t = hd;
-    do
-    {
-      t->re_index(t->low_index() + diff);
+    do {
+      const std::int64_t newlow = static_cast<std::int64_t>(t->low_index()) + delta;
+      const std::int64_t newbase = static_cast<std::int64_t>(t->base_index()) + delta;
+      const std::int64_t newtop = static_cast<std::int64_t>(t->top_index()) + delta;
+      const std::int64_t newchunkfence = static_cast<std::int64_t>(t->fence_index()) + delta;
+      if (newlow < std::numeric_limits<int>::min() || newlow > std::numeric_limits<int>::max() ||
+          newbase < std::numeric_limits<int>::min() || newbase > std::numeric_limits<int>::max() ||
+          newtop < std::numeric_limits<int>::min() || newtop > std::numeric_limits<int>::max() ||
+          newchunkfence < std::numeric_limits<int>::min() || newchunkfence > std::numeric_limits<int>::max())
+        throw std::out_of_range("MFPlex: shifted chunk outside int bounds");
+      t = t->next();
+    } while (t != hd);
+    t = hd;
+    do {
+      t->re_index(static_cast<int>(static_cast<std::int64_t>(t->low_index()) + delta));
       t = t->next();
     } while (t != hd);
   }
+  lo = l;
+  fnc = static_cast<int>(newfence);
   return old;
 }
 

@@ -657,7 +657,7 @@ AVLNode<T>* AVLSet<T>::_treeify(int n)
     _max_hold_index = n-1;
     t = _do_treeify(0, _max_hold_index, b);
   }
-  delete _hold_nodes;
+  delete [] _hold_nodes;
   return t;
 }
 
@@ -754,6 +754,7 @@ int AVLSet<T>::operator <= (const AVLSet<T>& y)
 template<class T>
 void AVLSet<T>::operator |=(const AVLSet<T>& y)
 {
+  if (this == &y) return;
   AVLNode<T>* t = leftmost();
   AVLNode<T>* u = y.leftmost();
   int rsize = this->count + y.count;
@@ -805,6 +806,7 @@ void AVLSet<T>::operator |=(const AVLSet<T>& y)
 template<class T>
 void AVLSet<T>::operator &= (const AVLSet<T>& y)
 {
+  if (this == &y) return;
   AVLNode<T>* t = leftmost();
   AVLNode<T>* u = y.leftmost();
   int rsize = (this->count < y.count)? this->count : y.count;
@@ -848,6 +850,7 @@ void AVLSet<T>::operator &= (const AVLSet<T>& y)
 template<class T>
 void AVLSet<T>::operator -=(const AVLSet<T>& y)
 {
+  if (this == &y) { clear(); return; }
   AVLNode<T>* t = leftmost();
   AVLNode<T>* u = y.leftmost();
   int rsize = this->count;
