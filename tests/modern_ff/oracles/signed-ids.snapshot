@@ -1,0 +1,7 @@
+1 "signed IDs" start none label ""
+node -1 "negative one" label "" 100 100 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+node -2147483648 "minimum" label "" 100 100 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+node 0 "zero" label "" 100 100 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+node 2147483647 "maximum" label "" 100 100 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+edge -1 0 "zero target" 1 label "" "black" points 2 100 100 0 100 100 0
+edge -1 2147483647 "maximum target" 1 label "" "black" points 2 100 100 0 100 100 0

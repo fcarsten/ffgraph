@@ -1,0 +1,9 @@
+0 "structure" start 1 end 2 label ""
+node -7 "isolated" label "" 100 100 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+node 1 "alpha" label "" -10 20 30 7 7 7 "red" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+node 2 "renamed beta" label "" 40 -50 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+node 99 "" label "" 100 100 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+edge 1 1 "loop" 1 label "" "black" points 2 -10 20 30 -10 20 30
+edge 1 2 "first" -1.25 label "" "black" points 2 -10 20 30 40 -50 0
+edge 1 2 "parallel" 2.5 label "" "black" points 2 -10 20 30 40 -50 0
+edge 1 99 "undeclared" 1 label "" "black" points 2 -10 20 30 100 100 0

@@ -3,8 +3,8 @@
 #include "ff_events.h"
 class FFGraphClass;
 namespace ffgraph_ff {
-// Shared by the selectable modern FF importer and compatibility tests.
-// Replay only successful parse() results. Like legacy load(), optional ID reset
+// Shared by the production FF importer and permanent graph regression tests.
+// Replay only successful parse() results. The optional existing-node ID reset
 // is for merge imports. Syntax failures leave the destination unchanged.
 // Callback/allocation exceptions during replay are not transactional.
 bool applyToGraph(const Result&, FFGraphClass&, bool resetExistingNodeIds = true);

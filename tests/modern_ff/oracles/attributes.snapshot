@@ -1,0 +1,4 @@
+1 "attributes" start 0 end 0 label "graph payload"
+node 0 "zero" label "node payload" 10 20 30 9 9 9 "blue" "icon" "selected icon" "mask" "selected mask" 6 6
+node 3 "three" label "" -10 -20 0 10 10 10 "black" "new icon" "__NoIcon__" "new mask" "__NoMask__" 6 6
+edge 0 3 "route" 3.75 label "edge payload" "green" points 5 1 2 3 4 5 6 10 20 0 15 25 0 -10 -20 0

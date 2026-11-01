@@ -1,0 +1,6 @@
+1 "strings" start none label ""
+node 1 "quote:\" slash:\\ literal n:n
+second line
+continued" label "" 100 100 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+node 2 "" label "" 100 100 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+edge 1 1 "edge:q" 1 label "" "black" points 2 100 100 0 100 100 0

@@ -1,4 +1,4 @@
-# Generated FF parser shared by the opt-in production backend and pilot tests.
+# GNU Bison/Flex FF parser used by production and permanent graph oracles.
 find_package(BISON 3.8 REQUIRED)
 find_package(FLEX 2.6 REQUIRED)
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -20,22 +20,16 @@ target_include_directories(ffgraph_modern_ff PUBLIC
   "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_compile_options(ffgraph_modern_ff PRIVATE -Wall -Wextra)
 if(BUILD_TESTING)
-  add_executable(test_ff_compatibility_pass12
-    test_ff_compatibility_pass12.cpp)
-  # Modern production builds provide the adapter through FFGraph. Keep the
-  # legacy pilot isolated from the application when testing that backend.
-  if(NOT FFGRAPH_FF_BACKEND STREQUAL "modern")
-    target_sources(test_ff_compatibility_pass12 PRIVATE
-      "${PROJECT_SOURCE_DIR}/fgraph/modern/ff_graph_adapter.cc")
-  endif()
-  target_link_libraries(test_ff_compatibility_pass12 PRIVATE ffgraph_modern_ff
+  add_executable(test_ff_graph_regression_pass12
+    test_ff_graph_regression_pass12.cpp)
+  target_link_libraries(test_ff_graph_regression_pass12 PRIVATE ffgraph_modern_ff
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
     PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
-  target_compile_definitions(test_ff_compatibility_pass12 PRIVATE
+  target_compile_definitions(test_ff_graph_regression_pass12 PRIVATE
     FFGRAPH_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-  add_test(NAME test_ff_compatibility_pass12 COMMAND test_ff_compatibility_pass12)
-  add_test(NAME test_ff_legacy_corpus_pass12 COMMAND test_ff_compatibility_pass12 --legacy-corpus)
-  add_test(NAME test_ff_modern_failures_pass12 COMMAND test_ff_compatibility_pass12 --parser-failures)
-  set_tests_properties(test_ff_compatibility_pass12 test_ff_legacy_corpus_pass12
+  add_test(NAME test_ff_graph_regression_pass12 COMMAND test_ff_graph_regression_pass12)
+  add_test(NAME test_ff_corpus_oracle_pass12 COMMAND test_ff_graph_regression_pass12 --corpus)
+  add_test(NAME test_ff_modern_failures_pass12 COMMAND test_ff_graph_regression_pass12 --parser-failures)
+  set_tests_properties(test_ff_graph_regression_pass12 test_ff_corpus_oracle_pass12
     test_ff_modern_failures_pass12 PROPERTIES TIMEOUT 120)
 endif()

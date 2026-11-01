@@ -7,8 +7,7 @@
 #include <ffgraph/FFGraphicNode.h>
 #include <ffgraph/FFGraphicEdge.h>
 #include <String.h>
-#include "FFParser.h"
-#include "FFScanner.h"
+#include <ffgraph/ffError.h>
 
 #include <cstdlib>
 #include <cstdio>
@@ -20,6 +19,8 @@
 #include <string>
 #include <utility>
 #include <unistd.h>
+
+extern charErrorHandler* userCharErrorHandler;
 
 namespace {
 void require(bool value, const char* message) {
@@ -56,15 +57,19 @@ void checkCounts(FFGraphClass* graph, int nodes, int edges) {
             graph->allNodes().contains(edge->target()), "valid edge endpoints");
   }
 }
-class ErrorControl final : public FFControl {
-public:
-  int errors = 0;
-  void PrintError(char*) override { ++errors; }
-};
-void legacyMalformedInputs() {
-  // Retained stack symbols, incomplete label/icon actions, ignored strings and
-  // unexpected lookahead all used to leak strdup tokens on error. Exercise
-  // both FFControl APIs; ASan/LSan checks ownership after each control dies.
+int parseErrors = 0;
+void countParseError(errGrade grade, const char*, const char*, int) {
+  require(grade == USER_ERROR, "expected FF syntax diagnostic");
+  ++parseErrors;
+}
+void malformedInputs() {
+  // Preserve malformed-input ownership coverage through both production APIs.
+  // Failed parses must also preserve the destination graph and original IDs.
+  struct HandlerGuard {
+    charErrorHandler* previous = userCharErrorHandler;
+    HandlerGuard() { userCharErrorHandler = countParseError; }
+    ~HandlerGuard() { userCharErrorHandler = previous; }
+  } handler;
   const char* invalid[] = {
     "GRAPH \"bad\" = 1 \"partially created\";",
     "GRAPH \"g\" = {$ FF_L \"unfinished type\"",
@@ -77,22 +82,29 @@ void legacyMalformedInputs() {
   };
   for (int repeat = 0; repeat < 20; ++repeat) {
     for (const char* input : invalid) {
-      for (bool stream : {false, true}) {
+      for (bool file : {false, true}) {
         FFGraph graph(YES);
-        ErrorControl control;
-        if (stream) {
-          std::istringstream source(input);
-          control.Parse(source, graph.operator->());
+        graph->setName("keep");
+        FFNode original = graph->addNode(); original->setValue(123);
+        const int before = parseErrors;
+        if (file) {
+          TemporaryFile source(".g");
+          std::ofstream out(source.path); out << input; out.close();
+          require(out.good(), "write malformed FF fixture");
+          graph->load(String(source.path.string()), YES);
         } else {
-          control.Parse(String(input), graph.operator->());
+          graph->load(String(input), NO);
         }
-        require(control.errors == 1, "legacy malformed input reports an error");
+        require(parseErrors == before + 1, "malformed input reports an error");
+        require(graph->getNumNodes() == 1 && graph->getNumEdges() == 0 &&
+                graph->nodeWithValue(123) == original && graph->getName() == "keep",
+                "malformed input preserves original graph");
       }
     }
     FFGraph recovered(YES);
-    ErrorControl control;
-    control.Parse("GRAPH \"recovered\" = 1 \"n\" 1 \"loop\"; END", recovered.operator->());
-    require(control.errors == 0, "valid legacy parse after failures");
+    const int before = parseErrors;
+    recovered->load("GRAPH \"recovered\" = 1 \"n\" 1 \"loop\"; END", NO);
+    require(parseErrors == before, "valid parse after failures");
     checkCounts(recovered.operator->(), 1, 1);
   }
 }
@@ -173,7 +185,7 @@ void sampleGraph() {
 }
 #endif
 int main() {
-  legacyMalformedInputs();
+  malformedInputs();
   sgraphRoundTrip();
   gmlRoundTrip();
 #ifdef FFGRAPH_TEST_SOURCE_DIR

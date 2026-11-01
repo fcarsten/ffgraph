@@ -1,5 +1,5 @@
-// The public loader must use the selected backend for both file and string
-// imports. Independent assertions detect a selector that only changes linkage.
+// Exercise the mandatory production FF loader for both file and string imports.
+// Graph expectations are independent of parser event replay.
 #include "test_check.h"
 #include <ffgraph/FFGraph.h>
 #include <ffgraph/FFGraphClass.h>
@@ -97,11 +97,7 @@ void rejectedLoad(bool file) {
   load(graph, "GRAPH \"bad\" = UNDIRECTED 777 \"partial\";", file);
   FF_CHECK(errors == before + 1 && events->starts == 1 && events->ends == 1);
   FF_CHECK(graph->allNodes().contains(original) && graph->getName() == "keep");
-#if FFGRAPH_TEST_MODERN_FF
   FF_CHECK(graph->getNumNodes() == 1 && graph->getDirected() && original->getValue() == 123);
-#else
-  FF_CHECK(graph->getNumNodes() == 2 && !graph->getDirected() && original->getValue() == -1);
-#endif
   FF_CHECK(original->getName() == "original" && original->getGraphicNode()->getz() == 9);
 }
 void missingFile() {
@@ -111,7 +107,7 @@ void missingFile() {
   const int before = errors;
   graph->load(String(file.path), YES);
   FF_CHECK(errors == before + 1 && graph->getNumNodes() == 1);
-  FF_CHECK(original->getValue() == (FFGRAPH_TEST_MODERN_FF ? 123 : -1));
+  FF_CHECK(original->getValue() == 123);
 }
 } // namespace
 int main() {
@@ -119,7 +115,6 @@ int main() {
   for (int repeat = 0; repeat < 10; ++repeat)
     for (bool file : {false, true}) { validLoads(file); rejectedLoad(file); }
   missingFile();
-#if FFGRAPH_TEST_MODERN_FF
   FFGraph graph(YES);
   auto* original = graph->addNode(); original->setValue(123);
   const int before = errors;
@@ -129,7 +124,5 @@ int main() {
   const std::string name(10000, 'x');
   longLine->load(String("GRAPH \"long\" = 1 \"") + name.c_str() + "\"; END", NO);
   FF_CHECK(errors == before + 1 && longLine->nodeWithValue(1)->getName() == name.c_str());
-#endif
-  std::cout << "Public FF file/string backend, graph oracles, merge and failure policy passed ("
-            << (FFGRAPH_TEST_MODERN_FF ? "modern" : "legacy") << ")\n";
+  std::cout << "Production FF file/string graph oracles, merge and rejection tests passed\n";
 }

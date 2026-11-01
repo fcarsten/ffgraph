@@ -1,5 +1,9 @@
 # Pass 12 — selectable modern FF production integration
 
+Superseded by [modern-default FF retirement](FFGRAPH-PASS12-FF-LEGACY-RETIREMENT.md).
+The selector, legacy comparison tests and commands below describe the earlier
+integration checkpoint.
+
 Date: 1 November 2026. Branch: `pass12-modern-ff-parser`.
 Starting HEAD: `5688f50809d1fb96b3315221bb7b55e69a1f9578`.
 The checkout was clean; the earlier pilot and baseline fixes were committed

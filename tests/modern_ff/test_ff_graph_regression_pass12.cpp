@@ -10,8 +10,6 @@
 #include <ffgraph/FFEdgeLabel.h>
 #include <ffgraph/FFGraphLabel.h>
 #include <ffgraph/ffError.h>
-#include "FFParser.h"
-#include "FFScanner.h"
 #include <algorithm>
 #include <cstdlib>
 #include <filesystem>
@@ -29,7 +27,7 @@ extern charErrorHandler* userCharErrorHandler;
 
 namespace {
 void check(bool ok, const std::string& message) {
-  if (!ok) { std::cerr << "FF compatibility: " << message << '\n'; std::exit(1); }
+  if (!ok) { std::cerr << "FF graph regression: " << message << '\n'; std::exit(1); }
 }
 // Real label callbacks, independent of the FF semantic adapter.
 template<class Base> struct Probe : Base {
@@ -103,98 +101,85 @@ std::string snapshot(FFGraph& g) {
   for (const auto& row : edges) out << row << '\n';
   return out.str();
 }
-int legacyErrors = 0;
-void onError(errGrade, const char*, const char*, int) { ++legacyErrors; }
-void parseLegacy(FFGraph& g, const std::string& input) {
-  // Invoke the real legacy oracle independently of the production selector.
-  for (Pix p = g->allNodes().first(); p; g->allNodes().next(p))
-    g->allNodes()(p)->setValue(-1);
-  FFControl parser;
-  parser.Parse(String(input), g.operator->());
-}
-void loadLegacy(FFGraph& g, const std::string& input) {
-  const int before = legacyErrors;
-  parseLegacy(g, input);
-  check(legacyErrors == before, "legacy syntax error on valid fixture");
+int loadErrors = 0;
+void onError(errGrade, const char*, const char*, int) { ++loadErrors; }
+void loadProduction(FFGraph& graph, const std::string& input) {
+  const int before = loadErrors;
+  graph->load(String(input), NO);
+  check(loadErrors == before, "production FF load rejected valid input");
 }
 void loadModern(FFGraph& g, const std::string& input) {
   auto result = ffgraph_ff::parse(input);
   check(result.ok, "modern parse: " + result.error);
   check(ffgraph_ff::applyToGraph(result, *g.operator->()), "modern apply");
 }
-void compare(const std::string& input, const std::string& name, bool graphics, bool merge) {
-  FFGraph legacy(YES), modern(YES);
-  setup(legacy, graphics); setup(modern, graphics);
+void compareAPIs(const std::string& input, const std::string& name, bool graphics, bool merge) {
+  FFGraph production(YES), modern(YES);
+  setup(production, graphics); setup(modern, graphics);
   if (merge) {
-    for (auto* g : {&legacy, &modern}) {
+    for (auto* g : {&production, &modern}) {
       (*g)->setName("existing name");
       (*g)->addNode()->setValue(100);
     }
   }
-  loadLegacy(legacy, input); loadModern(modern, input);
-  const auto a = snapshot(legacy), b = snapshot(modern);
-  check(a == b, name + " constructed graphs differ\nLEGACY\n" + a + "MODERN\n" + b);
+  loadProduction(production, input); loadModern(modern, input);
+  const auto a = snapshot(production), b = snapshot(modern);
+  check(a == b, name + " production/direct graph states differ\nPRODUCTION\n" + a + "MODERN\n" + b);
 }
-void independentOracle(bool legacyOnly = false) {
+void independentOracle() {
   // No legacy import or writer supplies these expected values.
   const std::string input = R"(GRAPH "oracle" = UNDIRECTED
 1 {$ NP -10 20 SN $} "a" 2 {$ FF_WE -125 EL -10 20 3 4 40 50 $} "ab" 2 "parallel" 1 "loop";
 2 {$ FF_3D 40 50 6 EN $} "b";
 9 "isolated"; END)";
-  for (bool modern : {false, true}) {
-    if (modern && legacyOnly) continue;
-    FFGraph g(YES); setup(g, true);
-    if (modern) loadModern(g, input); else loadLegacy(g, input);
-    check(g->getNumNodes() == 3 && g->getNumEdges() == 3 && !g->getDirected(), "oracle structure");
-    auto a = g->nodeWithValue(1), b = g->nodeWithValue(2);
-    check(a && b && g->nodeWithValue(9), "oracle IDs");
-    check(a->getName() == "a" && b->getName() == "b", "oracle names");
-    check(g->getStartNode() == a && g->getEndNodes().contains(b), "oracle start/end");
-    check(a->getGraphicNode()->getx() == -10 && a->getGraphicNode()->gety() == 20 &&
-          b->getGraphicNode()->getz() == 6, "oracle geometry");
-    int ab = 0, loops = 0;
-    for (Pix p = g->allEdges().first(); p; g->allEdges().next(p)) {
-      auto e = g->allEdges()(p);
-      if (e->source() == a && e->target() == b) ++ab;
-      if (e->source() == a && e->target() == a) ++loops;
-      if (e->getName() == "ab") {
-        check(e->getWeight() == -1.25, "oracle weight");
-        auto ge = e->getGraphicEdge();
-        check(ge->anzPoints() == 3 && ge->getPointAt(1).v[0] == 3 &&
-              ge->getPointAt(1).v[1] == 4, "oracle bend ordering");
-      }
+  FFGraph g(YES); setup(g, true);
+  loadProduction(g, input);
+  check(g->getNumNodes() == 3 && g->getNumEdges() == 3 && !g->getDirected(), "oracle structure");
+  auto a = g->nodeWithValue(1), b = g->nodeWithValue(2);
+  check(a && b && g->nodeWithValue(9), "oracle IDs");
+  check(a->getName() == "a" && b->getName() == "b", "oracle names");
+  check(g->getStartNode() == a && g->getEndNodes().contains(b), "oracle start/end");
+  check(a->getGraphicNode()->getx() == -10 && a->getGraphicNode()->gety() == 20 &&
+        b->getGraphicNode()->getz() == 6, "oracle geometry");
+  int ab = 0, loops = 0;
+  for (Pix p = g->allEdges().first(); p; g->allEdges().next(p)) {
+    auto e = g->allEdges()(p);
+    if (e->source() == a && e->target() == b) ++ab;
+    if (e->source() == a && e->target() == a) ++loops;
+    if (e->getName() == "ab") {
+      check(e->getWeight() == -1.25, "oracle weight");
+      auto ge = e->getGraphicEdge();
+      check(ge->anzPoints() == 3 && ge->getPointAt(1).v[0] == 3 &&
+            ge->getPointAt(1).v[1] == 4, "oracle bend ordering");
     }
-    check(ab == 2 && loops == 1, "oracle multiplicity");
   }
+  check(ab == 2 && loops == 1, "oracle multiplicity");
 }
-void attributeOracle(const std::filesystem::path& root, bool legacyOnly = false) {
-  for (bool modern : {false, true}) {
-    if (modern && legacyOnly) continue;
-    FFGraph g(YES); setup(g, true);
-    const auto input = read(root / "tests/modern_ff/fixtures/attributes.g");
-    if (modern) loadModern(g, input); else loadLegacy(g, input);
-    auto n = g->nodeWithValue(0);
-    check(n && g->getNumNodes() == 2 && g->getNumEdges() == 1, "attribute oracle structure");
-    auto gn = n->getGraphicNode();
-    check(gn->getx() == 10 && gn->gety() == 20 && gn->getz() == 30 &&
-          gn->getWidth() == 9 && gn->getColor() == "blue", "attribute oracle node graphics");
-    check(gn->getIcon() == "icon" && gn->getSelIcon() == "selected icon" &&
-          gn->getMask() == "mask" && gn->getSelMask() == "selected mask", "attribute oracle icons/masks");
-    check(g->getGraphLabel(g->getGraphLabelIndex("Probe"))->unparse() == "graph payload" &&
-          n->getLabel(n->getLabelIndex("Probe"))->unparse() == "node payload", "attribute oracle callbacks");
-    auto e = g->allEdges()(g->allEdges().first());
-    check(e->getWeight() == 3.75 && e->getName() == "route" &&
-          e->getLabel(e->getLabelIndex("Probe"))->unparse() == "edge payload", "attribute oracle edge");
-    auto ge = e->getGraphicEdge();
-    check(ge->getColor() == "green" && ge->anzPoints() == 5 &&
-          ge->getPointAt(1).v[0] == 4 && ge->getPointAt(1).v[2] == 6 &&
-          ge->getPointAt(2).v[0] == 10 && ge->getPointAt(3).v[0] == 15,
-          "attribute oracle mixed 2D/3D route ordering");
-    FFGraph lexical(YES); setup(lexical, false);
-    const auto unusual = read(root / "tests/modern_ff/fixtures/string-comment.g");
-    if (modern) loadModern(lexical, unusual); else loadLegacy(lexical, unusual);
-    check(lexical->nodeWithValue(1)->getName() == "tail", "inclusive comment/string oracle");
-  }
+void attributeOracle(const std::filesystem::path& root) {
+  FFGraph g(YES); setup(g, true);
+  const auto input = read(root / "tests/modern_ff/fixtures/attributes.g");
+  loadProduction(g, input);
+  auto n = g->nodeWithValue(0);
+  check(n && g->getNumNodes() == 2 && g->getNumEdges() == 1, "attribute oracle structure");
+  auto gn = n->getGraphicNode();
+  check(gn->getx() == 10 && gn->gety() == 20 && gn->getz() == 30 &&
+        gn->getWidth() == 9 && gn->getColor() == "blue", "attribute oracle node graphics");
+  check(gn->getIcon() == "icon" && gn->getSelIcon() == "selected icon" &&
+        gn->getMask() == "mask" && gn->getSelMask() == "selected mask", "attribute oracle icons/masks");
+  check(g->getGraphLabel(g->getGraphLabelIndex("Probe"))->unparse() == "graph payload" &&
+        n->getLabel(n->getLabelIndex("Probe"))->unparse() == "node payload", "attribute oracle callbacks");
+  auto e = g->allEdges()(g->allEdges().first());
+  check(e->getWeight() == 3.75 && e->getName() == "route" &&
+        e->getLabel(e->getLabelIndex("Probe"))->unparse() == "edge payload", "attribute oracle edge");
+  auto ge = e->getGraphicEdge();
+  check(ge->getColor() == "green" && ge->anzPoints() == 5 &&
+        ge->getPointAt(1).v[0] == 4 && ge->getPointAt(1).v[2] == 6 &&
+        ge->getPointAt(2).v[0] == 10 && ge->getPointAt(3).v[0] == 15,
+        "attribute oracle mixed 2D/3D route ordering");
+  FFGraph lexical(YES); setup(lexical, false);
+  const auto unusual = read(root / "tests/modern_ff/fixtures/string-comment.g");
+  loadProduction(lexical, unusual);
+  check(lexical->nodeWithValue(1)->getName() == "tail", "inclusive comment/string oracle");
 }
 void failures() {
   const std::vector<std::string> bad = {
@@ -229,6 +214,31 @@ void failures() {
   deep += "$} END";
   check(ffgraph_ff::parse(deep).ok, "large internals with dynamic Bison stack");
 }
+void corpusOracles(const std::filesystem::path& root) {
+  const auto fixtures = root / "tests/modern_ff/fixtures";
+  const auto oracles = root / "tests/modern_ff/oracles";
+  for (const auto& entry : std::filesystem::directory_iterator(fixtures)) {
+    if (entry.path().extension() != ".g") continue;
+    const auto expected = read(oracles / (entry.path().stem().string() + ".snapshot"));
+    for (bool file : {false, true}) {
+      FFGraph graph(YES); setup(graph, true);
+      const int before = loadErrors;
+      if (file) graph->load(String(entry.path().string()), YES);
+      else loadProduction(graph, read(entry.path()));
+      check(loadErrors == before && snapshot(graph) == expected,
+            entry.path().filename().string() + " differs from frozen graph oracle");
+    }
+  }
+  const auto expected = read(oracles / "historical-out.snapshot");
+  for (bool file : {false, true}) {
+    FFGraph graph(YES); setup(graph, true);
+    const int before = loadErrors;
+    if (file) graph->load(String((root / "contrib/out.g").string()), YES);
+    else loadProduction(graph, read(root / "contrib/out.g"));
+    check(loadErrors == before && snapshot(graph) == expected,
+          "historical out.g differs from frozen graph oracle");
+  }
+}
 void generatedRoundTrips() {
   for (int seed = 0; seed < 24; ++seed) {
     FFGraph source(seed % 2); setup(source, true);
@@ -246,33 +256,20 @@ void generatedRoundTrips() {
     }
     source->setStartNode(nodes.front()); source->addEndNode(nodes.back());
     String output; source->saveToString(output);
-    compare(text(output), "writer seed " + std::to_string(seed), true, false);
+    compareAPIs(text(output), "writer seed " + std::to_string(seed), true, false);
     FFGraph modern(YES); setup(modern, true); loadModern(modern, text(output));
     check(snapshot(source) == snapshot(modern), "writer graph matches independent source graph");
     String second; modern->saveToString(second);
-    compare(text(second), "modern reserialization " + std::to_string(seed), true, false);
+    compareAPIs(text(second), "modern reserialization " + std::to_string(seed), true, false);
   }
 }
 } // namespace
 int main(int argc, char** argv) {
   userCharErrorHandler = onError;
-  if (argc == 2 && std::string(argv[1]) == "--legacy-malformed") {
-    FFGraph g(YES); setup(g, false); g->addNode()->setValue(123);
-    parseLegacy(g, "GRAPH \"bad\" = 1 \"partially created\";");
-    check(legacyErrors == 1 && g->getNumNodes() == 2 && g->nodeWithValue(-1),
-          "legacy invalid load resets IDs and partially constructs graph");
-    std::cout << "Legacy failure is non-atomic (expected baseline); check ASan for token leaks\n";
-    return 0;
-  }
   const auto root = std::filesystem::path(FFGRAPH_TEST_SOURCE_DIR);
-  if (argc == 2 && std::string(argv[1]) == "--legacy-corpus") {
-    for (const auto& entry : std::filesystem::directory_iterator(root / "tests/modern_ff/fixtures")) {
-      if (entry.path().extension() != ".g") continue;
-      FFGraph g(YES); setup(g, true); loadLegacy(g, read(entry.path()));
-      check(!snapshot(g).empty(), "legacy snapshot");
-    }
-    independentOracle(true); attributeOracle(root, true);
-    std::cout << "Legacy FF corpus and independent graph oracles passed\n";
+  if (argc == 2 && std::string(argv[1]) == "--corpus") {
+    corpusOracles(root); independentOracle(); attributeOracle(root);
+    std::cout << "Frozen FF corpus and independent graph oracles passed\n";
     return 0;
   }
   if (argc == 2 && std::string(argv[1]) == "--parser-failures") {
@@ -280,22 +277,24 @@ int main(int argc, char** argv) {
     std::cout << "Modern FF rejection, recovery, numeric and stack tests passed\n";
     return 0;
   }
+  check(argc == 1, "unsupported test mode");
+  corpusOracles(root);
   int count = 0;
   for (const auto& entry : std::filesystem::directory_iterator(root / "tests/modern_ff/fixtures")) {
     if (entry.path().extension() != ".g") continue;
     const auto input = read(entry.path());
     for (bool graphics : {false, true})
-      for (bool merge : {false, true}) compare(input, entry.path().filename().string(), graphics, merge);
+      for (bool merge : {false, true}) compareAPIs(input, entry.path().filename().string(), graphics, merge);
     // Public file load entry point, independently of string load.
     FFGraph fileGraph(YES), modern(YES); setup(fileGraph, true); setup(modern, true);
-    const int before = legacyErrors;
+    const int before = loadErrors;
     fileGraph->load(String(entry.path().string()), YES); loadModern(modern, input);
-    check(legacyErrors == before && snapshot(fileGraph) == snapshot(modern), "file/string fixture parity");
+    check(loadErrors == before && snapshot(fileGraph) == snapshot(modern), "file/string fixture parity");
     ++count;
   }
   const auto historical = read(root / "contrib/out.g");
-  compare(historical, "contrib/out.g", false, false);
-  compare(historical, "contrib/out.g graphics", true, false);
+  compareAPIs(historical, "contrib/out.g", false, false);
+  compareAPIs(historical, "contrib/out.g graphics", true, false);
   FFGraph sample(YES); setup(sample, true); loadModern(sample, historical);
   check(sample->getNumNodes() == 499 && sample->getNumEdges() == 499, "historical count oracle");
   independentOracle(); attributeOracle(root); generatedRoundTrips();

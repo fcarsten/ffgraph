@@ -42,13 +42,9 @@ extern "C" {
 #include <container/AVLSet.h>
 #include <container/VOHSet.h>
 #include <container/AVLMap.h>
-#include "FFParser.h"
-#include "FFScanner.h"
 #include "modern/gml_events.h"
 #include "modern/gml_graph_adapter.h"
-#ifdef FFGRAPH_USE_MODERN_FF
 #include "modern/ff_graph_adapter.h"
-#endif
 #include "RomeParser.h"
 #include "RomeScanner.h"
 
@@ -1383,9 +1379,6 @@ void FFGraphClass::_saveGML(ostream& ofDatei, const FFSet<FFNode>& nodes)
 void FFGraphClass::load(const String& buffer, BOOL datei)
 {
  labelEventStruct theEvent;
-#ifndef FFGRAPH_USE_MODERN_FF
- FFControl graphParser;
-#endif
  BOOL tmpDate= NO;
  
  _sendGraphEvent(START_LOAD, &theEvent);
@@ -1396,17 +1389,14 @@ void FFGraphClass::load(const String& buffer, BOOL datei)
    FENSTER->setUpdate(NO);
   }
  
- // Generated importers validate before resetting destination IDs. Legacy FF
- // and Rome retain their historical early reset and partial-load behaviour.
- BOOL deferredIdReset = datei && buffer.contains(".gml");
-#ifdef FFGRAPH_USE_MODERN_FF
- deferredIdReset = deferredIdReset || !datei || buffer.contains(".g");
+ // FF/GML validate before resetting destination IDs. Rome retains its
+ // historical early reset and partial-load behaviour.
+ const BOOL deferredIdReset = !datei || buffer.contains(".g");
  const auto importFF = [this](std::string_view input) {
    const ffgraph_ff::Result parsed = ffgraph_ff::parse(input);
    if (!ffgraph_ff::applyToGraph(parsed, *this, true))
      ffError(USER_ERROR, String("Invalid FF input: ") + parsed.error.c_str());
  };
-#endif
  if (!deferredIdReset)
   for(Pix i=knotenSet.first(); i!=0; knotenSet.next(i))
    knotenSet(i)->setValue(-1);
@@ -1440,16 +1430,12 @@ void FFGraphClass::load(const String& buffer, BOOL datei)
       }
      else if(buffer.contains(".g"))
       {
-#ifdef FFGRAPH_USE_MODERN_FF
        std::ostringstream contents;
        contents << ifdatei.rdbuf();
        if (ifdatei.bad())
          ffError(USER_ERROR, "Error reading FF file");
        else
          importFF(contents.str());
-#else
-      graphParser.Parse(ifdatei, this);
-#endif
       }
      else
       {
@@ -1462,11 +1448,7 @@ void FFGraphClass::load(const String& buffer, BOOL datei)
   }
  else
   {
-#ifdef FFGRAPH_USE_MODERN_FF
    importFF(std::string_view(buffer.data(), buffer.size()));
-#else
-   graphParser.Parse(buffer, this);
-#endif
   }      
  
  if(graphIndex >= 0)
