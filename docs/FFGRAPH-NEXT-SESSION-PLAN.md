@@ -90,10 +90,12 @@ performance. Preserve API/format/GUI behavior, and make focused patches with
 regression tests and corresponding docs/FFGRAPH-*.md reports.
 
 The user chose profiling as the immediate next checkpoint. See
-`FFGRAPH-IMPORT-LAYOUT-PROFILING.md` for measurements, the corrected GML sibling
-stack growth, and the still-open Spring coincident-star numerical failure.
-Investigate that failure before optimizing layouts; repeated FF/Rome ID scans
-and Sugiyama crossing counts are the measured performance candidates. The
+`FFGRAPH-IMPORT-LAYOUT-PROFILING.md` for measurements and the corrected GML
+sibling stack growth. The Spring coincident-star failure is now fixed by robust
+force norms and bounded movement; see `FFGRAPH-SPRING-NUMERICAL-STABILITY.md`.
+The iteration-control API remains a separate concern. Repeated FF/Rome ID scans
+and Sugiyama crossing counts are the measured performance candidates; preserve
+duplicate/merge/callback semantics before changing lookup behavior. The
 installation/portability work above remains a separate follow-up.
 
 ## Starting commands

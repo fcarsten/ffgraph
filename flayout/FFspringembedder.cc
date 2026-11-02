@@ -1,5 +1,7 @@
 #include <ffgraph/FFSpring.h>
 #include <ffgraph/FFInspector.h>
+#include <algorithm>
+#include <cmath>
 
 int ffBreak()
 {
@@ -480,7 +482,11 @@ FFCoord FFSpring::compute_maxForce (FFPoint *forces, int anzN,
       
  for (int i = 1 ; i <= anzN; i++)
   {  
-   absForces[i] = forces[i].abs ();
+   // FFPoint::abs() squares in FFCoord (float), which can overflow even
+   // when the length is representable. An infinite length then makes the
+   // cooling temperature infinite and the normalized displacement NaN.
+   // hypot also preserves small nonzero lengths whose squares underflow.
+   absForces[i] = std::hypot(forces[i].v[0], forces[i].v[1], forces[i].v[2]);
    
    if (absForces[i] > maxAbsForce)
     maxAbsForce = absForces[i];
@@ -732,6 +738,10 @@ void FFSpring::springembedder_layout (const FFSet <FFNode> &locNodes)
       temperature = cool (actMaxForce, 0.3, coolMaxForce1, 
                           coolMaxForce2, coolMaxForce3, coolMaxForce4, 
                           coolPhase);
+      // High-degree graphs can make sqrt(maxForce) exceed the node
+      // separations, amplifying oscillations until even forces overflow.
+      // Move by at most one ideal edge length; retain smaller cooling steps.
+      temperature = std::min(temperature, optimalDistance);
       
       compute_nodePosition (forces, anzN,  temperature, absForces);
       iterationCount++;

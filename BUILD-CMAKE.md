@@ -41,9 +41,10 @@ python3 tools/profile_graphs.py --binary build/profile/profile_graphs \
 ```
 
 Use a new output directory for each run. The runner writes raw samples,
-CSV/JSON summaries, input hashes and build metadata. Its default larger run
-currently exposes a Spring nonfinite-coordinate failure on a 1,000-node star;
-failures produce a nonzero exit status. These are measurements, with no timing
+CSV/JSON summaries, input hashes and build metadata. The previously failing
+1,000-node Spring star is covered by the numerical regression described in
+[the Spring fix report](docs/FFGRAPH-SPRING-NUMERICAL-STABILITY.md).
+Failures produce a nonzero exit status. These are measurements, with no timing
 thresholds in CTest. See [the profiling checkpoint](docs/FFGRAPH-IMPORT-LAYOUT-PROFILING.md)
 for phase definitions, larger runs, CPU profiles, results and remaining limits.
 

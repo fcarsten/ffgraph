@@ -214,7 +214,8 @@ if(BUILD_TESTING)
   foreach(test_name
       test_graph_invariants_pass9
       test_graph_geometry_pass9
-      test_graph_layout_pass9)
+      test_graph_layout_pass9
+      test_spring_numerics)
     add_executable(${test_name} tests/${test_name}.cpp)
     target_compile_features(${test_name} PRIVATE cxx_std_17)
     target_link_libraries(${test_name} PRIVATE
@@ -230,6 +231,8 @@ if(BUILD_TESTING)
     add_test(NAME ${test_name} COMMAND ${test_name})
     set_tests_properties(${test_name} PROPERTIES TIMEOUT 30)
   endforeach()
+  # Four 1,000-node layouts also run in instrumented builds.
+  set_tests_properties(test_spring_numerics PROPERTIES TIMEOUT 90)
 
   # Exercise the public FFGraphClass::load() entry point independently of
   # direct event replay.

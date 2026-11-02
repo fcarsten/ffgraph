@@ -1,5 +1,10 @@
 # Import and layout profiling checkpoint — 2026-11-02
 
+Historical measurements below predate the Spring stability fix. See
+[the numerical stability report](FFGRAPH-SPRING-NUMERICAL-STABILITY.md) for the
+root cause, correction, regression tests and subsequent verification. The
+earlier three Spring failures remain recorded here as the original findings.
+
 ## Scope and starting state
 
 The user chose import/layout profiling after retiring all three legacy parsers.
