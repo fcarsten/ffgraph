@@ -1,10 +1,11 @@
 # CMake build (Ubuntu 24.04)
 
 The CMake build now selects the modern GNU Bison/Flex GML importer by default.
-It generates that parser/scanner in the build tree. The FF and Rome parsers,
-and the temporarily retained GT GML fallback, still use their checked-in
-legacy bison++/flex++ generated C++ sources. The old Makefiles have **not**
-been switched; use CMake for the modern default.
+FF/sgraph also uses its modern GNU Bison/Flex importer in every build.
+All three parser/scanner pairs are generated in the build tree; their legacy
+implementations have been retired.
+Use CMake; the historical Makefile fragments do not build the active FF/GML/Rome
+importers.
 
 Install prerequisites:
 
@@ -25,6 +26,7 @@ Release:
 ```sh
 cmake --preset release
 cmake --build --preset release --parallel
+ctest --preset release
 ```
 
 Sanitizers (GCC/Clang):
@@ -34,6 +36,27 @@ cmake --preset asan
 cmake --build --preset asan --parallel
 ctest --preset asan
 ```
+
+All test checks remain active in Release builds. With `xvfb` and `xauth`
+installed, CTest also registers GUI tests. Every test has either the `headless`
+or `gui` label; `ctest -N -L gui --test-dir build/asan` lists GUI coverage.
+
+The strict `asan` preset enables leak detection for the entire suite. On the
+Ubuntu 24.04 system Tk 8.6.14 build, four GUI tests report Tk/Xft/fontconfig
+shutdown leaks, also reproduced without ffgraph. Use these explicit partitions
+to distinguish application runtime checks from toolkit leak diagnostics:
+
+```sh
+ctest --preset asan-headless   # Strict ASan/UBSan and leak detection
+ctest --preset asan-gui        # GUI ASan/UBSan runtime checks; leaks disabled
+ctest --preset asan-gui-leaks  # Strict GUI leak diagnostics; known failures
+```
+
+CI requires Debug, Release, strict headless sanitizers and GUI runtime checks.
+Only the separate strict GUI leak diagnostic step permits failure; its output
+is retained in sanitizer log artifacts. There are no leak suppressions. A GUI
+runtime pass does not establish leak freedom. See
+`docs/FFGRAPH-PASS12-VERIFICATION-HARDENING.md` for measured results and limits.
 
 Install with a custom prefix:
 
@@ -66,12 +89,106 @@ simultaneous interpreters, and destruction from an active Tcl callback. It is
 registered with CTest automatically when `xvfb-run` is installed. Use the
 `asan` preset for additional memory/undefined-behaviour checks.
 
+## FF/sgraph parser (GNU Bison/Flex)
+
+Modern FF is the only native/sgraph importer. Both `.g` file loads and
+`load(serialized, NO)` (including clipboard imports) use it automatically.
+There is no backend selector or pilot option. GML and Rome dispatch remain
+independent.
+
+From the repository root:
+
+```sh
+cmake --preset debug
+cmake --build --preset debug --parallel 2
+ctest --preset debug --output-on-failure
+
+FF_LIBDIR="$PWD/lib/ffgraph" FF_ICONDIR="$PWD/lib/ffgraph/icons" \
+  ./build/debug/ffgraph contrib/out.g
+```
+
+For an existing Pass 12 build directory with obsolete cached options:
+
+```sh
+cmake --preset debug -U FFGRAPH_FF_BACKEND -U FFGRAPH_ENABLE_MODERN_FF_PILOT
+cmake --build --preset debug --parallel 2
+```
+
+A stale `FFGRAPH_FF_BACKEND=legacy` selection fails with this reconfiguration
+hint rather than silently choosing a different backend. An old `modern` value
+is harmless, but clearing obsolete options is recommended.
+
+Bison 3.8+ and Flex 2.6+ generate the parser even with `BUILD_TESTING=OFF`.
+The generated archive is installed with `FFGraph`. Retired internal generated
+parser/scanner classes are available in Git history at
+`65e5498c40116c0ec85bccb3bbab5d060f098f57`.
+
+Permanent tests check frozen pre-retirement graph snapshots, independent graph
+and 2D/3D transform oracles, source-graph writer round trips, malformed-input
+rejection, and real Tcl File → Load/Merge/Close/reopen under Xvfb. There is no
+live legacy comparison backend. Syntax rejection preserves existing graph
+contents and IDs. GUI File → Load still creates its window before parsing.
+Known Tk/fontconfig leaks can fail strict leak-enabled GUI sanitizer checks;
+see `docs/FFGRAPH-PASS12-FF-LEGACY-RETIREMENT.md` for measured results and limits.
+
+## Rome parser (GNU Bison/Flex)
+
+Modern Rome is now the only production Rome importer, including in the GUI.
+No pilot flag or backend selector is needed. Filename dispatch is preserved:
+`.gml` first, then paths containing `.g` for FF, then Rome for other filenames.
+Native string imports (`load(text, NO)`) remain FF.
+
+```sh
+cmake --preset debug
+cmake --build --preset debug --parallel 2
+ctest --preset debug -R '^test_rome_' --output-on-failure
+
+FF_LIBDIR="$PWD/lib/ffgraph" FF_ICONDIR="$PWD/lib/ffgraph/icons" \
+  ./build/debug/ffgraph tests/rome_fixtures/structure.rome
+```
+
+Rome files contain no coordinates; apply a layout to separate imported nodes.
+For old build directories, discard obsolete options once:
+
+```sh
+cmake --preset debug -U FFGRAPH_ENABLE_MODERN_ROME_PILOT -U FFGRAPH_ROME_BACKEND
+```
+
+Invalid syntax, numeric overflow, NULs and unreadable files preserve the graph
+and IDs. Successful merges reset old node IDs to -1, matching historical Rome.
+Missing endpoints still warn and skip edges. Actual error locations and complete
+long-line handling replace legacy line-1 diagnostics and line truncation.
+GUI File > Load still creates its window before parsing, including on rejection.
+
+The local annotated tag `ffgraph-pre-legacy-rome-removal` preserves the complete
+legacy implementation and live differential tests at commit `5db5a38`. The
+retirement report is `docs/FFGRAPH-PASS12-ROME-LEGACY-RETIREMENT.md`.
+
+Optional external corpus checks now exercise production loading against independent
+row/source-graph expectations and frozen pre-removal snapshots:
+
+```sh
+cmake --preset release -DFFGRAPH_ROME_CORPUS_DIR=../demographs/rome
+cmake --build --preset release --parallel 2
+ctest --preset release -R '^test_rome_external_' --output-on-failure
+```
+
+The path remains machine-local; ordinary CI uses committed fixtures/oracles.
+There is no live legacy parser in these tests. See `tests/modern_rome/README.md`.
+The parser-only target also builds without Tcl/Tk or X11:
+
+```sh
+cmake -S tests/modern_rome -B build/modern-rome -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/modern-rome --parallel 2
+ctest --test-dir build/modern-rome --output-on-failure
+```
+
 ## GML parser (GNU Bison/Flex)
 
 The retired Bison++ `GTParser`/`GTScanner` has been removed from the current
 source tree. The modern generated GML importer is the only CMake backend.
-Bison 3.8+ and Flex 2.6+ are required for all application builds. The `FF`
-and Rome parsers are unchanged.
+Bison 3.8+ and Flex 2.6+ are required for all application builds. FF also uses
+its modern importer, as does Rome.
 
 ```sh
 # Configure a fresh Debug build

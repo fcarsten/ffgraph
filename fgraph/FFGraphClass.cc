@@ -42,12 +42,10 @@ extern "C" {
 #include <container/AVLSet.h>
 #include <container/VOHSet.h>
 #include <container/AVLMap.h>
-#include "FFParser.h"
-#include "FFScanner.h"
 #include "modern/gml_events.h"
 #include "modern/gml_graph_adapter.h"
-#include "RomeParser.h"
-#include "RomeScanner.h"
+#include "modern/ff_graph_adapter.h"
+#include "modern/rome_graph_adapter.h"
 
 #ifdef FENSTER
 #undef FENSTER
@@ -1380,7 +1378,6 @@ void FFGraphClass::_saveGML(ostream& ofDatei, const FFSet<FFNode>& nodes)
 void FFGraphClass::load(const String& buffer, BOOL datei)
 {
  labelEventStruct theEvent;
- FFControl graphParser;
  BOOL tmpDate= NO;
  
  _sendGraphEvent(START_LOAD, &theEvent);
@@ -1391,13 +1388,12 @@ void FFGraphClass::load(const String& buffer, BOOL datei)
    FENSTER->setUpdate(NO);
   }
  
- // GML resets existing IDs only after successful syntax/semantic preflight;
- // the FF and Rome formats retain the historical early-reset behaviour.
- const BOOL deferredGmlReset = datei && buffer.contains(".gml");
- if (!deferredGmlReset)
-  for(Pix i=knotenSet.first(); i!=0; knotenSet.next(i))
-   knotenSet(i)->setValue(-1);
- 
+ // All importers validate before their adapters reset destination IDs.
+ const auto importFF = [this](std::string_view input) {
+   const ffgraph_ff::Result parsed = ffgraph_ff::parse(input);
+   if (!ffgraph_ff::applyToGraph(parsed, *this, true))
+     ffError(USER_ERROR, String("Invalid FF input: ") + parsed.error.c_str());
+ };
  if(datei)
   {
    ifstream ifdatei(expand_path(buffer));
@@ -1426,11 +1422,35 @@ void FFGraphClass::load(const String& buffer, BOOL datei)
 
       }
      else if(buffer.contains(".g"))
-      graphParser.Parse(ifdatei, this);
+      {
+       std::ostringstream contents;
+       contents << ifdatei.rdbuf();
+       if (ifdatei.bad())
+         ffError(USER_ERROR, "Error reading FF file");
+       else
+         importFF(contents.str());
+      }
      else
       {
-       RomeControl romeParser;
-       romeParser.Parse(ifdatei, this);
+       std::ostringstream contents;
+       contents << ifdatei.rdbuf();
+       if (ifdatei.bad())
+         ffError(USER_ERROR, "Error reading Rome file");
+       else
+        {
+         cerr << "Parsing Rome Graph" << endl;
+         const ffgraph_rome::Result parsed = ffgraph_rome::parse(contents.str());
+         const ffgraph_rome::ApplyResult applied =
+           ffgraph_rome::applyToGraph(parsed, *this, true);
+         if (!applied.ok)
+           ffError(USER_ERROR, String("Invalid Rome file: ") + applied.error.c_str());
+         else
+           for (const auto& missing : applied.missing)
+            {
+             (void)missing;
+             cerr << "Couldn't find nodes for edge" << endl;
+            }
+        }
       }
 //      if(getName() == "")
 //       setName(buffer);
@@ -1438,7 +1458,7 @@ void FFGraphClass::load(const String& buffer, BOOL datei)
   }
  else
   {
-   graphParser.Parse(buffer, this);
+   importFF(std::string_view(buffer.data(), buffer.size()));
   }      
  
  if(graphIndex >= 0)

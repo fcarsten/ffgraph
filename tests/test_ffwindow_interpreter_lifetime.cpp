@@ -1,6 +1,6 @@
 // A standalone FFWindow constructs an interpreter before any Tk window exists.
 // Destruction must release that interpreter, even when initFromFile wasn't run.
-#include <cassert>
+#include "test_check.h"
 #include <ffgraph/FFWindow.h>
 
 namespace {
@@ -14,9 +14,9 @@ int main() {
   {
     FFWindow window;
     Tcl_Interp* interp = window.getInterpreter();
-    assert(interp != nullptr);
-    assert(Tcl_Eval(interp, "set ffgraph_lifetime_test 42") == TCL_OK);
+    FF_CHECK(interp != nullptr);
+    FF_CHECK(Tcl_Eval(interp, "set ffgraph_lifetime_test 42") == TCL_OK);
     Tcl_CallWhenDeleted(interp, interpreterDeleted, &deletions);
   }
-  assert(deletions == 1);
+  FF_CHECK(deletions == 1);
 }

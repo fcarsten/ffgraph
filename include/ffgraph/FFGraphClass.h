@@ -72,7 +72,6 @@ protected:
   void _save(ostream& , const FFSet<FFNodeClass *>&);
   void _saveGML(ostream& , const FFSet<FFNodeClass *>&);
   void _sendGraphEvent(labelEvent, labelEventStruct *);
-  friend class FFParser;
   
   FFNodeLabel *getNodeLabel(int i)
     {if(nodeL.valid(i)) return nodeL[i]; return NULL;}  

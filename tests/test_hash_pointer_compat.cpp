@@ -1,4 +1,4 @@
-#include <cassert>
+#include "test_check.h"
 #include <cstring>
 extern void (*lib_error_handler)(const char*, const char*);
 #include <container/VOHSet.h>
@@ -22,37 +22,37 @@ int main() {
   integers.add(17);
   integers.add(23);
   integers.add(17);
-  assert(integers.length() == 2 && integers.contains(17) && !integers.contains(99));
+  FF_CHECK(integers.length() == 2 && integers.contains(17) && !integers.contains(99));
 
   VHMap<int, const char*> intMap(nullptr);
   intMap[17] = "seventeen";
-  assert(std::strcmp(intMap[17], "seventeen") == 0);
+  FF_CHECK(std::strcmp(intMap[17], "seventeen") == 0);
 
   VHBag<int> intBag;
   intBag.add(4);
   intBag.add(4);
   intBag.add(9);
-  assert(intBag.length() == 3 && intBag.nof(4) == 2 && intBag.contains(9));
+  FF_CHECK(intBag.length() == 3 && intBag.nof(4) == 2 && intBag.contains(9));
 
   VOHSet<Item*> set;
   Pix sa = set.add(&a);
   set.add(&b);
   set.add(&a);
-  assert(set.length() == 2 && set.contains(&a) && set.contains(&b));
-  assert(set.owns(sa) && set(sa) == &a);
+  FF_CHECK(set.length() == 2 && set.contains(&a) && set.contains(&b));
+  FF_CHECK(set.owns(sa) && set(sa) == &a);
 
   VHMap<Item*, int> map(0);
   map[&a] = 10;
   map[&b] = 20;
-  assert(map.length() == 2 && map[&a] == 10 && map[&b] == 20);
+  FF_CHECK(map.length() == 2 && map[&a] == 10 && map[&b] == 20);
 
   VHBag<Item*> bag;
   bag.add(&a);
   bag.add(&a);
   bag.add(&b);
-  assert(bag.length() == 3 && bag.nof(&a) == 2 && bag.contains(&b));
+  FF_CHECK(bag.length() == 3 && bag.nof(&a) == 2 && bag.contains(&b));
   Pix bp = bag.seek(&a);
-  assert(bp && bag(bp) == &a);
+  FF_CHECK(bp && bag(bp) == &a);
   Pix bp2 = bag.seek(&a, bp);
-  assert(bp2 && bp2 != bp && bag(bp2) == &a);
+  FF_CHECK(bp2 && bp2 != bp && bag(bp2) == &a);
 }

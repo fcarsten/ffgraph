@@ -1,9 +1,11 @@
 // Exercise the actual Tcl File > Load / Merge / Close commands, not merely
-// FFGraphClass::load() or a manually retained window. Run under Xvfb.
+// FFGraphClass::load() or a manually retained window. Used for GML and the
+// production FF and Rome importers. Run under Xvfb.
 #include <ffgraph/FFGraph.h>
 #include <ffgraph/FFGraphClass.h>
 #include <ffgraph/FFNodeClass.h>
 #include <ffgraph/FFTclWindow.h>
+#include <ffgraph/FFTcl3DWindow.h>
 #include <ffgraph/FFWindow.h>
 
 #include <tcl.h>
@@ -16,16 +18,16 @@
 #include <vector>
 
 namespace {
-class TrackedWindow final : public FFTclWindow {
+template<class Base> class BasicTrackedWindow final : public Base {
 public:
-  TrackedWindow() { instances().push_back(this); }
-  ~TrackedWindow() override {
+  BasicTrackedWindow() { instances().push_back(this); }
+  ~BasicTrackedWindow() override {
     auto& windows = instances();
     windows.erase(std::remove(windows.begin(), windows.end(), this), windows.end());
   }
-  FFGraphLabel* proto() const override { return new TrackedWindow; }
-  static std::vector<TrackedWindow*>& instances() {
-    static std::vector<TrackedWindow*> windows;
+  FFGraphLabel* proto() const override { return new BasicTrackedWindow; }
+  static std::vector<BasicTrackedWindow*>& instances() {
+    static std::vector<BasicTrackedWindow*> windows;
     return windows;
   }
 };
@@ -34,7 +36,7 @@ void require(bool good, const char* reason) {
   if (!good) { std::cerr << "GUI workflow: " << reason << '\n'; std::exit(1); }
 }
 
-void command(TrackedWindow* window, const char* text) {
+template<class Base> void command(BasicTrackedWindow<Base>* window, const char* text) {
   Tcl_Interp* interp = window->getInterpreter();
   if (Tcl_Eval(interp, text) != TCL_OK) {
     std::cerr << "Tcl command '" << text << "' failed: "
@@ -43,7 +45,7 @@ void command(TrackedWindow* window, const char* text) {
   }
 }
 
-void choose(TrackedWindow* window, const char* filename) {
+template<class Base> void choose(BasicTrackedWindow<Base>* window, const char* filename) {
   Tcl_Interp* interp = window->getInterpreter();
   require(Tcl_SetVar(interp, "ffgraph_test_file", filename, TCL_GLOBAL_ONLY),
           "setting test filename");
@@ -51,17 +53,17 @@ void choose(TrackedWindow* window, const char* filename) {
   command(window, "proc FileSelectorBox {args} {return $::ffgraph_test_file}");
 }
 
-std::size_t nodes(TrackedWindow* window) {
+template<class Base> std::size_t nodes(BasicTrackedWindow<Base>* window) {
   FFGraph owner = window->getGraph();
   return owner->allNodes().length();
 }
 
-std::size_t edges(TrackedWindow* window) {
+template<class Base> std::size_t edges(BasicTrackedWindow<Base>* window) {
   FFGraph owner = window->getGraph();
   return owner->allEdges().length();
 }
 
-void close(TrackedWindow* window) {
+template<class Base> void close(BasicTrackedWindow<Base>* window) {
   // 'w' removes the C++ label in an active Tcl callback. Do not touch the
   // pointer again; interpreter collection must happen *after* Tcl_Eval.
   command(window, "recall modPress w");
@@ -69,12 +71,12 @@ void close(TrackedWindow* window) {
 }
 } // namespace
 
-int main(int argc, char** argv) {
+template<class Base> int exercise(int argc, char** argv) {
+  using TrackedWindow = BasicTrackedWindow<Base>;
   if (argc != 4 && argc != 5) {
-    std::cerr << "Usage: test_gui_file_workflow_pass11 valid.gml merge.gml invalid.gml [large.gml]\n";
+    std::cerr << "Usage: test_gui_file_workflow_pass11 valid-graph merge-graph invalid-graph [large-graph]\n";
     return 2;
   }
-  Tcl_FindExecutable(argv[0]);
   const int initial = Tk_GetNumMainWindows();
 
   // Each cycle starts with a real GUI root. New windows must survive the
@@ -102,7 +104,7 @@ int main(int argc, char** argv) {
     require(loaded != initialWindow, "new window differs from source");
     const auto oldNodes = nodes(loaded);
     const auto oldEdges = edges(loaded);
-    require(oldNodes > 0 && oldEdges > 0, "GML actually imported");
+    require(oldNodes > 0 && oldEdges > 0, "graph actually imported");
     if (argc == 5)
       require(oldNodes >= 100, "large-corpus fixture was not loaded");
 
@@ -115,8 +117,8 @@ int main(int argc, char** argv) {
     require(edges(loaded) >= oldEdges, "merge retains prior edges");
     require(Tk_GetNumMainWindows() == initial + 2, "merge preserves windows");
 
-    // The modern importer rejects an unresolved edge endpoint during its
-    // semantic preflight. Repeated rejection must preserve the graph and
+    // Modern importers reject invalid syntax (FF) or unresolved edge endpoints
+    // (GML) before graph replay. Repeated rejection must preserve the graph and
     // leave both GUI windows operational.
     const auto mergedNodes = nodes(loaded);
     const auto mergedEdges = edges(loaded);
@@ -172,6 +174,14 @@ int main(int argc, char** argv) {
 
   FFWindow::collectPendingInterpreters();
   require(Tk_GetNumMainWindows() == initial, "no Tk roots leaked");
-  Tcl_Finalize();
   return 0;
+}
+
+int main(int argc, char** argv) {
+  Tcl_FindExecutable(argv[0]);
+  const bool threeD = argc == 5 && std::string(argv[4]) == "--3d";
+  const int result = threeD ? exercise<FFTcl3DWindow>(4,argv) : exercise<FFTclWindow>(argc,argv);
+  FFWindow::collectPendingInterpreters();
+  Tcl_Finalize();
+  return result;
 }

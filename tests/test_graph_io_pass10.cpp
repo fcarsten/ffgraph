@@ -7,6 +7,7 @@
 #include <ffgraph/FFGraphicNode.h>
 #include <ffgraph/FFGraphicEdge.h>
 #include <String.h>
+#include <ffgraph/ffError.h>
 
 #include <cstdlib>
 #include <cstdio>
@@ -14,9 +15,12 @@
 #include <fstream>
 #include <iostream>
 #include <set>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <unistd.h>
+
+extern charErrorHandler* userCharErrorHandler;
 
 namespace {
 void require(bool value, const char* message) {
@@ -51,6 +55,57 @@ void checkCounts(FFGraphClass* graph, int nodes, int edges) {
     FFEdge edge = graph->allEdges()(p);
     require(graph->allNodes().contains(edge->source()) &&
             graph->allNodes().contains(edge->target()), "valid edge endpoints");
+  }
+}
+int parseErrors = 0;
+void countParseError(errGrade grade, const char*, const char*, int) {
+  require(grade == USER_ERROR, "expected FF syntax diagnostic");
+  ++parseErrors;
+}
+void malformedInputs() {
+  // Preserve malformed-input ownership coverage through both production APIs.
+  // Failed parses must also preserve the destination graph and original IDs.
+  struct HandlerGuard {
+    charErrorHandler* previous = userCharErrorHandler;
+    HandlerGuard() { userCharErrorHandler = countParseError; }
+    ~HandlerGuard() { userCharErrorHandler = previous; }
+  } handler;
+  const char* invalid[] = {
+    "GRAPH \"bad\" = 1 \"partially created\";",
+    "GRAPH \"g\" = {$ FF_L \"unfinished type\"",
+    "GRAPH \"g\" = 1 {$ FF_C \"red\"",
+    "GRAPH \"g\" = 1 {$ FF_NI \"icon\" \"selected\" FF_NM \"mask\"",
+    "GRAPH \"g\" = 1 \"n\" 2 {$ FF_L \"unfinished type\"",
+    "GRAPH \"g\" = END \"unexpected lookahead\"",
+    "GRAPH \"g\" = 1 \"unterminated",
+    "GRAPH \"g\" = {$ CUSTOM 1 \"ignored\" 2"
+  };
+  for (int repeat = 0; repeat < 20; ++repeat) {
+    for (const char* input : invalid) {
+      for (bool file : {false, true}) {
+        FFGraph graph(YES);
+        graph->setName("keep");
+        FFNode original = graph->addNode(); original->setValue(123);
+        const int before = parseErrors;
+        if (file) {
+          TemporaryFile source(".g");
+          std::ofstream out(source.path); out << input; out.close();
+          require(out.good(), "write malformed FF fixture");
+          graph->load(String(source.path.string()), YES);
+        } else {
+          graph->load(String(input), NO);
+        }
+        require(parseErrors == before + 1, "malformed input reports an error");
+        require(graph->getNumNodes() == 1 && graph->getNumEdges() == 0 &&
+                graph->nodeWithValue(123) == original && graph->getName() == "keep",
+                "malformed input preserves original graph");
+      }
+    }
+    FFGraph recovered(YES);
+    const int before = parseErrors;
+    recovered->load("GRAPH \"recovered\" = 1 \"n\" 1 \"loop\"; END", NO);
+    require(parseErrors == before, "valid parse after failures");
+    checkCounts(recovered.operator->(), 1, 1);
   }
 }
 void sgraphRoundTrip() {
@@ -130,6 +185,7 @@ void sampleGraph() {
 }
 #endif
 int main() {
+  malformedInputs();
   sgraphRoundTrip();
   gmlRoundTrip();
 #ifdef FFGRAPH_TEST_SOURCE_DIR

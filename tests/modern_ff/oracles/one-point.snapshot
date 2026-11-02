@@ -1,0 +1,4 @@
+1 "one point" start none label ""
+node 1 "one" label "" 100 100 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+node 2 "two" label "" 100 100 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+edge 1 2 "short route" 1 label "" "black" points 1 7 8 0

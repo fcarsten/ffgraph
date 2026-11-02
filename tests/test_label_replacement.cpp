@@ -1,6 +1,6 @@
 // Replacement is an ownership transfer, but replacing an object with itself
 // must never free the object that remains in the graph.
-#include <cassert>
+#include "test_check.h"
 #include <ffgraph/FFGraph.h>
 #include <ffgraph/FFGraphClass.h>
 #include <ffgraph/FFNodeClass.h>
@@ -49,7 +49,7 @@ int main() {
     FFNodeLabel* nl = a->getLabel(ni);
     FFEdgeLabel* el = e->getLabel(ei);
     FFGraphLabel* gl = graph->getGraphLabel(gi);
-    assert(nl && el && gl);
+    FF_CHECK(nl && el && gl);
     const int nd = TestNodeLabel::destroyed;
     const int ed = TestEdgeLabel::destroyed;
     const int gd = TestGraphLabel::destroyed;
@@ -64,22 +64,22 @@ int main() {
     graph->setGraphLabel(gl);
     graph->setGraphLabel(graph->getGraphLabels());
 
-    assert(a->getLabel(ni) == nl);
-    assert(e->getLabel(ei) == el);
-    assert(graph->getGraphLabel(gi) == gl);
-    assert(TestNodeLabel::destroyed == nd);
-    assert(TestEdgeLabel::destroyed == ed);
-    assert(TestGraphLabel::destroyed == gd);
+    FF_CHECK(a->getLabel(ni) == nl);
+    FF_CHECK(e->getLabel(ei) == el);
+    FF_CHECK(graph->getGraphLabel(gi) == gl);
+    FF_CHECK(TestNodeLabel::destroyed == nd);
+    FF_CHECK(TestEdgeLabel::destroyed == ed);
+    FF_CHECK(TestGraphLabel::destroyed == gd);
 
     a->setLabel(new TestNodeLabel, ni);
     e->setLabel(new TestEdgeLabel, ei);
     graph->setGraphLabel(new TestGraphLabel, gi);
-    assert(TestNodeLabel::destroyed == nd + 1);
-    assert(TestEdgeLabel::destroyed == ed + 1);
-    assert(TestGraphLabel::destroyed == gd + 1);
+    FF_CHECK(TestNodeLabel::destroyed == nd + 1);
+    FF_CHECK(TestEdgeLabel::destroyed == ed + 1);
+    FF_CHECK(TestGraphLabel::destroyed == gd + 1);
   }
   // All graph-owned labels and their prototypes must be destroyed.
-  assert(TestNodeLabel::destroyed == 4); // prototype and 2 node clones + replacement
-  assert(TestEdgeLabel::destroyed == 3); // prototype, old edge label, replacement
-  assert(TestGraphLabel::destroyed == 2);
+  FF_CHECK(TestNodeLabel::destroyed == 4); // prototype and 2 node clones + replacement
+  FF_CHECK(TestEdgeLabel::destroyed == 3); // prototype, old edge label, replacement
+  FF_CHECK(TestGraphLabel::destroyed == 2);
 }
