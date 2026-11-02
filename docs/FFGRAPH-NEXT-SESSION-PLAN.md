@@ -129,10 +129,13 @@ The user subsequently prioritized an algorithm correctness review, recorded in
 implemented: the Sugiyama missing-graphics hang and Spring zero-force NaNs are
 fixed with permanent regressions. See
 `FFGRAPH-LAYOUT-TERMINATION-EQUILIBRIUM-FIXES.md` for actual verification.
-Remaining candidates are barycenter and configuration errors. Resolve weighted
-2D/3D and local-selection semantics before freezing corrected references for
-optimization. The initial review made no production algorithm changes; its
-follow-up fixes do not replace the existing layout oracles.
+The barycenter checkpoint is now implemented too: actual rectangular row counts,
+sortedness across zero slots, and the two-level stopping check are corrected.
+See `FFGRAPH-SUGIYAMA-BARYCENTER-CORRECTNESS.md` for independent matrix checks,
+the avoidable-crossing reproducer and complete validation. Existing frozen layout
+oracles were retained. Remaining candidates include weight-disable behavior,
+configuration errors and the weighted 2D/3D and local-selection contracts.
+Resolve those contracts before freezing corrected references for optimization.
 
 The manual-ASan default-layout prototype leak was reproduced and fixed, including
 the actual GUI `exit(0)` path. See `FFGRAPH-APPLICATION-DEFAULT-LAYOUT-OWNERSHIP.md`

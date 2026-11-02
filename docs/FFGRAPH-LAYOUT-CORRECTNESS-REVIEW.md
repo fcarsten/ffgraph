@@ -6,6 +6,13 @@ verification. The diagnostics/results below record the original `9b72553`
 behavior. For current verification use the new CTests; the historical manual
 diagnostic intentionally recognizes pre-fix failures.
 
+Findings 3 and 4, plus the two-level stopping-check finding below, are also
+corrected in `FFGRAPH-SUGIYAMA-BARYCENTER-CORRECTNESS.md`. Its seven-node public
+layout regression demonstrates the stopping defect's effect on real geometry.
+The old manual diagnostic's private `r_c` declaration was updated to compile
+with the corrected helper signature; its original failure expectations remain
+historical, not current correctness assertions.
+
 ## Scope and outcome
 
 Reviewed checkout `9b72553` on `import_and_layout_profiling`. Existing uncommitted

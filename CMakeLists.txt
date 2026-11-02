@@ -221,6 +221,7 @@ if(BUILD_TESTING)
       test_spring_numerics
       test_spring_equilibrium
       test_sugiyama_missing_graphics
+      test_sugiyama_barycenters
       test_sugiyama_crossings
       test_application_default_layouts
       test_sugiyama_layout)

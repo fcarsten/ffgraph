@@ -101,12 +101,15 @@ BOOL sorted (FFCoord *vector, int max)
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int i;
+  int previous = 0;
 
-  for (i = 1; i < max; i++)
-    if ((vector[i] > vector [i+1]) && 
-        (vector[i+1] != 0.0))	  
-      return (NO);
+  for (int i = 1; i <= max; i++)
+    if (vector[i] != 0.0)
+      {
+        if (previous != 0 && vector[previous] > vector[i])
+          return (NO);
+        previous = i;
+      }
     
   return (YES);
 }
@@ -369,7 +372,7 @@ int r_r (int *matrix1, int *matrix2, int max_r, int max_c,
   return (0);
 }
 
-int r_c (int *matrix1, int *matrix2, int max_c, int maxS)
+int r_c (int *matrix1, int *matrix2, int max_r, int max_c, int maxS)
 ///////////////////////////////////////////////////////////////////
 //                                                               //
 // Die Reihenfolge der Spalten mit gleichem Barycenter wird      //
@@ -388,7 +391,7 @@ int r_c (int *matrix1, int *matrix2, int max_c, int maxS)
 
   //  Spaltenbarycenter berechnen 
   for (i = 1; i <= max_c; i++)
-    b[i] = column_barycenter (matrix1, i, max_c, maxS);
+    b[i] = column_barycenter (matrix1, i, max_r, maxS);
 
   //  Reihenfolge der Spalten mit gleichem Barycenter umkehren 
   for (i = 1; i < max_c; i++)
@@ -597,6 +600,7 @@ int phase2_down (int *matrixarray, int matrixSize, int *nodeArray,
 	{
 	  test = r_c (matrixarray + level*matrixSize, 
 		      matrixarray + (level+1)*matrixSize,
+		      nodeArray[(newmaxS+1)*level],
 		      nodeArray[(newmaxS+1)*(level+1)], maxS);
 	  if (test != 0)
 	    return (1);
@@ -615,6 +619,7 @@ int phase2_down (int *matrixarray, int matrixSize, int *nodeArray,
   if (sorted (b, nodeArray[(newmaxS+1)*maxL]))
     {
       test = r_c (matrixarray + (maxL-1)*matrixSize, 0, 
+		  nodeArray[(newmaxS+1)*(maxL-1)],
 		  nodeArray[(newmaxS+1)*maxL], maxS);
       if (test != 0)
 	return (1);
@@ -1051,15 +1056,14 @@ int bc_2 (SNode *nodes, int maxS, int newmaxS, int *nodeArray)
           continue;
         }
 
-      test = r_c (m, 0, nodeArray[(newmaxS+1)], maxS);
+      test = r_c (m, 0, nodeArray[0], nodeArray[(newmaxS+1)], maxS);
       if (test != 0)
 	return (1);
 	
       for (i = 1; i <= nodeArray[0]; i++)
         b[i] = row_barycenter (m, i, nodeArray[(newmaxS+1)], maxS);
       
-      if ((sorted (b, nodeArray[0])) ||
-	  (sorted (b, nodeArray[(newmaxS+1)])))
+      if (sorted (b, nodeArray[0]))
         break;
     }
 

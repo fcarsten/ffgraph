@@ -12,7 +12,7 @@
 #include <stdexcept>
 #include <string>
 
-extern int r_c(int*, int*, int, int);
+extern int r_c(int*, int*, int, int, int);
 extern BOOL sorted(FFCoord*, int);
 
 namespace {
@@ -125,10 +125,10 @@ void rectangularTies() {
   int matrix[stride * stride] = {};
   matrix[1] = 101; matrix[2] = 102;
   // True barycenters: col1=(1+3)/2=2, col2=(1+4)/2=2.5.
-  // r_c considers only rows 1..2, incorrectly treating both as barycenter 1.
+  // Before the barycenter fix, r_c scanned only rows 1..2 and saw a false tie.
   matrix[1 * stride + 1] = matrix[3 * stride + 1] = 1;
   matrix[1 * stride + 2] = matrix[4 * stride + 2] = 1;
-  require(r_c(matrix, nullptr, 2, stride) == 0, "r_c failed");
+  require(r_c(matrix, nullptr, 4, 2, stride) == 0, "r_c failed");
   std::cout << "4x2 unequal barycenters (2,2.5): column identities " << matrix[1] << ',' << matrix[2] << '\n';
   require(matrix[1] == 102 && matrix[2] == 101, "rectangular false tie did not reproduce");
 }
