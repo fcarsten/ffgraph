@@ -125,7 +125,7 @@ foreach(target FFcontainer FFGraph FFlayout FFGraphic)
 endforeach()
 target_include_directories(FFGraphic PRIVATE ${XPM_INCLUDE_DIR})
 target_link_libraries(FFGraphic PUBLIC FFGraph PkgConfig::TK X11::X11 ${XPM_LIBRARY})
-add_executable(ffgraph ffmain.cc)
+add_executable(ffgraph ffmain.cc misc/FFDefaultLayouts.cc)
 target_compile_features(ffgraph PRIVATE cxx_std_17)
 # Preserve historical static archive resolution order.
 target_link_libraries(ffgraph PRIVATE FFGraph FFGraphic FFlayout FFcontainer PkgConfig::TK X11::X11 ${XPM_LIBRARY})
@@ -220,8 +220,12 @@ if(BUILD_TESTING)
       test_graph_layout_pass9
       test_spring_numerics
       test_sugiyama_crossings
+      test_application_default_layouts
       test_sugiyama_layout)
     add_executable(${test_name} tests/${test_name}.cpp)
+    if(test_name STREQUAL "test_application_default_layouts")
+      target_sources(${test_name} PRIVATE misc/FFDefaultLayouts.cc)
+    endif()
     target_compile_features(${test_name} PRIVATE cxx_std_17)
     target_link_libraries(${test_name} PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
@@ -243,6 +247,8 @@ if(BUILD_TESTING)
   endforeach()
   # Four 1,000-node layouts also run in instrumented builds.
   set_tests_properties(test_spring_numerics PROPERTIES TIMEOUT 90)
+  add_test(NAME test_application_default_layouts_exit COMMAND test_application_default_layouts --exit)
+  set_tests_properties(test_application_default_layouts_exit PROPERTIES TIMEOUT 30)
 
   # Exercise the public FFGraphClass::load() entry point independently of
   # direct event replay.

@@ -29,6 +29,7 @@
 #include <ffgraph/FFKaese.h>
 #include <ffgraph/FFRandom.h>
 #include <ffgraph/FFShow.h>
+#include "misc/FFDefaultLayouts.h"
 #include <vector>
 #include <cerrno>
 #include <cstdlib>
@@ -71,13 +72,8 @@ int main(int argc, char **argv)
  // As this is intended to be a graph editor I put layouters to all graphs
  // by default
 
- addDefaultGraphLabel(new FFSugi);
- addDefaultGraphLabel(new FFSpring);
+ ffgraph_app::registerDefaultLayouts();
  // addDefaultNodeLabel(new FFSubGraphLabel);
- addDefaultGraphLabel(new FFKaese);
- addDefaultGraphLabel(new FFRandom);
- addDefaultGraphLabel(new FFShow);
- addDefaultGraphLabel(new FFOrtho);
 //  addDefaultGraphLabel(new FFSpqr);
  
  // Is always false, but needed to make the linker include the symbol :(

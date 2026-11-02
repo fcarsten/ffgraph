@@ -222,6 +222,8 @@ protected:
   void removeGraphic();
 };
 
+// Default-label registration borrows its prototype. Callers retain ownership
+// and must keep it alive while graphs may clone it; each graph owns its clone.
 void addDefaultGraphLabel(class FFGraphLabel *);
 void addDefaultNodeLabel(class FFNodeLabel *);
 void addDefaultEdgeLabel(class FFEdgeLabel *);
