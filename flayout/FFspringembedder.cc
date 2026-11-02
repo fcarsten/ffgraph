@@ -516,7 +516,8 @@ void FFSpring::compute_nodePosition (FFPoint *forces,
       for (i = 1;  i <= anzN; i++)
         { 
 	  // Falls Knoten nicht festgehalten werden soll
-	  if (nodes[i].move)
+	  // Zero force means no displacement, even when temperature is zero.
+	  if (nodes[i].move && absForces[i] != 0.0)
 	    {
 	      if (absForces[i] < temperature)
 		{ 
@@ -541,7 +542,8 @@ void FFSpring::compute_nodePosition (FFPoint *forces,
       for (i = 1;  i <= anzN; i++)
         {
 	  // Falls Knoten nicht festgehalten werden soll
-	  if (nodes[i].move)
+	  // Do not normalize a zero force (0/0 at equilibrium).
+	  if (nodes[i].move && absForces[i] != 0.0)
 	    {
 	      if (absForces[i] < temperature)
 		{ 

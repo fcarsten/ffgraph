@@ -261,8 +261,8 @@ void finish_sgraph (FFGraph &graph, SNode *nodes, SEdge *edges,
 			(xDistance/2);
 		      ge->addPointAt (2, nodes[i].point);
 		    }
-		  i++;
 		}
+	      i++;
 	    }
 	  else
 	    {
@@ -371,8 +371,8 @@ void finish_sgraph (FFGraph &graph, SNode *nodes, SEdge *edges,
 		      
 		      ge->addPointAt (2, point);
 		    }
-		  i++;
 		}
+	      i++;
 	    }
 	  else
 	    {

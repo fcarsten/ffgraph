@@ -1,6 +1,6 @@
 # ffgraph — current modernisation plan
 
-Updated: 1 November 2026. The current Git checkout and its diffs are authoritative.
+Updated: 3 November 2026. The current Git checkout and its diffs are authoritative.
 This replaces the earlier roadmap that still recommended beginning Pass 8.
 Historical checkpoint reports retain their original test counts and scope.
 
@@ -94,7 +94,7 @@ The user chose profiling as the immediate next checkpoint. See
 sibling stack growth. The Spring coincident-star failure is now fixed by robust
 force norms and bounded movement; see `FFGRAPH-SPRING-NUMERICAL-STABILITY.md`.
 The iteration-control API remains a separate concern. Repeated FF/Rome ID scans
-and Sugiyama crossing counts are the measured performance candidates; preserve
+were measured performance candidates; preserve
 duplicate/merge/callback semantics before changing lookup behavior. The
 installation/portability work above remains a separate follow-up.
 
@@ -111,8 +111,32 @@ callback mutations prevent a naive cached index from preserving behavior.
 
 The Rome graph format is deprecated. Retain its loading compatibility and
 regression coverage; optimizing the Rome loader is low priority. Prefer FF/GML
-for new format work, and prioritize the shared Sugiyama crossing counter and
-FF-specific performance work over Rome loader optimization.
+for new format work, and prioritize shared layout and FF-specific performance
+work over Rome loader optimization.
+
+The November 3 refresh is in `FFGRAPH-LAYOUT-PERFORMANCE-NEXT-STEPS.md`.
+With the crossing counter optimized, sparse Sugiyama examples spend 91–92% of
+instructions in barycenter row/column sorting; the dense example instead spends
+94% in quadratic parallel-edge preprocessing. Spring spends approximately 94%
+in its weighted force calculation, with repeated point arithmetic a large cost.
+The optimization sequence is saved for later: private Spring force arithmetic,
+batched stable Sugiyama matrix permutations, then indexed parallel-edge detection.
+Each needs old/new semantic comparison before promotion. Approximate Spring
+repulsion remains a later explicit optional mode, not a default behavior change.
+
+The user subsequently prioritized an algorithm correctness review, recorded in
+`FFGRAPH-LAYOUT-CORRECTNESS-REVIEW.md`. The first corrective checkpoint is now
+implemented: the Sugiyama missing-graphics hang and Spring zero-force NaNs are
+fixed with permanent regressions. See
+`FFGRAPH-LAYOUT-TERMINATION-EQUILIBRIUM-FIXES.md` for actual verification.
+Remaining candidates are barycenter and configuration errors. Resolve weighted
+2D/3D and local-selection semantics before freezing corrected references for
+optimization. The initial review made no production algorithm changes; its
+follow-up fixes do not replace the existing layout oracles.
+
+The manual-ASan default-layout prototype leak was reproduced and fixed, including
+the actual GUI `exit(0)` path. See `FFGRAPH-APPLICATION-DEFAULT-LAYOUT-OWNERSHIP.md`
+for strict headless and actual GUI results, including remaining dependency leaks.
 
 ## Starting commands
 
