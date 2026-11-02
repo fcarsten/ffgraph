@@ -13,6 +13,7 @@ find_library(DL_LIBRARY NAMES dl)
 
 option(FFGRAPH_SANITIZERS "Enable address and undefined-behavior sanitizers (GCC/Clang)" OFF)
 option(FFGRAPH_GUI_STRESS_TESTS "Enable slower, large-graph Tk/Xvfb workflow tests" OFF)
+option(FFGRAPH_BUILD_PROFILER "Build the headless import/layout profiling driver" OFF)
 if(DEFINED FFGRAPH_ROME_BACKEND AND NOT FFGRAPH_ROME_BACKEND STREQUAL "modern")
   message(FATAL_ERROR "Legacy Rome has been retired. Clear obsolete options: "
     "cmake -U FFGRAPH_ROME_BACKEND -U FFGRAPH_ENABLE_MODERN_ROME_PILOT ...")
@@ -152,6 +153,21 @@ add_subdirectory(tests/modern_rome)
 target_sources(FFGraph PRIVATE fgraph/modern/rome_graph_adapter.cc)
 target_link_libraries(FFGraph PUBLIC ffgraph_modern_rome)
 install(TARGETS ffgraph_modern_rome ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+if(FFGRAPH_BUILD_PROFILER)
+  add_executable(profile_graphs tools/profile_graphs.cpp)
+  target_compile_features(profile_graphs PRIVATE cxx_std_17)
+  target_include_directories(profile_graphs PRIVATE fgraph/modern)
+  target_link_libraries(profile_graphs PRIVATE
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+  if(MATH_LIBRARY)
+    target_link_libraries(profile_graphs PRIVATE ${MATH_LIBRARY})
+  endif()
+  if(DL_LIBRARY)
+    target_link_libraries(profile_graphs PRIVATE ${DL_LIBRARY})
+  endif()
+endif()
 
 if(BUILD_TESTING)
   add_executable(test_check_ndebug tests/test_check_ndebug.cpp)

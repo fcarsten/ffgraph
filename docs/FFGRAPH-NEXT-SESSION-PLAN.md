@@ -89,6 +89,13 @@ Profile representative graph imports/layouts before changing containers for
 performance. Preserve API/format/GUI behavior, and make focused patches with
 regression tests and corresponding docs/FFGRAPH-*.md reports.
 
+The user chose profiling as the immediate next checkpoint. See
+`FFGRAPH-IMPORT-LAYOUT-PROFILING.md` for measurements, the corrected GML sibling
+stack growth, and the still-open Spring coincident-star numerical failure.
+Investigate that failure before optimizing layouts; repeated FF/Rome ID scans
+and Sugiyama crossing counts are the measured performance candidates. The
+installation/portability work above remains a separate follow-up.
+
 ## Starting commands
 
 ```sh

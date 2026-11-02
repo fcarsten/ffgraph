@@ -45,6 +45,22 @@ int main() {
   require(parse("").ok, "empty attribute list");  // legacy grammar accepts an empty attribute list
   require(parse("graph []").ok, "empty nested list");
   require(parse("graph [ id @ 7 ]").ok, "legacy unknown-byte skip");
+  // Sibling attributes must not consume one parser-stack slot per record.
+  // Right recursion previously hit Bison's 10,000-entry stack limit here.
+  std::string wide = "graph [ ";
+  constexpr int attributes = 20000;
+  for (int i = 0; i < attributes; ++i) wide += "value " + std::to_string(i) + " ";
+  wide += "]";
+  const auto wideResult = parse(wide);
+  require(wideResult.ok && wideResult.events.values.size() == attributes + 2,
+          "wide attribute list");
+  for (int i = 0; i < attributes; ++i) {
+    const auto& event = wideResult.events.values[i + 1];
+    require(event.kind == Event::Kind::Integer && event.key == "value" && event.integer == i,
+            "wide attributes retain source order");
+  }
+  wide.pop_back();
+  require(!parse(wide).ok, "wide truncated list cleanup");
   // Every invocation creates and destroys a scanner. Exercise successful,
   // empty, and rejected inputs repeatedly, including the error cleanup path.
   // With ASan enabled, this catches duplicate frees and scanner-buffer leaks.

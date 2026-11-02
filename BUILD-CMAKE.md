@@ -29,6 +29,24 @@ cmake --build --preset release --parallel
 ctest --preset release
 ```
 
+For reproducible headless import/layout profiling, build the optional driver:
+
+```sh
+cmake -S . -B build/profile -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DBUILD_TESTING=OFF -DFFGRAPH_BUILD_PROFILER=ON \
+  -DCMAKE_CXX_FLAGS=-fno-omit-frame-pointer
+cmake --build build/profile --target profile_graphs --parallel 2
+python3 tools/profile_graphs.py --binary build/profile/profile_graphs \
+  --output build/profile-smoke-local --sizes 100 --samples 5
+```
+
+Use a new output directory for each run. The runner writes raw samples,
+CSV/JSON summaries, input hashes and build metadata. Its default larger run
+currently exposes a Spring nonfinite-coordinate failure on a 1,000-node star;
+failures produce a nonzero exit status. These are measurements, with no timing
+thresholds in CTest. See [the profiling checkpoint](docs/FFGRAPH-IMPORT-LAYOUT-PROFILING.md)
+for phase definitions, larger runs, CPU profiles, results and remaining limits.
+
 Sanitizers (GCC/Clang):
 
 ```sh
