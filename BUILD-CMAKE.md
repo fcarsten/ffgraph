@@ -47,6 +47,10 @@ CSV/JSON summaries, input hashes and build metadata. The previously failing
 Failures produce a nonzero exit status. These are measurements, with no timing
 thresholds in CTest. See [the profiling checkpoint](docs/FFGRAPH-IMPORT-LAYOUT-PROFILING.md)
 for phase definitions, larger runs, CPU profiles, results and remaining limits.
+The [hotspot follow-up](docs/FFGRAPH-PROFILING-HOTSPOTS-CHECKPOINT.md) adds import
+scaling, captured Sugiyama matrices and the optional `profile_crossings`
+executable. Its alternative counter is a profiling prototype; the application
+continues to use the existing implementation.
 
 Sanitizers (GCC/Clang):
 

@@ -98,6 +98,15 @@ and Sugiyama crossing counts are the measured performance candidates; preserve
 duplicate/merge/callback semantics before changing lookup behavior. The
 installation/portability work above remains a separate follow-up.
 
+The profiling continuation is recorded in
+`FFGRAPH-PROFILING-HOTSPOTS-CHECKPOINT.md`: FF/Rome import growth is approximately
+quadratic; GML is approximately linear on the measured sparse graphs. A tool-only
+crossing-count prototype agrees with independent oracles and captured real
+matrices. Promote that isolated optimization in a separate patch, with permanent
+regressions and actual end-to-end layout comparisons before claiming app gains.
+Production ID lookup remains unchanged because duplicate selection and direct
+callback mutations prevent a naive cached index from preserving behavior.
+
 ## Starting commands
 
 ```sh

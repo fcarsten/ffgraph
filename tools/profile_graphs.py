@@ -26,6 +26,9 @@ def edges_for(shape, size):
         return [(i, i + 1) for i in range(1, size)]
     if shape == "star":
         return [(1, i) for i in range(2, size + 1)]
+    if shape == "bipartite":
+        return [(i, j) for i in range(1, size // 2 + 1)
+                for j in range(size // 2 + 1, size + 1)]
     width = math.isqrt(size)
     return [(i, target) for i in range(1, size + 1)
             for target in (i + width, i + width + 1)
@@ -68,7 +71,7 @@ def main():
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--sizes", type=int, nargs="+", default=[100, 1000])
-    parser.add_argument("--shapes", choices=["chain", "star", "layered"], nargs="+",
+    parser.add_argument("--shapes", choices=["chain", "star", "layered", "bipartite"], nargs="+",
                         default=["chain", "star", "layered"])
     parser.add_argument("--phases", choices=["import", "parse", "replay", "layout"],
                         nargs="+", default=["import", "parse", "replay", "layout"])
@@ -76,6 +79,8 @@ def main():
                         default=["random", "spring", "sugi"])
     parser.add_argument("--layout-max-nodes", type=int, default=1000)
     parser.add_argument("--quality", type=int, choices=range(1, 11), default=2)
+    parser.add_argument("--sugi-crossing-alg", type=int, choices=[0, 1], default=0,
+                        help="0=production default; 1=diagnostic bypass via retired bubbling selector")
     parser.add_argument("--samples", type=int, default=5)
     parser.add_argument("--timeout", type=float, default=180)
     for fmt in ("ff", "gml", "rome"):
@@ -84,6 +89,8 @@ def main():
     if (any(n < 2 or n > 100000 for n in args.sizes) or args.samples < 1 or
             args.samples > 10000 or args.layout_max_nodes < 1 or args.timeout <= 0):
         parser.error("invalid workload limits")
+    if "bipartite" in args.shapes and any(n > 512 for n in args.sizes):
+        parser.error("complete bipartite workloads are limited to 512 nodes")
     binary = args.binary.resolve(strict=True)
     root = Path(__file__).resolve().parents[1]
     output = args.output.resolve()
@@ -114,7 +121,12 @@ def main():
         binary=str(binary), binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),
         source_sha256={str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
                        for p in (root / "tools/profile_graphs.cpp", Path(__file__).resolve(),
-                                 root / "fgraph/modern/modern_gml.y")},
+                                 root / "fgraph/modern/modern_gml.y",
+                                 root / "fgraph/FFGraphClass.cc",
+                                 root / "fgraph/modern/ff_graph_adapter.cc",
+                                 root / "fgraph/modern/rome_graph_adapter.cc",
+                                 root / "flayout/FFreduce_crossing.cc",
+                                 root / "flayout/FFspringembedder.cc")},
         cmake_cache=(binary.parent / "CMakeCache.txt").read_text(),
         workloads=workloads)
     (output / "manifest.json").write_text(json.dumps(metadata, indent=2) + "\n")
@@ -128,6 +140,8 @@ def main():
                     name = f'{work["name"]}-{work["format"]}-{phase}-{layout or "none"}'
                     row = dict(case=name, name=work["name"], format=work["format"],
                                phase=phase, layout=layout)
+                    if layout == "sugi":
+                        row["sugi_crossing_alg"] = args.sugi_crossing_alg
                     if phase == "layout" and work.get("expected_nodes", 0) > args.layout_max_nodes:
                         row.update(status="skipped", reason="layout node limit")
                         summaries.append(row)
@@ -138,6 +152,8 @@ def main():
                         cmd.extend(["--oracle", work["oracle"]])
                     if layout:
                         cmd.extend(["--layout", layout, "--layout-max-nodes", str(args.layout_max_nodes)])
+                    if layout == "sugi":
+                        cmd.extend(["--sugi-crossing-alg", str(args.sugi_crossing_alg)])
                     try:
                         run = subprocess.run(cmd, capture_output=True, text=True, timeout=args.timeout)
                         (output / f"{name}.stderr").write_text(run.stderr)

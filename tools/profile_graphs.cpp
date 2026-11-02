@@ -152,6 +152,7 @@ int main(int argc, char** argv) {
     std::cout << "profile_graphs --phase import|parse|replay|layout --input FILE\n"
                  "  [--repeat N] [--oracle TOPOLOGY.tsv]\n"
                  "  [--layout random|spring|sugi] [--quality 1..10]\n"
+                 "  [--sugi-crossing-alg 0|1]\n"
                  "  [--layout-max-nodes N]\n"
                  "One warmup precedes N measured fresh-graph runs (default 3).\n"
                  "Use .g, .gml or .rome filenames; output is JSON Lines.\n";
@@ -160,7 +161,8 @@ int main(int argc, char** argv) {
   try {
     std::map<std::string, std::string> options;
     const std::set<std::string> keys = {
-      "--phase", "--input", "--repeat", "--layout", "--quality", "--oracle", "--layout-max-nodes"};
+      "--phase", "--input", "--repeat", "--layout", "--quality", "--oracle", "--layout-max-nodes",
+      "--sugi-crossing-alg"};
     for (int i = 1; i < argc; i += 2) {
       require(i + 1 < argc && keys.count(argv[i]), "expected --option value pairs");
       require(options.emplace(argv[i], argv[i + 1]).second, "duplicate option");
@@ -174,6 +176,9 @@ int main(int argc, char** argv) {
     const int repeats = options.count("--repeat") ? std::stoi(options.at("--repeat")) : 3;
     const int quality = options.count("--quality") ? std::stoi(options.at("--quality")) : 2;
     const auto algorithm = options.count("--layout") ? options.at("--layout") : "spring";
+    const int crossingAlg = options.count("--sugi-crossing-alg")
+                          ? std::stoi(options.at("--sugi-crossing-alg")) : 0;
+    require(crossingAlg == 0 || crossingAlg == 1, "invalid Sugiyama crossing algorithm");
     const int layoutMax = options.count("--layout-max-nodes")
                         ? std::stoi(options.at("--layout-max-nodes")) : 1000;
     require(repeats > 0 && repeats <= 10000 && quality >= 1 && quality <= 10, "invalid limits");
@@ -220,7 +225,11 @@ int main(int argc, char** argv) {
           spring->setAnimation(NO);
           springCap = std::max(30, 5000 * quality / graph->getNumNodes());
           layout = spring;
-        } else if (algorithm == "sugi") layout = new Headless<FFSugi>;
+        } else if (algorithm == "sugi") {
+          auto* sugi = new Headless<FFSugi>;
+          require(sugi->setCrossingAlg(crossingAlg), "Sugiyama crossing algorithm rejected");
+          layout = sugi;
+        }
         else layout = new FFRandom;
         graph->addGraphLabel(layout); // Graph owns this label.
       }
@@ -254,7 +263,8 @@ int main(int argc, char** argv) {
         std::cout << std::setprecision(9) << "{\"sample\":" << sample
                   << ",\"wall_ms\":" << ms << ",\"peak_rss_kib\":" << peak
                   << ",\"nodes\":" << actual.nodes.size() << ",\"edges\":" << actual.edges.size()
-                  << ",\"spring_iteration_cap\":" << springCap << "}\n";
+                  << ",\"spring_iteration_cap\":" << springCap
+                  << ",\"sugi_crossing_alg\":" << crossingAlg << "}\n";
       }
     }
   } catch (const std::exception& error) {
