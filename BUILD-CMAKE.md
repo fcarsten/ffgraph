@@ -154,6 +154,19 @@ graphs, merge behavior and rejected-input state. Modern rejection leaves the
 graph unchanged; legacy Rome still permits partial imports. See
 `docs/FFGRAPH-PASS12-ROME-PILOT-CHECKPOINT.md` for all observed differences.
 
+To repeat the checks against a local external collection:
+
+```sh
+cmake --preset release -DFFGRAPH_ENABLE_MODERN_ROME_PILOT=ON \
+  -DFFGRAPH_ROME_CORPUS_DIR=../demographs/rome
+cmake --build --preset release --parallel 2
+ctest --preset release -R '^test_rome_external_' --output-on-failure
+```
+
+The path is optional and machine-local. Every file is checked; malformed inputs
+are tested for rejection and state preservation. Results for the supplied
+collection are in `docs/FFGRAPH-PASS12-ROME-REAL-CORPUS.md`.
+
 The generated parser can also be built/tested without Tcl/Tk, X11 or ffgraph:
 
 ```sh

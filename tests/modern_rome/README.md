@@ -12,6 +12,7 @@ Tests registered with the pilot enabled:
 | test_rome_compatibility_pass12 | Eight accepted fixtures × graphics/bare × fresh/merge × legacy stream/string/public file loading × LF/CRLF/no final LF = 288 comparisons, plus duplicate lookup, ID-changing callback and existing-node reference cases |
 | test_rome_generated_oracle_pass12 | 32 deterministic graph structures with/without graphics, each through three legacy entry points; 192 differential comparisons and independent source-graph checks |
 | test_rome_modern_failures_pass12 | Legacy partial imports versus modern unchanged destination, rejected-text cleanup, range/NUL rejection and demonstrated legacy long-line truncation |
+| test_rome_corpus_smoke_pass12 / test_rome_corpus_matrix_smoke_pass12 | Exercise the external-corpus reader, independent row oracle, accepted/empty graphs, tool-error placeholders and truncated edges without needing external data |
 
 The existing `test_rome_baseline_pass12` remains registered independently of the
 option. All checks stay active in Release and all pilot tests are headless.
@@ -55,3 +56,46 @@ GNU Bison 3.8+, Flex 2.6+, CMake, C++17 and a threads-capable C++ runtime are
 required. Sanitizer commands use GCC/Clang. Generated output lives in the build
 directory. See `docs/FFGRAPH-PASS12-ROME-PILOT-CHECKPOINT.md` for results, semantic
 differences and the remaining integration gate.
+
+## External Rome collection
+
+The supplied collection at `/home/carsten/work/demographs/rome` has now been
+tested; see `docs/FFGRAPH-PASS12-ROME-REAL-CORPUS.md`. It remains outside Git.
+No download, dataset copy or machine-specific path is required by normal CI.
+
+```sh
+cmake --preset release -DFFGRAPH_ENABLE_MODERN_ROME_PILOT=ON \
+  -DFFGRAPH_ROME_CORPUS_DIR=/home/carsten/work/demographs/rome
+cmake --build --preset release --parallel 2
+ctest --preset release -R '^test_rome_external_' --output-on-failure
+```
+
+The optional path registers two headless CTests: `test_rome_external_corpus_pass12`
+and `test_rome_external_matrix_pass12`, with a 30-minute timeout each. The full
+mode checks every regular file recursively, including malformed files and
+duplicate copies. The matrix picks the sparsest/densest graph in each top-level
+family and actual node-count decade, plus every rejected file, then exercises
+graphics/bare, fresh/merge and three legacy entry points. Selection is
+deterministic; ties use sorted paths. No extension filter or rejection blacklist
+is used. Set `FFGRAPH_ROME_CORPUS_DIR` to an empty value to remove the optional
+external-data registration from that build directory.
+
+Both modes can also run directly:
+
+```sh
+build/release/tests/modern_rome/test_rome_compatibility_pass12 \
+  --corpus /home/carsten/work/demographs/rome
+ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+build/asan/tests/modern_rome/test_rome_compatibility_pass12 \
+  --corpus-matrix /home/carsten/work/demographs/rome
+```
+
+The independent oracle supports ordinary two/four-integer Rome rows, blank lines
+and column-one comments. It models the valid prefix of malformed input and
+compares that with legacy partial loading; modern failure must leave the graph
+unchanged. It checks IDs, directed endpoints/multiplicity, adjacency counts,
+weights and complete graph snapshots. It requires unique node IDs and rejects
+unsafe out-of-range legacy conversion inputs before invoking that parser.
+Permissive legacy punctuation quirks and duplicate-ID behavior remain covered
+by the original synthetic tests, rather than by this stricter external oracle.

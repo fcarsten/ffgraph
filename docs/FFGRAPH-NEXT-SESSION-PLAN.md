@@ -59,10 +59,11 @@ locations and long-line handling. Start with the pilot report, baseline report,
 the actual grammar/scanner sources and `FFGraphClass::load()`. Keep the legacy
 backend available; preserve the tested scanner cleanup and FF/GML behavior.
 
-1. Extend the synthetic corpus with representative real Rome graphs when
-   available. Freeze independent graph expectations before replacing any code.
-   Cover duplicate IDs, ignored metadata, absent endpoints, forward references,
-   loops, parallel edges, comments, CRLF, EOF, numeric limits and malformed input.
+1. Real-corpus verification is now covered in `FFGRAPH-PASS12-ROME-REAL-CORPUS.md`:
+   all 13,767 supplied files and a 1,320-case matrix, including 50 malformed
+   inputs. Keep the collection external and use FFGRAPH_ROME_CORPUS_DIR to
+   register repeatable local tests. Retain synthetic edge cases for duplicate
+   IDs, absent endpoints, loops, parallel edges, CRLF/EOF and numeric limits.
 2. The pilot already uses owned typed records, checked integers and per-call
    reentrant scanner state. It passes generated-parser tests, live comparisons
    with the real legacy implementation and independent graph oracles. Retain

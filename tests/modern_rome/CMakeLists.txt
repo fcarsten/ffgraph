@@ -50,5 +50,23 @@ if(TARGET FFGraph)
     add_test(NAME test_rome_modern_failures_pass12 COMMAND test_rome_compatibility_pass12 --failures)
     set_tests_properties(test_rome_compatibility_pass12 test_rome_generated_oracle_pass12
       test_rome_modern_failures_pass12 PROPERTIES LABELS headless TIMEOUT 120)
+    add_test(NAME test_rome_corpus_smoke_pass12
+      COMMAND test_rome_compatibility_pass12 --corpus "${CMAKE_CURRENT_LIST_DIR}/corpus_smoke")
+    add_test(NAME test_rome_corpus_matrix_smoke_pass12
+      COMMAND test_rome_compatibility_pass12 --corpus-matrix "${CMAKE_CURRENT_LIST_DIR}/corpus_smoke")
+    set_tests_properties(test_rome_corpus_smoke_pass12 test_rome_corpus_matrix_smoke_pass12
+      PROPERTIES LABELS headless TIMEOUT 120)
+    set(FFGRAPH_ROME_CORPUS_DIR "" CACHE PATH "Optional external Rome corpus (not downloaded or vendored)")
+    if(FFGRAPH_ROME_CORPUS_DIR)
+      if(NOT IS_DIRECTORY "${FFGRAPH_ROME_CORPUS_DIR}")
+        message(FATAL_ERROR "FFGRAPH_ROME_CORPUS_DIR is not a directory: ${FFGRAPH_ROME_CORPUS_DIR}")
+      endif()
+      add_test(NAME test_rome_external_corpus_pass12
+        COMMAND test_rome_compatibility_pass12 --corpus "${FFGRAPH_ROME_CORPUS_DIR}")
+      add_test(NAME test_rome_external_matrix_pass12
+        COMMAND test_rome_compatibility_pass12 --corpus-matrix "${FFGRAPH_ROME_CORPUS_DIR}")
+      set_tests_properties(test_rome_external_corpus_pass12 test_rome_external_matrix_pass12
+        PROPERTIES LABELS headless TIMEOUT 1800)
+    endif()
   endif()
 endif()

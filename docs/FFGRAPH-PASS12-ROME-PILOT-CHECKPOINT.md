@@ -1,5 +1,9 @@
 # Pass 12 — isolated GNU Bison/Flex Rome pilot
 
+Follow-up: [real-corpus verification](FFGRAPH-PASS12-ROME-REAL-CORPUS.md)
+subsequently exercises the supplied external Rome collection. The results below
+describe the earlier synthetic-corpus pilot checkpoint.
+
 Date: 1 November 2026. Branch: `pass12-modern-rome-parser`.
 Starting commit: `11a9304` (`Refactor test assertions to use FF_CHECK macro`).
 The checkout was clean. Read the Rome baseline, current roadmap, actual CMake
