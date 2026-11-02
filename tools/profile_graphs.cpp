@@ -11,6 +11,7 @@
 #include "ff_graph_adapter.h"
 #include "gml_graph_adapter.h"
 #include "rome_graph_adapter.h"
+#include "../tests/sugiyama_layout_snapshot.h"
 
 #include <algorithm>
 #include <chrono>
@@ -153,6 +154,7 @@ int main(int argc, char** argv) {
                  "  [--repeat N] [--oracle TOPOLOGY.tsv]\n"
                  "  [--layout random|spring|sugi] [--quality 1..10]\n"
                  "  [--sugi-crossing-alg 0|1]\n"
+                 "  [--dimension 2|3] [--snapshot FILE]\n"
                  "  [--layout-max-nodes N]\n"
                  "One warmup precedes N measured fresh-graph runs (default 3).\n"
                  "Use .g, .gml or .rome filenames; output is JSON Lines.\n";
@@ -162,12 +164,15 @@ int main(int argc, char** argv) {
     std::map<std::string, std::string> options;
     const std::set<std::string> keys = {
       "--phase", "--input", "--repeat", "--layout", "--quality", "--oracle", "--layout-max-nodes",
-      "--sugi-crossing-alg"};
+      "--sugi-crossing-alg", "--dimension", "--snapshot"};
     for (int i = 1; i < argc; i += 2) {
       require(i + 1 < argc && keys.count(argv[i]), "expected --option value pairs");
       require(options.emplace(argv[i], argv[i + 1]).second, "duplicate option");
     }
     const auto phase = options.at("--phase");
+    const int dimension = options.count("--dimension") ? std::stoi(options.at("--dimension")) : 2;
+    require(dimension == 2 || dimension == 3, "invalid dimension");
+    require(!options.count("--snapshot") || phase == "layout", "snapshots require layout phase");
     const auto path = std::filesystem::absolute(options.at("--input"));
     const auto format = path.extension().string();
     require(format == ".g" || format == ".gml" || format == ".rome", "unsupported extension");
@@ -208,6 +213,7 @@ int main(int argc, char** argv) {
       FFLayoutLabel* layout = nullptr;
       Incidence before;
       std::set<FFNode> nodesBefore;
+      std::map<FFNode, int> snapshotIds;
       int springCap = 0;
       if (phase == "layout") {
         graph->load(String(path.string()), YES);
@@ -219,15 +225,18 @@ int main(int argc, char** argv) {
         before = incidence(*graph.operator->());
         for (Pix p = graph->allNodes().first(); p; graph->allNodes().next(p))
           nodesBefore.insert(graph->allNodes()(p));
+        if (options.count("--snapshot")) snapshotIds = ffgraph_test::layoutIds(*graph.operator->());
         if (algorithm == "spring") {
           auto* spring = new Headless<FFSpring>;
           require(spring->setQuality(quality), "spring quality rejected");
           spring->setAnimation(NO);
+          spring->setDimension(dimension);
           springCap = std::max(30, 5000 * quality / graph->getNumNodes());
           layout = spring;
         } else if (algorithm == "sugi") {
           auto* sugi = new Headless<FFSugi>;
           require(sugi->setCrossingAlg(crossingAlg), "Sugiyama crossing algorithm rejected");
+          sugi->setDimension(dimension);
           layout = sugi;
         }
         else layout = new FFRandom;
@@ -258,6 +267,13 @@ int main(int argc, char** argv) {
         require(actual == expected, "import topology mismatch");
       }
       if (sample >= 0) {
+        if (sample == 0 && options.count("--snapshot")) {
+          const auto snapshotPath = options.at("--snapshot");
+          require(!std::filesystem::exists(snapshotPath), "snapshot already exists");
+          std::ofstream out(snapshotPath);
+          ffgraph_test::writeLayout(out, ffgraph_test::captureLayout(*graph.operator->(), snapshotIds));
+          require(bool(out), "snapshot write failed");
+        }
         const long peak = peakRssKiB();
         const auto ms = std::chrono::duration<double, std::milli>(finish - start).count();
         std::cout << std::setprecision(9) << "{\"sample\":" << sample

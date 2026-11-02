@@ -49,8 +49,9 @@ thresholds in CTest. See [the profiling checkpoint](docs/FFGRAPH-IMPORT-LAYOUT-P
 for phase definitions, larger runs, CPU profiles, results and remaining limits.
 The [hotspot follow-up](docs/FFGRAPH-PROFILING-HOTSPOTS-CHECKPOINT.md) adds import
 scaling, captured Sugiyama matrices and the optional `profile_crossings`
-executable. Its alternative counter is a profiling prototype; the application
-continues to use the existing implementation.
+executable. The validated counting approach is now used by the normal application;
+see [the production optimization checkpoint](docs/FFGRAPH-SUGIYAMA-CROSSING-COUNTER-OPTIMIZATION.md)
+for measured whole-layout gains and compatibility details.
 
 Sanitizers (GCC/Clang):
 
@@ -155,6 +156,10 @@ Known Tk/fontconfig leaks can fail strict leak-enabled GUI sanitizer checks;
 see `docs/FFGRAPH-PASS12-FF-LEGACY-RETIREMENT.md` for measured results and limits.
 
 ## Rome parser (GNU Bison/Flex)
+
+The Rome graph format is **deprecated**. Loading remains supported and tested;
+loader performance optimization is low priority. Prefer FF/sgraph or GML for
+new graph files.
 
 Modern Rome is now the only production Rome importer, including in the GUI.
 No pilot flag or backend selector is needed. Filename dispatch is preserved:

@@ -1,5 +1,9 @@
 # Modern Rome production parser and regression tests
 
+The Rome graph format is **deprecated**. Existing imports and compatibility
+coverage are retained; optimizing its loader is low priority. Prefer FF/sgraph
+or GML for new graph files and new format work.
+
 GNU Bison/Flex Rome is the sole production implementation. It is generated in
 all CMake builds, including BUILD_TESTING=OFF, and used by normal GUI/file loads.
 There is no pilot flag, selectable legacy backend or automatic fallback.

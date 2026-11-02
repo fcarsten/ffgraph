@@ -102,10 +102,17 @@ The profiling continuation is recorded in
 `FFGRAPH-PROFILING-HOTSPOTS-CHECKPOINT.md`: FF/Rome import growth is approximately
 quadratic; GML is approximately linear on the measured sparse graphs. A tool-only
 crossing-count prototype agrees with independent oracles and captured real
-matrices. Promote that isolated optimization in a separate patch, with permanent
-regressions and actual end-to-end layout comparisons before claiming app gains.
+matrices. The production optimization is now implemented; see
+`FFGRAPH-SUGIYAMA-CROSSING-COUNTER-OPTIMIZATION.md` for permanent regression
+oracles, full-width count comparisons, measured layout gains and the existing
+allocator-dependent geometry limitation on historical sparse-ID inputs.
 Production ID lookup remains unchanged because duplicate selection and direct
 callback mutations prevent a naive cached index from preserving behavior.
+
+The Rome graph format is deprecated. Retain its loading compatibility and
+regression coverage; optimizing the Rome loader is low priority. Prefer FF/GML
+for new format work, and prioritize the shared Sugiyama crossing counter and
+FF-specific performance work over Rome loader optimization.
 
 ## Starting commands
 

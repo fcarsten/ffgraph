@@ -38,12 +38,16 @@ class MatrixCalls(gdb.Breakpoint):
     def stop(self):
         try:
             frame = gdb.newest_frame()
-            rows, cols, stride = (int(frame.read_var(v)) for v in ("r", "c", "maxS"))
+            rows, cols = (int(frame.read_var(v)) for v in ("r", "c"))
+            pitch = frame.read_var("maxS")
+            # Optimized fast returns need neither stride nor a matrix pointer.
+            # reduce_crossings increments its incoming maxS before calling us.
+            stride = reductions[-1]["maxS"] + 1 if pitch.is_optimized_out else int(pitch)
             key = (rows, cols, stride)
             histogram[key] += 1
             if reductions:
                 reductions[-1]["counter_calls"] += 1
-            if key in captured or rows <= 0 or cols <= 0:
+            if key in captured or rows < 2 or cols < 2:
                 return False
             if len(captured) == 3 and rows * cols <= min(r * c for r, c, _ in captured):
                 return False
@@ -61,7 +65,7 @@ class MatrixCalls(gdb.Breakpoint):
             if len(captured) > 3:
                 del captured[min(captured, key=lambda k: k[0] * k[1])]
         except Exception as error:
-            errors.append(str(error))
+            errors.append(str(error) + "; use a Debug build if arguments were optimized out")
             self.enabled = False
         return False
 
@@ -69,7 +73,10 @@ class MatrixCalls(gdb.Breakpoint):
 gdb.execute("set pagination off")
 gdb.execute("set debuginfod enabled off")
 gdb.events.exited.connect(lambda event: exit_codes.append(getattr(event, "exit_code", None)))
-breakpoint = MatrixCalls("number_of_crossings")
+counter_symbol = ("ffgraph_sugiyama::countCrossings"
+                  if gdb.lookup_global_symbol("ffgraph_sugiyama::countCrossings")
+                  else "number_of_crossings")
+breakpoint = MatrixCalls(counter_symbol)
 reduction_breakpoint = ReductionCalls("reduce_crossings")
 gdb.execute("run")
 breakpoint.delete()
@@ -85,6 +92,7 @@ for (rows, cols, stride), values in sorted(captured.items()):
     calls=sum(histogram.values()),
     histogram=[dict(rows=r, cols=c, stride=s, calls=n)
                for (r, c, s), n in sorted(histogram.items())],
-    captured=summaries, reductions=reductions, exit_codes=exit_codes, errors=errors), indent=2) + "\n")
+    captured=summaries, reductions=reductions, counter_symbol=counter_symbol,
+    exit_codes=exit_codes, errors=errors), indent=2) + "\n")
 if errors or exit_codes != [0]:
     raise gdb.GdbError(f"matrix capture failed: {errors}, exits={exit_codes}")

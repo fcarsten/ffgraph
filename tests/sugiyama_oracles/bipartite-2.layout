@@ -1,0 +1,16 @@
+graph "bipartite" 1 6 9
+node 1 "node1" 0 0 0 1
+node 2 "node2" 110 0 0 1
+node 3 "node3" 220 0 0 1
+node 4 "node4" 110 160 0 1
+node 5 "node5" 220 160 0 1
+node 6 "node6" 330 160 0 1
+edge 1 4 "edge1" 1.5 2 0 0 0 1 110 160 0 1
+edge 1 5 "edge2" 2 2 0 0 0 1 220 160 0 1
+edge 1 6 "edge3" 1 2 0 0 0 1 330 160 0 1
+edge 2 4 "edge4" 1.5 2 110 0 0 1 110 160 0 1
+edge 2 5 "edge5" 2 2 110 0 0 1 220 160 0 1
+edge 2 6 "edge6" 1 2 110 0 0 1 330 160 0 1
+edge 3 4 "edge7" 1.5 2 220 0 0 1 110 160 0 1
+edge 3 5 "edge8" 2 2 220 0 0 1 220 160 0 1
+edge 3 6 "edge9" 1 2 220 0 0 1 330 160 0 1

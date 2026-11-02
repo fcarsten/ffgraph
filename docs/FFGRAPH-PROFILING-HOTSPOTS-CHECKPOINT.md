@@ -1,5 +1,10 @@
 # Profiling continuation: imports and crossing counts — 2026-11-02
 
+Historical profiling results below precede production integration. See
+`FFGRAPH-SUGIYAMA-CROSSING-COUNTER-OPTIMIZATION.md` for the promoted counter,
+regressions, whole-layout measurements and compatibility limits. Rome format
+support is now deprecated; its loader optimization is low priority.
+
 ## Scope and checkout
 
 The user requested further profiling after the Spring stability fix. This

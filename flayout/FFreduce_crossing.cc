@@ -4,6 +4,13 @@
 */
 
 #include <ffgraph/FFreduce_crossing.h>
+#include "FFcrossing_count.h"
+#include <algorithm>
+#include <limits>
+#include <vector>
+#ifdef FFGRAPH_VERIFY_SUGIYAMA_COUNTS
+#include <stdexcept>
+#endif
 
 void make_matrix (SNode *nodes, int level, int *matrix, int maxS, 
 		  int newmaxS, int *nodeArray)
@@ -189,31 +196,52 @@ FFCoord column_barycenter (int *matrix, int j, int max, int maxS)
     return ((FFCoord) r1 / (FFCoord) r2);
 }
 
-int number_of_crossings (int *matrix, int r, int c, int maxS)
-///////////////////////////////////////////////////////////////////
-//                                                               //
-// Berechnet Anzahl der Ueberkreuzungen ("r" Anzahl der Zeilen,  //
-// "c" Anzahl der Spalten).                                      //
-// (Hier koennte man mit einem aufwendigeren Verfahren noch      //
-// Laufzeit rausholen ...)                                       //
-//                                                               //
-///////////////////////////////////////////////////////////////////
+namespace ffgraph_sugiyama {
+CrossingCount countCrossings(const int* matrix, int r, int c, int maxS)
 {
-  int j, 
-    k, 
-    alpha, 
-    beta, 
-    result = 0;
+  if (r < 2 || c < 2) return 0;
+  std::vector<CrossingCount> columns(static_cast<std::size_t>(c) + 1, 0);
+  CrossingCount previousEdges = 0, result = 0;
+  for (int row = 1; row <= r; ++row) {
+    const int* cells = matrix + static_cast<std::size_t>(row) * maxS;
+    auto right = previousEdges;
+    for (int col = 1; col <= c; ++col) {
+      right -= columns[col];
+      // Count earlier-row endpoints strictly to the right. Equal columns
+      // share a target and do not cross; only cells equal to 1 are edges.
+      if (cells[col] == 1) result += right;
+    }
+    // Update after the entire row so shared-source edges cannot cross.
+    for (int col = 1; col <= c; ++col)
+      if (cells[col] == 1) { ++columns[col]; ++previousEdges; }
+  }
+#ifdef FFGRAPH_VERIFY_SUGIYAMA_COUNTS
+  // Diagnostic builds compare every actual matrix state with the former
+  // pair enumeration. This code is absent from normal application builds.
+  CrossingCount reference = 0;
+  for (int upper = 1; upper < r; ++upper)
+    for (int lower = upper + 1; lower <= r; ++lower)
+      for (int left = 1; left < c; ++left)
+        if (matrix[lower * maxS + left] == 1)
+          for (int right = left + 1; right <= c; ++right)
+            if (matrix[upper * maxS + right] == 1) ++reference;
+  if (reference != result) throw std::logic_error("Sugiyama crossing counter disagrees with reference");
+#endif
+  return result;
+}
+}
 
-  for (j = 1; j <= r-1; j++)
-    for (k = j+1; k <= r; k++)
-      for (alpha = 1; alpha <= c-1; alpha++)
-        if (matrix[k*maxS + alpha] == 1) 
-          for (beta = alpha+1; beta <= c; beta++)
-            if (matrix[j*maxS + beta] == 1) 
-              result++;
+namespace {
+int narrowCrossings(ffgraph_sugiyama::CrossingCount count) {
+  // Preserve the legacy int helper signatures without signed overflow.
+  // Layout decisions use the full-width counts, not these saturated wrappers.
+  return static_cast<int>(std::min(count,
+    static_cast<ffgraph_sugiyama::CrossingCount>(std::numeric_limits<int>::max())));
+}
+}
 
-  return (result);
+int number_of_crossings(int* matrix, int r, int c, int maxS) {
+  return narrowCrossings(ffgraph_sugiyama::countCrossings(matrix, r, c, maxS));
 }
 
 void exch_double (FFCoord *x1, FFCoord *x2)
@@ -687,9 +715,8 @@ void copy_matrixarray (int *a1, int *a2, int maxS, int maxL,
     copy_matrix (a1 + i*matrixSize, a2 + i*matrixSize, maxS);
 }
 
-int number_of_crossings_matrixarray (int *a, int maxS, int newmaxS, 
-				     int matrixSize, int maxL, 
-				     int *nodeArray)
+ffgraph_sugiyama::CrossingCount ffgraph_sugiyama::countCrossingsArray(
+    const int* a, int maxS, int newmaxS, int matrixSize, int maxL, const int* nodeArray)
 ///////////////////////////////////////////////////////////////////
 //                                                               //
 // Berechnet Anzahl der Ueberkreuzungen (Summe ueber alle        //
@@ -697,14 +724,19 @@ int number_of_crossings_matrixarray (int *a, int maxS, int newmaxS,
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int result = 0,
-    i;
+  CrossingCount result = 0;
 	
-  for (i = 0; i < maxL; i++)
-    result += number_of_crossings (a + i*matrixSize, 
+  for (int i = 0; i < maxL; i++)
+    result += countCrossings (a + static_cast<std::size_t>(i)*matrixSize,
 				   nodeArray[(newmaxS+1)*i],
                                    nodeArray[(newmaxS+1)*(i+1)], maxS);  
   return (result);
+}
+
+int number_of_crossings_matrixarray(int* a, int maxS, int newmaxS,
+                                   int matrixSize, int maxL, int* nodeArray) {
+  return narrowCrossings(ffgraph_sugiyama::countCrossingsArray(
+    a, maxS, newmaxS, matrixSize, maxL, nodeArray));
 }
 
 int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL, 
@@ -731,9 +763,8 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
     *a1, 
     *a2, 
     *as;
-  int ks, 
-    k, 
-    n1, 
+  ffgraph_sugiyama::CrossingCount ks, k;
+  int n1,
     n2, 
     i,
     test; // Zur Ueberpruefung, ob Funktionen korrekt abgearbeitet wurden
@@ -776,7 +807,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
   copy_matrixarray (a, as, maxS, maxL, matrixSize);
   
   // Zum Vergleich initiale Zahl der Ueberkreuzungen bestimmen.
-  ks = number_of_crossings_matrixarray (as, maxS, newmaxS, matrixSize, 
+  ks = ffgraph_sugiyama::countCrossingsArray (as, maxS, newmaxS, matrixSize,
 					maxL, nodeArray);
   
   n1 = 0;
@@ -787,7 +818,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
       if (test != 0)
 	return (1);
 
-      k = number_of_crossings_matrixarray (a, maxS, newmaxS, matrixSize, 
+      k = ffgraph_sugiyama::countCrossingsArray (a, maxS, newmaxS, matrixSize,
 					   maxL, nodeArray);
       
       if (k < ks)
@@ -799,7 +830,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
       if (test != 0)
 	return (1);
 
-      k = number_of_crossings_matrixarray (a, maxS, newmaxS, matrixSize, 
+      k = ffgraph_sugiyama::countCrossingsArray (a, maxS, newmaxS, matrixSize,
 					   maxL, nodeArray);
 
       if (k < ks)
@@ -834,7 +865,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
 	  if (test != 0)
 	    return (1);
 
-          k = number_of_crossings_matrixarray (a, maxS, newmaxS, matrixSize, 
+          k = ffgraph_sugiyama::countCrossingsArray (a, maxS, newmaxS, matrixSize,
 					       maxL, nodeArray);
 	  
           if (k < ks)
@@ -847,7 +878,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
 	  if (test != 0)
 	    return (1);
 
-          k = number_of_crossings_matrixarray (a, maxS, newmaxS, matrixSize, 
+          k = ffgraph_sugiyama::countCrossingsArray (a, maxS, newmaxS, matrixSize,
 					       maxL, nodeArray);
 
           if (k < ks)
@@ -873,7 +904,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
 	  if (test != 0)
 	    return (1);
 
-          k = number_of_crossings_matrixarray (a, maxS, newmaxS, matrixSize, 
+          k = ffgraph_sugiyama::countCrossingsArray (a, maxS, newmaxS, matrixSize,
 					       maxL, nodeArray);
 	  
           if (k < ks)
@@ -886,7 +917,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
 	  if (test != 0)
 	    return (1);
 
-          k = number_of_crossings_matrixarray (a, maxS, newmaxS, matrixSize, 
+          k = ffgraph_sugiyama::countCrossingsArray (a, maxS, newmaxS, matrixSize,
 					       maxL, nodeArray);
 
           if (k < ks)
@@ -932,9 +963,8 @@ int bc_2 (SNode *nodes, int maxS, int newmaxS, int *nodeArray)
   int *m;
   int *m0, 
     *ms;
-  int k, 
-    ks, 
-    i,
+  ffgraph_sugiyama::CrossingCount k, ks;
+  int i,
     test;
 
   m = new int [maxS * maxS];
@@ -969,7 +999,7 @@ int bc_2 (SNode *nodes, int maxS, int newmaxS, int *nodeArray)
   copy_matrix (m, ms, maxS);
 
   // "ks" enthaelt die bisher kleinste Anzahl Ueberkreuzungen.
-  ks = number_of_crossings (m, nodeArray[0], nodeArray[(newmaxS+1)], maxS);
+  ks = ffgraph_sugiyama::countCrossings (m, nodeArray[0], nodeArray[(newmaxS+1)], maxS);
   
   while (YES)
     {
@@ -981,7 +1011,7 @@ int bc_2 (SNode *nodes, int maxS, int newmaxS, int *nodeArray)
 	  if (test != 0)
 	    return (1);
 
-          k = number_of_crossings (m, nodeArray[0], nodeArray[(newmaxS+1)],
+          k = ffgraph_sugiyama::countCrossings (m, nodeArray[0], nodeArray[(newmaxS+1)],
 				   maxS);
 
           if (k < ks)
@@ -995,7 +1025,7 @@ int bc_2 (SNode *nodes, int maxS, int newmaxS, int *nodeArray)
 	  if (test != 0)
 	    return (1);
 	  
-	  k = number_of_crossings (m, nodeArray[0], nodeArray[(newmaxS+1)], 
+	  k = ffgraph_sugiyama::countCrossings (m, nodeArray[0], nodeArray[(newmaxS+1)],
 				   maxS);
 	  
 	  if (k < ks)

@@ -218,7 +218,9 @@ if(BUILD_TESTING)
       test_graph_invariants_pass9
       test_graph_geometry_pass9
       test_graph_layout_pass9
-      test_spring_numerics)
+      test_spring_numerics
+      test_sugiyama_crossings
+      test_sugiyama_layout)
     add_executable(${test_name} tests/${test_name}.cpp)
     target_compile_features(${test_name} PRIVATE cxx_std_17)
     target_link_libraries(${test_name} PRIVATE
@@ -231,7 +233,12 @@ if(BUILD_TESTING)
     if(DL_LIBRARY)
       target_link_libraries(${test_name} PRIVATE ${DL_LIBRARY})
     endif()
-    add_test(NAME ${test_name} COMMAND ${test_name})
+    if(test_name STREQUAL "test_sugiyama_layout")
+      add_test(NAME ${test_name} COMMAND ${test_name}
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/sugiyama_oracles")
+    else()
+      add_test(NAME ${test_name} COMMAND ${test_name})
+    endif()
     set_tests_properties(${test_name} PROPERTIES TIMEOUT 30)
   endforeach()
   # Four 1,000-node layouts also run in instrumented builds.

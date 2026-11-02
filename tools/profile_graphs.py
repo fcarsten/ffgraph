@@ -79,6 +79,7 @@ def main():
                         default=["random", "spring", "sugi"])
     parser.add_argument("--layout-max-nodes", type=int, default=1000)
     parser.add_argument("--quality", type=int, choices=range(1, 11), default=2)
+    parser.add_argument("--dimension", type=int, choices=[2, 3], default=2)
     parser.add_argument("--sugi-crossing-alg", type=int, choices=[0, 1], default=0,
                         help="0=production default; 1=diagnostic bypass via retired bubbling selector")
     parser.add_argument("--samples", type=int, default=5)
@@ -126,6 +127,8 @@ def main():
                                  root / "fgraph/modern/ff_graph_adapter.cc",
                                  root / "fgraph/modern/rome_graph_adapter.cc",
                                  root / "flayout/FFreduce_crossing.cc",
+                                 root / "flayout/FFcrossing_count.h",
+                                 root / "tests/sugiyama_layout_snapshot.h",
                                  root / "flayout/FFspringembedder.cc")},
         cmake_cache=(binary.parent / "CMakeCache.txt").read_text(),
         workloads=workloads)
@@ -152,6 +155,8 @@ def main():
                         cmd.extend(["--oracle", work["oracle"]])
                     if layout:
                         cmd.extend(["--layout", layout, "--layout-max-nodes", str(args.layout_max_nodes)])
+                        cmd.extend(["--dimension", str(args.dimension)])
+                        row["dimension"] = args.dimension
                     if layout == "sugi":
                         cmd.extend(["--sugi-crossing-alg", str(args.sugi_crossing_alg)])
                     try:
