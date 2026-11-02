@@ -45,8 +45,7 @@ extern "C" {
 #include "modern/gml_events.h"
 #include "modern/gml_graph_adapter.h"
 #include "modern/ff_graph_adapter.h"
-#include "RomeParser.h"
-#include "RomeScanner.h"
+#include "modern/rome_graph_adapter.h"
 
 #ifdef FENSTER
 #undef FENSTER
@@ -1389,18 +1388,12 @@ void FFGraphClass::load(const String& buffer, BOOL datei)
    FENSTER->setUpdate(NO);
   }
  
- // FF/GML validate before resetting destination IDs. Rome retains its
- // historical early reset and partial-load behaviour.
- const BOOL deferredIdReset = !datei || buffer.contains(".g");
+ // All importers validate before their adapters reset destination IDs.
  const auto importFF = [this](std::string_view input) {
    const ffgraph_ff::Result parsed = ffgraph_ff::parse(input);
    if (!ffgraph_ff::applyToGraph(parsed, *this, true))
      ffError(USER_ERROR, String("Invalid FF input: ") + parsed.error.c_str());
  };
- if (!deferredIdReset)
-  for(Pix i=knotenSet.first(); i!=0; knotenSet.next(i))
-   knotenSet(i)->setValue(-1);
- 
  if(datei)
   {
    ifstream ifdatei(expand_path(buffer));
@@ -1439,8 +1432,25 @@ void FFGraphClass::load(const String& buffer, BOOL datei)
       }
      else
       {
-       RomeControl romeParser;
-       romeParser.Parse(ifdatei, this);
+       std::ostringstream contents;
+       contents << ifdatei.rdbuf();
+       if (ifdatei.bad())
+         ffError(USER_ERROR, "Error reading Rome file");
+       else
+        {
+         cerr << "Parsing Rome Graph" << endl;
+         const ffgraph_rome::Result parsed = ffgraph_rome::parse(contents.str());
+         const ffgraph_rome::ApplyResult applied =
+           ffgraph_rome::applyToGraph(parsed, *this, true);
+         if (!applied.ok)
+           ffError(USER_ERROR, String("Invalid Rome file: ") + applied.error.c_str());
+         else
+           for (const auto& missing : applied.missing)
+            {
+             (void)missing;
+             cerr << "Couldn't find nodes for edge" << endl;
+            }
+        }
       }
 //      if(getName() == "")
 //       setName(buffer);

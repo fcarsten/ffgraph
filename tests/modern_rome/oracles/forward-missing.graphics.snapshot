@@ -1,0 +1,4 @@
+0 "Rome oracle"
+node 1 "" 1 0 "prototype payload" 100 100 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+node 2 "" 0 1 "prototype payload" 100 100 0 10 10 10 "black" "__NoIcon__" "__NoIcon__" "__NoMask__" "__NoMask__" 6 6
+edge 81 2 1 1 "" "prototype payload" "black" 2 100 100 0 100 100 0

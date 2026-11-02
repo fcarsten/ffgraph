@@ -6,8 +6,8 @@ Historical checkpoint reports retain their original test counts and scope.
 
 ## Current position
 
-FF/sgraph and GML use modern GNU Bison/Flex parsers by default in every CMake
-build, including BUILD_TESTING=OFF. Both legacy implementations have been
+FF/sgraph, GML and Rome use modern GNU Bison/Flex parsers in every CMake
+build, including BUILD_TESTING=OFF. All legacy implementations have been
 retired after generated-parser, graph construction, failure and GUI testing.
 There is no legacy FF/GML build selector or automatic fallback.
 
@@ -44,50 +44,36 @@ See `FFGRAPH-PASS12-VERIFICATION-HARDENING.md` for actual measurements and comma
 Use the exact environment and reports to judge these results. Remote GitHub
 Actions and interactive WSLg use are separate verification tasks.
 
-## Rome pilot completed; next checkpoint: opt-in integration
+## Rome completed: modern-only production
 
-The isolated pilot is now implemented; see
-`FFGRAPH-PASS12-ROME-PILOT-CHECKPOINT.md`. The opt-in
-`FFGRAPH_ENABLE_MODERN_ROME_PILOT` option adds generated parser/adapter libraries
-and four headless tests. Production still uses checked-in Bison++/flex++ Rome
-output even when the pilot is ON. The parser also builds standalone without Tk.
-No production backend selector or GUI modern Rome loading path exists yet.
+The user explicitly authorized skipping the opt-in integration checkpoint and
+making modern Rome default while removing legacy. See
+`FFGRAPH-PASS12-ROME-LEGACY-RETIREMENT.md`. All three graph importers now use
+build-tree GNU Bison/Flex output; no pilot flag or runtime backend selection
+is needed. The local annotated tag `ffgraph-pre-legacy-rome-removal` preserves
+commit `5db5a38e9c5c4c5bb176ec08c445ee2ea9b7d248` with the complete old parser
+and live differential tests. It was not pushed by the agent.
 
-The next checkpoint is **opt-in production integration**, following review of
-the pilot's differences: failure atomicity, checked integer range, actual error
-locations and long-line handling. Start with the pilot report, baseline report,
-the actual grammar/scanner sources and `FFGraphClass::load()`. Keep the legacy
-backend available; preserve the tested scanner cleanup and FF/GML behavior.
+Permanent Rome tests combine frozen pre-removal snapshots, independent topology
+and source-graph oracles, actual production loading, 2D/3D window state and real
+Tcl File/Load/Merge/Close flows. The external collection remains outside Git;
+FFGRAPH_ROME_CORPUS_DIR registers optional local verification.
 
-1. Real-corpus verification is now covered in `FFGRAPH-PASS12-ROME-REAL-CORPUS.md`:
-   all 13,767 supplied files and a 1,320-case matrix, including 50 malformed
-   inputs. Keep the collection external and use FFGRAPH_ROME_CORPUS_DIR to
-   register repeatable local tests. Retain synthetic edge cases for duplicate
-   IDs, absent endpoints, loops, parallel edges, CRLF/EOF and numeric limits.
-2. The pilot already uses owned typed records, checked integers and per-call
-   reentrant scanner state. It passes generated-parser tests, live comparisons
-   with the real legacy implementation and independent graph oracles. Retain
-   these checks and extend them when integration reveals additional requirements.
-3. Decide whether to accept unchanged-on-rejection imports for modern Rome.
-   Legacy Rome changes IDs/directedness and keeps parsed prefixes on failure.
-   The pilot deliberately does not replay failed input. Keep the difference
-   explicit in integration tests and documentation; do not preserve undefined
-   numeric overflow or silently truncate long input lines.
-4. Integrate via an explicit backend choice, then verify Debug, meaningful
-   Release, strict headless ASan/UBSan/leaks, GUI runtime and GUI leak diagnostics.
-   Retain FF/GML regression and GUI workflows throughout.
-5. Make a separate default/retirement checkpoint only after generated-parser
-   compatibility and real application tests pass. Preserve a pre-removal Git
-   reference when explicitly requested; do not commit or tag without permission.
+Rome rejection now preserves destination IDs/directedness/content; complete
+long lines, checked integers and actual locations replace old limitations.
+Successful merge ID resets, warning/edge skipping and filename dispatch remain
+unchanged. Native string imports remain FF. GUI File > Load still creates a
+window before parsing. Allocation/callback exceptions during replay remain a
+separate unverified transactional concern.
 
-The present baseline deliberately records partial graph mutation on Rome syntax
-errors and silently skipped missing endpoints. Atomic failure would be a useful
-improvement but needs an explicit compatibility decision, not an accidental
-side effect of using a new parser.
+The next recommended checkpoint is installed runtime and portability, below.
+Keep all graph/corpus/GUI tests active; do not reintroduce legacy generation or
+restart the already completed parser migration. Earlier reports retain their
+historical baseline counts and policies.
 
 ## Dependency, install and portability checkpoint
 
-After Rome integration, verify installed runtime behavior from outside the
+Verify installed runtime behavior from outside the
 checkout, including the ffgraph3D symlink and FF_LIBDIR/FF_ICONDIR resource lookup.
 A staged install passing does not prove that launch works away from the source
 working directory. Address the stated CMake minimum versus LINK_GROUP support
@@ -121,7 +107,7 @@ ctest --preset asan-gui
 ctest --preset asan-gui-leaks  # Known system toolkit leak failures remain visible
 ```
 
-Read `BUILD-CMAKE.md`, `FFGRAPH-PASS12-FF-LEGACY-RETIREMENT.md`, the verification
-and Rome baseline reports before editing. Record uncommitted changes, actual
+Read `BUILD-CMAKE.md`, the FF/Rome legacy-retirement reports and the verification
+report before editing. Record uncommitted changes, actual
 test counts/results and dependency versions. No commits or pushes without an
 explicit user request; never silently disable a failing test.

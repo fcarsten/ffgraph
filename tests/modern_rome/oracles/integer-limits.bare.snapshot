@@ -1,0 +1,5 @@
+0 "Rome oracle"
+node -2147483648 "" 0 1 "prototype payload"
+node 2147483647 "" 2 1 "prototype payload"
+edge -2147483648 -2147483648 2147483647 1 "" "prototype payload"
+edge 2147483647 2147483647 2147483647 1 "" "prototype payload"

@@ -1,5 +1,5 @@
 # Generator, oracle and GUI lifecycle checks for the sole production GML
-# backend (GNU Bison/Flex). FF is also modern; Rome remains historical.
+# backend (GNU Bison/Flex). FF and Rome also use modern generators.
 name: Modern GML generator and parity
 on:
   workflow_dispatch:

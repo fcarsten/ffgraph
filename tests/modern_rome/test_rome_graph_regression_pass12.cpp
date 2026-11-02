@@ -6,13 +6,11 @@
 #include <ffgraph/FFNodeClass.h>
 #include <ffgraph/FFEdgeClass.h>
 #include <ffgraph/FFGraphLabel.h>
+#include <ffgraph/ffError.h>
 #include <ffgraph/FFNodeLabel.h>
 #include <ffgraph/FFEdgeLabel.h>
 #include <ffgraph/FFGraphicNode.h>
 #include <ffgraph/FFGraphicEdge.h>
-#include <container/AVLMap.h>
-#include "../../fgraph/RomeParser.h"
-#include "../../fgraph/RomeScanner.h"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -62,8 +60,8 @@ struct Relabel final : FFGraphLabel {
   Relabel* proto() const override { return new Relabel; }
   void event(labelEvent kind, labelEventStruct*) override {
     if (kind == ADD_NODE && ++nodes == 3) {
-      auto* old = getGraph()->nodeWithValue(1);
-      FF_CHECK(old); old->setValue(11);
+      auto* api = getGraph()->nodeWithValue(1);
+      FF_CHECK(api); api->setValue(11);
     }
   }
 };
@@ -96,13 +94,13 @@ Watch* setup(FFGraph& graph, bool graphics, bool merge, int seedId = 41) {
   graph->addNodeLabel(new Payload<FFNodeLabel>);
   graph->addEdgeLabel(new Payload<FFEdgeLabel>);
   if (merge) {
-    auto* old = graph->addNode(FFPoint(7, 8, 9)); old->setValue(seedId); old->setName("existing");
-    auto* edge = graph->addEdge(old, old); edge->setValue(900);
+    auto* api = graph->addNode(FFPoint(7, 8, 9)); api->setValue(seedId); api->setName("existing");
+    auto* edge = graph->addEdge(api, api); edge->setValue(900);
     edge->setName("existing loop"); edge->setWeight(2.5);
-    old->getLabel(old->getLabelIndex("RomePayload"))->parse("existing node payload");
+    api->getLabel(api->getLabelIndex("RomePayload"))->parse("existing node payload");
     edge->getLabel(edge->getLabelIndex("RomePayload"))->parse("existing edge payload");
-    graph->setStartNode(old); graph->addEndNode(old);
-    if (auto* graphic = old->getGraphicNode()) graphic->setColor("blue");
+    graph->setStartNode(api); graph->addEndNode(api);
+    if (auto* graphic = api->getGraphicNode()) graphic->setColor("blue");
   }
   auto* watch = new Watch; graph->addGraphLabel(watch); watch->events.clear();
   return watch;
@@ -169,11 +167,17 @@ void oracle(FFGraph& graph, std::vector<int> nodes, std::vector<Edge> edges) {
   std::sort(actualNodes.begin(), actualNodes.end()); std::sort(actualEdges.begin(), actualEdges.end());
   FF_CHECK(actualNodes == nodes && actualEdges == edges);
 }
-int legacy(FFGraph& graph, const std::string& input, int mode) {
+// Exercise direct replay and the actual production filename loader. These are
+// API consistency checks; frozen legacy data and independent graph oracles
+// supply the compatibility expectations after retirement.
+int loadGraph(FFGraph& graph, const std::string& input, int mode) {
   errors.clear(); Capture capture;
-  if (mode == 0) { RomeControl parser; std::istringstream in(input); parser.Parse(in, graph.operator->()); }
-  else if (mode == 1) { RomeControl parser; parser.Parse(String(input), graph.operator->()); }
-  else { File file(input); graph->load(String(file.path), YES); }
+  if (mode == 0) {
+    const auto applied = ffgraph_rome::applyToGraph(ffgraph_rome::parse(input),*graph.operator->());
+    if (!applied.ok) errors.push_back(applied.error);
+    else for (std::size_t i = 0; i < applied.missing.size(); ++i)
+      std::cerr << "Couldn't find nodes for edge\n";
+  } else { File file(input); graph->load(String(file.path), YES); }
   const std::string warning = "Couldn't find nodes for edge", text = capture.output.str();
   int missing = 0;
   for (std::size_t pos = 0; (pos = text.find(warning, pos)) != std::string::npos; pos += warning.size())
@@ -181,12 +185,13 @@ int legacy(FFGraph& graph, const std::string& input, int mode) {
   return missing;
 }
 void compare(const std::string& input, bool graphics, bool merge, int mode,
-             const std::vector<int>& expectedNodes, const std::vector<Edge>& expectedEdges, int missing) {
-  FFGraph old(YES), modern(YES);
-  auto* oldWatch = setup(old, graphics, merge); auto* modernWatch = setup(modern, graphics, merge);
-  FF_CHECK(legacy(old, input, mode) == missing && errors.empty());
+             const std::vector<int>& expectedNodes, const std::vector<Edge>& expectedEdges, int missing,
+             const std::string& frozenName = {}) {
+  FFGraph api(YES), modern(YES);
+  auto* apiWatch = setup(api, graphics, merge); auto* directWatch = setup(modern, graphics, merge);
+  FF_CHECK(loadGraph(api, input, mode) == missing && errors.empty());
   const auto parsed = ffgraph_rome::parse(input); FF_CHECK(parsed.ok);
-  const auto applied = ffgraph_rome::applyToGraph(parsed, *modern.operator->(), mode == 2);
+  const auto applied = ffgraph_rome::applyToGraph(parsed, *modern.operator->(), mode == 1);
   FF_CHECK(applied.ok && applied.missing.size() == static_cast<std::size_t>(missing));
   if (missing == 2) {
     FF_CHECK(applied.missing[0].edge == 80 && applied.missing[0].source == 1 &&
@@ -194,13 +199,13 @@ void compare(const std::string& input, bool graphics, bool merge, int mode,
     FF_CHECK(applied.missing[1].edge == 82 && applied.missing[1].source == 2 &&
       applied.missing[1].target == 99 && applied.missing[1].line == 5);
   }
-  const bool sentinelAlias = merge && mode == 2 &&
+  const bool sentinelAlias = merge && mode == 1 &&
     std::find(expectedNodes.begin(), expectedNodes.end(), -1) != expectedNodes.end();
   if (sentinelAlias) {
     // Old IDs reset to -1 can alias imported -1. Allocation-dependent container
     // order can select different physical duplicates in the two graphs.
     // Check each graph's live lookup and preserved seed identity explicitly.
-    for (auto* graph : {old.operator->(), modern.operator->()}) {
+    for (auto* graph : {api.operator->(), modern.operator->()}) {
       auto* resolved = graph->nodeWithValue(-1);
       FFNodeClass* original = nullptr;
       for (Pix p = graph->allNodes().first(); p; graph->allNodes().next(p))
@@ -218,16 +223,25 @@ void compare(const std::string& input, bool graphics, bool merge, int mode,
           FF_CHECK(edge->source() == original && edge->target() == original && edge->getWeight() == 2.5 && edge->getName() == "existing loop");
       }
     }
-  } else FF_CHECK(snapshot(old) == snapshot(modern));
-  std::vector<labelEvent> events = oldWatch->events;
-  if (mode == 2) {
+  } else FF_CHECK(snapshot(api) == snapshot(modern));
+  if (!merge && !frozenName.empty()) {
+    const auto path = std::filesystem::path(FFGRAPH_TEST_SOURCE_DIR)/"tests/modern_rome/oracles"/
+      (frozenName + (graphics ? ".graphics.snapshot" : ".bare.snapshot"));
+    std::ifstream in(path,std::ios::binary); FF_CHECK(in.good());
+    const std::string expected{std::istreambuf_iterator<char>(in),{}};
+    if (snapshot(api) != expected) {
+      std::cerr << "Frozen legacy graph differs: " << path << '\n'; FF_CHECK(false);
+    }
+  }
+  std::vector<labelEvent> events = apiWatch->events;
+  if (mode == 1) {
     FF_CHECK(!events.empty() && events.front() == START_LOAD && events.back() == END_LOAD);
     events.erase(events.begin()); events.pop_back();
   }
-  FF_CHECK(events == modernWatch->events);
+  FF_CHECK(events == directWatch->events);
   auto nodes = expectedNodes; auto edges = expectedEdges;
-  if (merge) { const int id = mode == 2 ? -1 : 41; nodes.push_back(id); edges.emplace_back(900, id, id); }
-  oracle(old, nodes, edges); oracle(modern, nodes, edges);
+  if (merge) { const int id = mode == 1 ? -1 : 41; nodes.push_back(id); edges.emplace_back(900, id, id); }
+  oracle(api, nodes, edges); oracle(modern, nodes, edges);
 }
 void fixtures() {
   struct Fixture { const char* folder; const char* name; std::vector<int> nodes; std::vector<Edge> edges; int missing = 0; };
@@ -245,12 +259,12 @@ void fixtures() {
   for (const auto& fixture : cases) {
     const auto input = read(fixture.folder, fixture.name);
     for (bool graphics : {false,true}) for (bool merge : {false,true})
-      for (int mode = 0; mode < 3; ++mode) for (int ending = 0; ending < 3; ++ending) {
+      for (int mode = 0; mode < 2; ++mode) for (int ending = 0; ending < 3; ++ending) {
         std::string text = input;
         if (ending == 1) for (std::size_t pos = 0; (pos = text.find('\n',pos)) != std::string::npos; pos += 2)
           text.insert(pos,1,'\r');
         if (ending == 2) while (!text.empty() && text.back() == '\n') text.pop_back();
-        compare(text,graphics,merge,mode,fixture.nodes,fixture.edges,fixture.missing);
+        compare(text,graphics,merge,mode,fixture.nodes,fixture.edges,fixture.missing,fixture.name);
       }
   }
   // Resolve duplicate existing IDs using each graph's actual container order.
@@ -268,23 +282,23 @@ void fixtures() {
   }
   // Resolve endpoints from current graph values, including real label callback
   // mutations between rows. A cached ID map would give the wrong graph here.
-  for (int mode = 0; mode < 3; ++mode) {
-    FFGraph old(YES), modern(YES); setup(old,true,false); setup(modern,true,false);
-    old->addGraphLabel(new Relabel); modern->addGraphLabel(new Relabel);
+  for (int mode = 0; mode < 2; ++mode) {
+    FFGraph api(YES), modern(YES); setup(api,true,false); setup(modern,true,false);
+    api->addGraphLabel(new Relabel); modern->addGraphLabel(new Relabel);
     const std::string input = "1 0\n2 0\n80 0 1 2\n3 0\n81 0 1 2\n82 0 11 2\n";
-    FF_CHECK(legacy(old,input,mode) == 1 && errors.empty());
-    const auto applied = ffgraph_rome::applyToGraph(ffgraph_rome::parse(input),*modern.operator->(),mode==2);
+    FF_CHECK(loadGraph(api,input,mode) == 1 && errors.empty());
+    const auto applied = ffgraph_rome::applyToGraph(ffgraph_rome::parse(input),*modern.operator->(),mode==1);
     FF_CHECK(applied.ok && applied.missing.size() == 1 && applied.missing[0].edge == 81);
-    FF_CHECK(snapshot(old) == snapshot(modern));
+    FF_CHECK(snapshot(api) == snapshot(modern));
     oracle(modern,{2,3,11},{{80,11,2},{82,11,2}});
   }
   // An edge can refer to existing merge nodes through direct Parse, but public
   // file loading resets their IDs before resolving the same row.
-  for (bool graphics : {false,true}) for (int mode = 0; mode < 3; ++mode) {
-    const std::vector<Edge> imported = mode == 2 ? std::vector<Edge>{} : std::vector<Edge>{{42,41,41}};
-    compare("42 0 41 41\n1 0\n",graphics,true,mode,{1},imported,mode == 2 ? 1 : 0);
+  for (bool graphics : {false,true}) for (int mode = 0; mode < 2; ++mode) {
+    const std::vector<Edge> imported = mode == 1 ? std::vector<Edge>{} : std::vector<Edge>{{42,41,41}};
+    compare("42 0 41 41\n1 0\n",graphics,true,mode,{1},imported,mode == 1 ? 1 : 0);
   }
-  std::cout << "Rome fixtures: 288 matrix imports plus duplicate lookup and callback cases\n";
+  std::cout << "Rome fixtures: 192 matrix imports plus duplicate lookup and callback cases\n";
 }
 void generated() {
   std::size_t imports = 0;
@@ -311,7 +325,7 @@ void generated() {
       expectedEdges.emplace_back(edge->getValue(),edge->source()->getValue(),edge->target()->getValue());
     }
     const auto input = text.str();
-    for (int mode = 0; mode < 3; ++mode) {
+    for (int mode = 0; mode < 2; ++mode) {
       compare(input,graphics,false,mode,expectedNodes,expectedEdges,0);
       FFGraph modern(YES); setup(modern,graphics,false);
       FF_CHECK(ffgraph_rome::applyToGraph(ffgraph_rome::parse(input),*modern.operator->()).ok);
@@ -319,48 +333,42 @@ void generated() {
       ++imports;
     }
   }
-  std::cout << "Generated Rome oracle: " << imports << " differential imports\n";
+  std::cout << "Generated Rome oracle: " << imports << " API/oracle imports\n";
 }
 void failures() {
   const char* paths[][2] = {
     {"rome_fixtures","partial-error"}, {"rome_fixtures","keyword-error"}, {"rome_fixtures","string-error"},
     {"modern_rome/fixtures","extra-field-error"}, {"modern_rome/fixtures","indented-comment-error"},
-    {"modern_rome/fixtures","real-error"}
+    {"modern_rome/fixtures","real-error"}, {"modern_rome/fixtures","id-overflow"},
+    {"modern_rome/fixtures","metadata-overflow"}
   };
-  for (const auto& path : paths) for (int mode = 0; mode < 3; ++mode) {
+  for (const auto& path : paths) for (int mode = 0; mode < 2; ++mode) {
     const auto input = read(path[0],path[1]);
-    FFGraph old(YES), modern(YES); setup(old,true,true); auto* watch = setup(modern,true,true);
-    const auto before = snapshot(modern);
-    legacy(old,input,mode); FF_CHECK(errors.size() == 1);
-    FF_CHECK(errors.front().find("in line 1") != std::string::npos);
-    FF_CHECK(old->getNumNodes() > 1 && !old->getDirected()); // Legacy prefix mutation.
+    FFGraph api(YES), direct(YES); auto* apiWatch = setup(api,true,true); auto* watch = setup(direct,true,true);
+    const auto beforeApi = snapshot(api), before = snapshot(direct);
+    loadGraph(api,input,mode); FF_CHECK(errors.size() == 1);
+    FF_CHECK(snapshot(api) == beforeApi);
+    FF_CHECK(apiWatch->events == (mode == 1 ? std::vector<labelEvent>{START_LOAD,END_LOAD} : std::vector<labelEvent>{}));
     const auto parsed = ffgraph_rome::parse(input); FF_CHECK(!parsed.ok && parsed.records.empty());
-    FF_CHECK(!ffgraph_rome::applyToGraph(parsed,*modern.operator->(),mode==2).ok);
-    FF_CHECK(snapshot(modern) == before && watch->events.empty());
+    FF_CHECK(!ffgraph_rome::applyToGraph(parsed,*direct.operator->(),mode==1).ok);
+    FF_CHECK(snapshot(direct) == before && watch->events.empty());
     FF_CHECK(parsed.error.find("line 2") != std::string::npos || parsed.error.find("line 3") != std::string::npos ||
              parsed.error.find("line 4") != std::string::npos);
   }
-  for (const char* name : {"id-overflow","metadata-overflow"}) {
-    const auto parsed = ffgraph_rome::parse(read("modern_rome/fixtures",name));
-    FF_CHECK(!parsed.ok && parsed.records.empty() && parsed.error.find("out of range in line 2") != std::string::npos);
-    // Do not invoke legacy atoi on out-of-range values as a compatibility oracle.
+  for (int mode = 0; mode < 2; ++mode) {
+    FFGraph graph(YES); auto* watch = setup(graph,true,true); const auto before = snapshot(graph);
+    std::string nul = "1 0\n"; nul.push_back('\0'); nul += "2 0\n";
+    loadGraph(graph,nul,mode); FF_CHECK(errors.size() == 1 && snapshot(graph) == before);
+    FF_CHECK(watch->events == (mode == 1 ? std::vector<labelEvent>{START_LOAD,END_LOAD} : std::vector<labelEvent>{}));
+    const std::string longLine = "#" + std::string(65536,'x') + "\n1 0\n2 0\n";
+    FFGraph complete(YES); loadGraph(complete,longLine,mode); FF_CHECK(errors.empty());
+    oracle(complete,{1,2},{});
   }
-  FFGraph graph(YES); auto* watch = setup(graph,true,true); const auto before = snapshot(graph);
-  std::string nul = "1 0\n"; nul.push_back('\0'); nul += "2 0\n";
-  FF_CHECK(!ffgraph_rome::applyToGraph(ffgraph_rome::parse(nul),*graph.operator->(),true).ok);
-  FF_CHECK(snapshot(graph) == before && watch->events.empty());
-  // The legacy line feeder truncates a sufficiently long comment and stops
-  // reading after failbit. The modern scanner consumes the complete input.
-  const std::string longLine = "#" + std::string(65536,'x') + "\n1 0\n2 0\n";
-  FFGraph old(YES), modern(YES); legacy(old,longLine,0); FF_CHECK(errors.empty());
-  FF_CHECK(old->getNumNodes() == 0);
-  FF_CHECK(ffgraph_rome::applyToGraph(ffgraph_rome::parse(longLine),*modern.operator->()).ok);
-  oracle(modern,{1,2},{});
 }
 
 // Independent, deliberately strict row model for an external Rome collection.
-// It does not consume generated-parser records. Keep a valid prefix so corrupt
-// files can also check the legacy partial-load contract rather than be skipped.
+// It does not consume generated-parser records. Corrupt files remain explicit
+// rejection/state-preservation cases rather than being skipped.
 struct CorpusInput {
   std::string text;
   std::vector<int> nodes;
@@ -394,10 +402,9 @@ CorpusInput readCorpus(const std::filesystem::path& path) {
       long long value;
       try { value = std::stoll(token); }
       catch (const std::out_of_range&) {
-        throw std::runtime_error("Out-of-range corpus value is unsafe for legacy atoi: " + path.string());
+        invalid = true; break;
       }
-      if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max())
-        throw std::runtime_error("Out-of-range corpus value is unsafe for legacy atoi: " + path.string());
+      if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max()) { invalid = true; break; }
       values.push_back(static_cast<int>(value));
     }
     if (invalid || (values.size() != 2 && values.size() != 4)) { input.badLine = number; break; }
@@ -415,30 +422,30 @@ CorpusInput readCorpus(const std::filesystem::path& path) {
 void compareCorpus(const std::filesystem::path& path, const CorpusInput& input,
                    const ffgraph_rome::Result& parsed, bool graphics, bool merge, int mode) {
   const std::string context = path.string() + " [graphics=" + std::to_string(graphics) +
-    ", merge=" + std::to_string(merge) + ", legacy mode=" + std::to_string(mode) + "] ";
+    ", merge=" + std::to_string(merge) + ", API mode=" + std::to_string(mode) + "] ";
   const auto require = [&](bool ok, const std::string& reason) {
     if (!ok) throw std::runtime_error(context + reason);
   };
   // Unlike the synthetic fixtures' seed 41, this cannot alias real node IDs.
   constexpr int seed = std::numeric_limits<int>::min();
   require(std::find(input.nodes.begin(),input.nodes.end(),seed) == input.nodes.end(),"seed ID collision");
-  FFGraph old(YES), modern(YES);
-  auto* oldWatch = setup(old,graphics,merge,seed);
-  auto* modernWatch = setup(modern,graphics,merge,seed);
+  FFGraph api(YES), modern(YES);
+  auto* apiWatch = setup(api,graphics,merge,seed);
+  auto* directWatch = setup(modern,graphics,merge,seed);
   // Nested parsing already has dedicated tests; the bulk corpus checks the
   // same graph mutation events without starting another scanner on every node.
-  oldWatch->checkNestedParse = modernWatch->checkNestedParse = false;
+  apiWatch->checkNestedParse = directWatch->checkNestedParse = false;
   const auto before = input.badLine ? snapshot(modern) : std::string{};
-  require(legacy(old,input.text,mode) == static_cast<int>(input.missing),"legacy missing-endpoint count");
-  require(errors.size() == (input.badLine ? 1u : 0u),"legacy rejection differs from row oracle");
-  const auto applied = ffgraph_rome::applyToGraph(parsed,*modern.operator->(),mode == 2);
+  const auto beforeApi = input.badLine ? snapshot(api) : std::string{};
+  require(loadGraph(api,input.text,mode) == static_cast<int>(input.missing),"API missing-endpoint count");
+  require(errors.size() == (input.badLine ? 1u : 0u),"API rejection differs from row oracle");
+  const auto applied = ffgraph_rome::applyToGraph(parsed,*modern.operator->(),mode == 1);
   require(parsed.ok == !input.badLine && applied.ok == parsed.ok,"modern acceptance differs from row oracle");
-  require(!old->getDirected() && old->getName() == "Rome oracle","legacy graph properties");
 
   auto expectedNodes = input.nodes;
   auto expectedEdges = input.edges;
   if (merge) {
-    const int oldId = mode == 2 ? -1 : seed;
+    const int oldId = mode == 1 ? -1 : seed;
     require(std::find(input.nodes.begin(),input.nodes.end(),oldId) == input.nodes.end(),"merge ID collision");
     expectedNodes.push_back(oldId); expectedEdges.emplace_back(900,oldId,oldId);
   }
@@ -453,7 +460,7 @@ void compareCorpus(const std::filesystem::path& path, const CorpusInput& input,
       auto* node = graph->allNodes()(p); nodes.push_back(node->getValue());
       require(degree.count(node->getValue()) != 0,"unexpected node ID");
       require(std::make_pair(node->indeg(),node->outdeg()) == degree.at(node->getValue()),"node adjacency counts");
-      require(node->getName() == (merge && node->getValue() == (mode == 2 ? -1 : seed) ? "existing" : ""),"node name");
+      require(node->getName() == (merge && node->getValue() == (mode == 1 ? -1 : seed) ? "existing" : ""),"node name");
     }
     for (Pix p = graph->allEdges().first(); p; graph->allEdges().next(p)) {
       auto* edge = graph->allEdges()(p);
@@ -467,21 +474,24 @@ void compareCorpus(const std::filesystem::path& path, const CorpusInput& input,
     require(nodes == sortedNodes && edges == sortedEdges,"node/edge multisets differ from independent row oracle");
     require(graph->getNumNodes() == static_cast<int>(nodes.size()) && graph->getNumEdges() == static_cast<int>(edges.size()),"graph counts");
   };
-  checkTopology(old); // Includes independently expected prefix on rejection.
   if (input.badLine) {
+    require(snapshot(api) == beforeApi,"rejected API import mutated graph");
+    require(apiWatch->events == (mode == 1 ? std::vector<labelEvent>{START_LOAD,END_LOAD} : std::vector<labelEvent>{}),"rejected load lifecycle");
     require(parsed.records.empty() && !parsed.error.empty(),"failed parse retained records");
     require(parsed.error.find("line " + std::to_string(input.badLine) + ",") != std::string::npos,"modern error location");
-    require(snapshot(modern) == before && modernWatch->events.empty(),"rejected modern import mutated graph");
+    require(snapshot(modern) == before && directWatch->events.empty(),"rejected modern import mutated graph");
   } else {
+    require(!api->getDirected() && api->getName() == "Rome oracle","API graph properties");
+    checkTopology(api);
     require(applied.missing.size() == input.missing,"modern missing-endpoint count");
     checkTopology(modern);
-    require(snapshot(old) == snapshot(modern),"full graph snapshots differ");
-    auto events = oldWatch->events;
-    if (mode == 2) {
+    require(snapshot(api) == snapshot(modern),"full graph snapshots differ");
+    auto events = apiWatch->events;
+    if (mode == 1) {
       require(events.size() >= 2 && events.front() == START_LOAD && events.back() == END_LOAD,"file load lifecycle");
       events.erase(events.begin()); events.pop_back();
     }
-    require(events == modernWatch->events,"mutation event sequence");
+    require(events == directWatch->events,"mutation event sequence");
   }
 }
 
@@ -519,10 +529,10 @@ void corpus(const std::filesystem::path& root, bool matrix) {
     const auto input = readCorpus(path);
     const auto parsed = ffgraph_rome::parse(input.text);
     if (matrix) {
-      for (bool graphics : {false,true}) for (bool merge : {false,true}) for (int mode = 0; mode < 3; ++mode) {
+      for (bool graphics : {false,true}) for (bool merge : {false,true}) for (int mode = 0; mode < 2; ++mode) {
         compareCorpus(path,input,parsed,graphics,merge,mode); ++comparisons;
       }
-    } else { compareCorpus(path,input,parsed,false,false,0); ++comparisons; }
+    } else { compareCorpus(path,input,parsed,false,false,1); ++comparisons; }
     if (input.badLine) ++rejected; else { ++accepted; nodes += input.nodes.size(); edges += input.edges.size(); }
     if ((accepted+rejected)%500 == 0)
       std::cout << "External Rome: " << accepted+rejected << '/' << paths.size() << " files checked\n" << std::flush;
@@ -540,7 +550,7 @@ int main(int argc, char** argv) {
     else if (argc == 2 && std::string(argv[1]) == "--failures") failures();
     else if (argc == 3 && std::string(argv[1]) == "--corpus") corpus(argv[2],false);
     else if (argc == 3 && std::string(argv[1]) == "--corpus-matrix") corpus(argv[2],true);
-    else throw std::runtime_error("Usage: test_rome_compatibility_pass12 [--generated|--failures|--corpus DIR|--corpus-matrix DIR]");
+    else throw std::runtime_error("Usage: test_rome_graph_regression_pass12 [--generated|--failures|--corpus DIR|--corpus-matrix DIR]");
   } catch (const std::exception& failure) {
     userCharErrorHandler = previous;
     std::cerr << failure.what() << '\n';

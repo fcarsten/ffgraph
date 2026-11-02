@@ -2,9 +2,9 @@
 
 The CMake build now selects the modern GNU Bison/Flex GML importer by default.
 FF/sgraph also uses its modern GNU Bison/Flex importer in every build.
-Both parser/scanner pairs are generated in the build tree; their legacy
-implementations have been retired. Rome still uses its checked-in parser.
-Use CMake; the historical Makefile fragments do not build the active FF/GML
+All three parser/scanner pairs are generated in the build tree; their legacy
+implementations have been retired.
+Use CMake; the historical Makefile fragments do not build the active FF/GML/Rome
 importers.
 
 Install prerequisites:
@@ -131,43 +131,51 @@ contents and IDs. GUI File → Load still creates its window before parsing.
 Known Tk/fontconfig leaks can fail strict leak-enabled GUI sanitizer checks;
 see `docs/FFGRAPH-PASS12-FF-LEGACY-RETIREMENT.md` for measured results and limits.
 
-## Rome parser pilot (opt-in GNU Bison/Flex)
+## Rome parser (GNU Bison/Flex)
 
-Rome still uses its checked-in legacy parser in the application. The isolated
-modern pilot builds libraries and tests only; it does not select a new GUI
-backend, change filename dispatch, or install an additional runtime dependency.
+Modern Rome is now the only production Rome importer, including in the GUI.
+No pilot flag or backend selector is needed. Filename dispatch is preserved:
+`.gml` first, then paths containing `.g` for FF, then Rome for other filenames.
+Native string imports (`load(text, NO)`) remain FF.
 
 ```sh
-cmake --preset debug -DFFGRAPH_ENABLE_MODERN_ROME_PILOT=ON
+cmake --preset debug
 cmake --build --preset debug --parallel 2
 ctest --preset debug -R '^test_rome_' --output-on-failure
 
-cmake --preset asan -DFFGRAPH_ENABLE_MODERN_ROME_PILOT=ON
-cmake --build --preset asan --parallel 2
-ctest --preset asan-headless -R '^test_rome_' --output-on-failure
+FF_LIBDIR="$PWD/lib/ffgraph" FF_ICONDIR="$PWD/lib/ffgraph/icons" \
+  ./build/debug/ffgraph tests/rome_fixtures/structure.rome
 ```
 
-The option defaults to OFF; an explicitly enabled value persists in that build
-directory. Use `-DFFGRAPH_ENABLE_MODERN_ROME_PILOT=OFF` to disable it again.
-Pilot tests compare actual legacy/modern graph construction, independent source
-graphs, merge behavior and rejected-input state. Modern rejection leaves the
-graph unchanged; legacy Rome still permits partial imports. See
-`docs/FFGRAPH-PASS12-ROME-PILOT-CHECKPOINT.md` for all observed differences.
-
-To repeat the checks against a local external collection:
+Rome files contain no coordinates; apply a layout to separate imported nodes.
+For old build directories, discard obsolete options once:
 
 ```sh
-cmake --preset release -DFFGRAPH_ENABLE_MODERN_ROME_PILOT=ON \
-  -DFFGRAPH_ROME_CORPUS_DIR=../demographs/rome
+cmake --preset debug -U FFGRAPH_ENABLE_MODERN_ROME_PILOT -U FFGRAPH_ROME_BACKEND
+```
+
+Invalid syntax, numeric overflow, NULs and unreadable files preserve the graph
+and IDs. Successful merges reset old node IDs to -1, matching historical Rome.
+Missing endpoints still warn and skip edges. Actual error locations and complete
+long-line handling replace legacy line-1 diagnostics and line truncation.
+GUI File > Load still creates its window before parsing, including on rejection.
+
+The local annotated tag `ffgraph-pre-legacy-rome-removal` preserves the complete
+legacy implementation and live differential tests at commit `5db5a38`. The
+retirement report is `docs/FFGRAPH-PASS12-ROME-LEGACY-RETIREMENT.md`.
+
+Optional external corpus checks now exercise production loading against independent
+row/source-graph expectations and frozen pre-removal snapshots:
+
+```sh
+cmake --preset release -DFFGRAPH_ROME_CORPUS_DIR=../demographs/rome
 cmake --build --preset release --parallel 2
 ctest --preset release -R '^test_rome_external_' --output-on-failure
 ```
 
-The path is optional and machine-local. Every file is checked; malformed inputs
-are tested for rejection and state preservation. Results for the supplied
-collection are in `docs/FFGRAPH-PASS12-ROME-REAL-CORPUS.md`.
-
-The generated parser can also be built/tested without Tcl/Tk, X11 or ffgraph:
+The path remains machine-local; ordinary CI uses committed fixtures/oracles.
+There is no live legacy parser in these tests. See `tests/modern_rome/README.md`.
+The parser-only target also builds without Tcl/Tk or X11:
 
 ```sh
 cmake -S tests/modern_rome -B build/modern-rome -G Ninja -DCMAKE_BUILD_TYPE=Debug
@@ -180,7 +188,7 @@ ctest --test-dir build/modern-rome --output-on-failure
 The retired Bison++ `GTParser`/`GTScanner` has been removed from the current
 source tree. The modern generated GML importer is the only CMake backend.
 Bison 3.8+ and Flex 2.6+ are required for all application builds. FF also uses
-its modern importer; Rome remains unchanged.
+its modern importer, as does Rome.
 
 ```sh
 # Configure a fresh Debug build

@@ -1,5 +1,10 @@
 # Legacy Rome baseline
 
+Historical characterization fixtures, now exercised by
+`test_rome_production_backend_pass12` with atomic rejection expectations.
+Legacy partial-import and line-1 observations below describe the tagged
+pre-retirement implementation; see `docs/FFGRAPH-PASS12-ROME-LEGACY-RETIREMENT.md`.
+
 These eight small fixtures are hand-written characterization inputs, not an
 external Rome graph collection. `test_rome_baseline_pass12` checks independently
 specified node IDs and edge `(id, source ID, target ID)` multisets against the

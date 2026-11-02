@@ -13,7 +13,7 @@ struct ApplyResult {
   std::string error;
   std::vector<MissingEndpoint> missing;
 };
-// Isolated pilot API. Rejected parses leave the graph unchanged. Replay can
+// Internal production Rome adapter. Rejected parses leave the graph unchanged; replay can
 // still be partial if allocation or application label callbacks throw.
 // resetIds=true models the successful public file-import ID reset.
 ApplyResult applyToGraph(const Result& parsed, FFGraphClass& graph, bool resetIds = false);

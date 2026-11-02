@@ -13,8 +13,10 @@ find_library(DL_LIBRARY NAMES dl)
 
 option(FFGRAPH_SANITIZERS "Enable address and undefined-behavior sanitizers (GCC/Clang)" OFF)
 option(FFGRAPH_GUI_STRESS_TESTS "Enable slower, large-graph Tk/Xvfb workflow tests" OFF)
-option(FFGRAPH_ENABLE_MODERN_ROME_PILOT
-  "Build isolated GNU Bison/Flex Rome pilot and compatibility tests" OFF)
+if(DEFINED FFGRAPH_ROME_BACKEND AND NOT FFGRAPH_ROME_BACKEND STREQUAL "modern")
+  message(FATAL_ERROR "Legacy Rome has been retired. Clear obsolete options: "
+    "cmake -U FFGRAPH_ROME_BACKEND -U FFGRAPH_ENABLE_MODERN_ROME_PILOT ...")
+endif()
 # Reject a stale selection rather than silently replacing the requested backend.
 if(DEFINED FFGRAPH_FF_BACKEND AND NOT FFGRAPH_FF_BACKEND STREQUAL "modern")
   message(FATAL_ERROR
@@ -29,8 +31,7 @@ if(FFGRAPH_SANITIZERS)
   add_link_options(-fsanitize=address,undefined)
 endif()
 
-# FF and GML use generated GNU Bison/Flex parsers in all CMake builds.
-# Rome remains historical.
+# FF, GML and Rome use generated GNU Bison/Flex parsers in all CMake builds.
 # Remove obsolete cache entries from older build directories if necessary:
 #   cmake -S . -B build/... -U FFGRAPH_GML_BACKEND -U FFGRAPH_ENABLE_MODERN_GML
 if(DEFINED FFGRAPH_GML_BACKEND AND FFGRAPH_GML_BACKEND STREQUAL "legacy")
@@ -40,7 +41,6 @@ if(DEFINED FFGRAPH_GML_BACKEND AND FFGRAPH_GML_BACKEND STREQUAL "legacy")
 endif()
 add_subdirectory(tests/modern_gml)
 
-# Rome's legacy parser remains checked-in and is not regenerated implicitly.
 add_library(FFcontainer STATIC
   container/FFStacks.cc
   container/FFVHSets.cc
@@ -53,8 +53,6 @@ add_library(FFcontainer STATIC
   container/FFMFSets.cc
 )
 add_library(FFGraph STATIC
-  fgraph/RomeParser.cc
-  fgraph/RomeScanner.cc
   fgraph/ffError.cc
   fgraph/FFEdgeClass.cc
   fgraph/FFGraphClass.cc
@@ -149,6 +147,11 @@ add_subdirectory(tests/modern_ff)
 target_sources(FFGraph PRIVATE fgraph/modern/ff_graph_adapter.cc)
 target_link_libraries(FFGraph PUBLIC ffgraph_modern_ff)
 install(TARGETS ffgraph_modern_ff ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+add_subdirectory(tests/modern_rome)
+target_sources(FFGraph PRIVATE fgraph/modern/rome_graph_adapter.cc)
+target_link_libraries(FFGraph PUBLIC ffgraph_modern_rome)
+install(TARGETS ffgraph_modern_rome ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 if(BUILD_TESTING)
   add_executable(test_check_ndebug tests/test_check_ndebug.cpp)
@@ -438,14 +441,14 @@ if(BUILD_TESTING)
   add_test(NAME test_ff_production_backend_pass12 COMMAND test_ff_production_backend_pass12)
   set_tests_properties(test_ff_production_backend_pass12 PROPERTIES TIMEOUT 40)
 
-  add_executable(test_rome_baseline_pass12 tests/test_rome_baseline_pass12.cpp)
-  target_compile_definitions(test_rome_baseline_pass12 PRIVATE
+  add_executable(test_rome_production_backend_pass12 tests/test_rome_production_backend_pass12.cpp)
+  target_compile_definitions(test_rome_production_backend_pass12 PRIVATE
     FFGRAPH_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-  target_link_libraries(test_rome_baseline_pass12 PRIVATE
+  target_link_libraries(test_rome_production_backend_pass12 PRIVATE
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
     PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
-  add_test(NAME test_rome_baseline_pass12 COMMAND test_rome_baseline_pass12)
-  set_tests_properties(test_rome_baseline_pass12 PROPERTIES TIMEOUT 40)
+  add_test(NAME test_rome_production_backend_pass12 COMMAND test_rome_production_backend_pass12)
+  set_tests_properties(test_rome_production_backend_pass12 PROPERTIES TIMEOUT 40)
 
   add_executable(test_graph_ownership tests/test_graph_ownership.cpp)
   target_compile_features(test_graph_ownership PRIVATE cxx_std_17)
@@ -591,6 +594,17 @@ if(BUILD_TESTING)
     set_tests_properties(test_ff_window_oracle_pass12 PROPERTIES TIMEOUT 60
       ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
 
+    add_executable(test_rome_window_oracle_pass12 tests/test_rome_window_oracle_pass12.cpp)
+    target_link_libraries(test_rome_window_oracle_pass12 PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+    add_test(NAME test_rome_window_oracle_pass12
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_rome_window_oracle_pass12>"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/rome_fixtures/structure.rome"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/rome_fixtures/partial-error.rome")
+    set_tests_properties(test_rome_window_oracle_pass12 PROPERTIES TIMEOUT 60
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+
     # Drive the real "recall modPress l/m/w" Tcl commands with a test file
     # picker. Exercises multiwindow load, merge, cancel, semantic rejection,
     # repeated close/reopen, a larger historical file and nested callbacks.
@@ -623,6 +637,19 @@ if(BUILD_TESTING)
           "${CMAKE_CURRENT_SOURCE_DIR}/tests/gui_fixtures/truncated-ff.g")
     set_tests_properties(test_ff_gui_file_workflow_pass12 PROPERTIES TIMEOUT 120
         ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    foreach(rome_dimension IN ITEMS 2d 3d)
+      set(rome_gui_options)
+      if(rome_dimension STREQUAL "3d")
+        list(APPEND rome_gui_options --3d)
+      endif()
+      add_test(NAME test_rome_gui_file_workflow_${rome_dimension}_pass12
+        COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_gui_file_workflow_pass11>"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/rome_fixtures/structure.rome"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/modern_rome/corpus_smoke/accepted/structure.rome"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/rome_fixtures/partial-error.rome" ${rome_gui_options})
+      set_tests_properties(test_rome_gui_file_workflow_${rome_dimension}_pass12 PROPERTIES TIMEOUT 120
+        ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    endforeach()
     if(FFGRAPH_GUI_STRESS_TESTS)
       add_test(NAME test_gui_large_file_workflow_pass11
         COMMAND "${XVFB_RUN_EXECUTABLE}" -a
@@ -668,11 +695,6 @@ if(BUILD_TESTING)
   endif()
 endif()
 
-if(FFGRAPH_ENABLE_MODERN_ROME_PILOT)
-  # Deliberately not linked into FFGraph or the application yet.
-  add_subdirectory(tests/modern_rome)
-endif()
-
 if(BUILD_TESTING)
   # Parser subdirectories label their own tests, also in standalone builds.
   get_property(headless_tests DIRECTORY PROPERTY TESTS)
@@ -682,6 +704,8 @@ if(BUILD_TESTING)
       test_ffwindow_tk_teardown test_load_window_lifetime_pass11
       test_ff_window_oracle_pass12 test_gui_file_workflow_pass11
       test_ff_gui_file_workflow_pass12 test_gui_large_file_workflow_pass11
+      test_rome_window_oracle_pass12 test_rome_gui_file_workflow_2d_pass12
+      test_rome_gui_file_workflow_3d_pass12
       test_tk_lifecycle_pass10 test_inspector_visibility)
     if(TEST ${gui_test})
       set_tests_properties(${gui_test} PROPERTIES LABELS gui)

@@ -1,5 +1,8 @@
 # Pass 12 — supplied Rome collection verification
 
+Current production status: [modern-only Rome and legacy retirement](FFGRAPH-PASS12-ROME-LEGACY-RETIREMENT.md).
+The results below describe an earlier checkpoint with legacy still present.
+
 Date: 2 November 2026. Branch: `pass12-modern-rome-parser`.
 Starting commit: `3f2f16102e4597ea70b56e024d48c5505a65d9d2`.
 The checkout was clean. The user supplied the directory

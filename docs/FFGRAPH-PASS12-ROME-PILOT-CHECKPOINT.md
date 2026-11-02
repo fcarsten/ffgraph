@@ -1,5 +1,8 @@
 # Pass 12 — isolated GNU Bison/Flex Rome pilot
 
+Current production status: [modern-only Rome and legacy retirement](FFGRAPH-PASS12-ROME-LEGACY-RETIREMENT.md).
+The results below describe an earlier checkpoint with legacy still present.
+
 Follow-up: [real-corpus verification](FFGRAPH-PASS12-ROME-REAL-CORPUS.md)
 subsequently exercises the supplied external Rome collection. The results below
 describe the earlier synthetic-corpus pilot checkpoint.
