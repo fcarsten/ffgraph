@@ -4,6 +4,8 @@
 */
 
 #include <ffgraph/FFsugiyama.h>
+#include <map>
+#include <vector>
 
 // Explicitly instantiate the list/stack adapters used by this translation unit.
 // DLNode and SLNode were libg++ implementation details; the STL-backed
@@ -35,7 +37,7 @@ void sdfsvisit (int k, SNode *nodes, int &dfs, int &comp)
       }
 }
 
-void sdfs (SNode *nodes, int anzN, FFGraph &graph)
+static void sdfs_from (SNode *nodes, int anzN, FFNode start)
 ///////////////////////////////////////////////////////////////////
 //                                                               //
 // Tiefensuche mit zusaetzlicher Berechnung der dfs- und comp-   //
@@ -49,9 +51,9 @@ void sdfs (SNode *nodes, int anzN, FFGraph &graph)
     i,
     startN;
   
-  if (graph->getStartNode () != 0)
+  if (start != nullptr)
     {
-      startN = (graph->getStartNode ())->getValue ();
+      startN = start->getValue ();
       dfs++;
       nodes[startN].dfs = dfs;
       sdfsvisit (startN, nodes, dfs, comp);
@@ -79,6 +81,11 @@ void sdfs (SNode *nodes, int anzN, FFGraph &graph)
 	comp++;
 	nodes[i].comp = comp;
       }
+}
+
+// Retain the historical helper API for callers that always honor graph start.
+void sdfs(SNode* nodes, int count, FFGraph& graph) {
+  sdfs_from(nodes,count,graph->getStartNode());
 }
 
 void init_backEdges (SNode *nodes, int anzE, DLList <int> &backEdges,  
@@ -117,7 +124,7 @@ void slevelvisit (int k, SNode *nodes)
       }
 }
 
-void slevel (SNode *nodes, int anzN, FFGraph &graph)
+static void slevel_from (SNode *nodes, int anzN, FFNode start)
 ///////////////////////////////////////////////////////////////////
 //                                                               //
 // Fuer jeden Knoten wird der laengste Pfad vom Startknoten      //
@@ -129,9 +136,9 @@ void slevel (SNode *nodes, int anzN, FFGraph &graph)
   int i,
     startN;
   
-  if (graph->getStartNode () != 0)
+  if (start != nullptr)
     {
-      startN = (graph->getStartNode ())->getValue ();
+      startN = start->getValue ();
       nodes[startN].level = 0;
       nodes[startN].attrib = 1;
       slevelvisit (startN, nodes);
@@ -153,6 +160,10 @@ void slevel (SNode *nodes, int anzN, FFGraph &graph)
 	nodes[i].attrib = 1;
 	slevelvisit (i, nodes);
       }
+}
+
+void slevel(SNode* nodes, int count, FFGraph& graph) {
+  slevel_from(nodes,count,graph->getStartNode());
 }
 
 void leaves_down (SNode *nodes, SEdge *edges, 
@@ -327,11 +338,17 @@ void rem_par_edges (SNode *nodes, SEdge *edges,
     target;
   Pix q;
 
+  // Build candidate lists in original edge-index order; retain the outer
+  // traversal so group append order and the earliest representative match.
+  std::map<std::pair<int,int>,std::vector<int>> candidates;
+  for (int i = 1; i <= anzE; ++i) if (edges[i].type == 0)
+    candidates[{edges[i].source,edges[i].target}].push_back(i);
   anzPar = 0;
   for (j = 1; j <= anzE; j++)
     if (edges[j].type == 0)
-      for (e = 1; e <= anzE; e++)
+      for (int candidate : candidates.at({edges[j].source,edges[j].target}))
 	{
+          e = candidate;
 
 	  // Bereits geloeschte Kanten nicht noch einmal beruecksichtigen
 	  if ((e != j) &&
@@ -435,6 +452,7 @@ int set_positions (int *nodeArray, SNode *nodes, int anzN, int dummies,
 	    nodes[n].posList[i].v[1] = (vertUnit[i] - 1) * 
 	      (info.xDistance + max);
     }
+
   
   delete[] vertUnit;
   return (0);
@@ -819,7 +837,7 @@ void sugiyama (FFGraph &graph, struct FSSugiInfo info,
   rem_ref_edges (nodes, edges, anzE, anzRef, refEdges);
   rem_par_edges (nodes, edges, anzE, anzPar1, 2, parEdges);
  
-  sdfs (nodes, anzN, graph);
+  sdfs_from(nodes,anzN,info.useStartNode ? graph->getStartNode() : nullptr);
   init_backEdges (nodes, anzE, backEdges, edges);
   change_edges (nodes, edges, backEdges); 
 
@@ -828,7 +846,7 @@ void sugiyama (FFGraph &graph, struct FSSugiInfo info,
   // enstehen).
   rem_par_edges (nodes, edges, anzE, anzPar2, 3, parEdges);
 
-  slevel (nodes, anzN, graph);
+  slevel_from(nodes,anzN,info.useStartNode ? graph->getStartNode() : nullptr);
   slevel_correct (nodes, edges, anzN, parEdges);
 
   // Falls Blaetter nach unten gesetzt werden sollen
@@ -897,7 +915,7 @@ void sugiyama (FFGraph &graph, struct FSSugiInfo info,
     
   // absolute Positionen der Knoten setzen
   test = improve_positions (nodeArray, nodes, maxL, anzN, dummies, 
-			    info.xDistance, info.yDistance, info.offset,
+                            info.xDistance, info.yDistance, FFPoint(),
 			    info.orient, info.grid, info.sameSize, newmaxS); 
 	
   if (test != 0)
@@ -926,6 +944,19 @@ void sugiyama (FFGraph &graph, struct FSSugiInfo info,
 
   delete[] nodeArray;
 
+  // Offsets translate the finished relative drawing, including all route
+  // arrays. Keep them out of coordinate compaction and its rounding rules.
+  const int crossAxis = info.orient == 1 ? 0 : 1;
+  const int layerAxis = 1-crossAxis;
+  for (int n = 1; n <= anzN+dummies; ++n) {
+    nodes[n].point.v[0] += info.offset.v[crossAxis];
+    nodes[n].point.v[1] += info.offset.v[layerAxis];
+    if (nodes[n].anzDum == 2)
+      for (int level = nodes[n].level+1; level <= nodes[n].elevel; ++level) {
+        nodes[n].posList[level].v[0] += info.offset.v[crossAxis];
+        nodes[n].posList[level].v[1] += info.offset.v[layerAxis];
+      }
+  }
   finish_sgraph (graph, nodes, edges, anzN, anzE, dummies, backEdges, 
 		 info.xDistance, info.yDistance, info.orient);
 

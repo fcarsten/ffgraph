@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.24)
 project(ffgraph LANGUAGES C CXX VERSION 1.0)
 
 include(GNUInstallDirs)
@@ -125,7 +125,10 @@ foreach(target FFcontainer FFGraph FFlayout FFGraphic)
 endforeach()
 target_include_directories(FFGraphic PRIVATE ${XPM_INCLUDE_DIR})
 target_link_libraries(FFGraphic PUBLIC FFGraph PkgConfig::TK X11::X11 ${XPM_LIBRARY})
-add_executable(ffgraph ffmain.cc misc/FFDefaultLayouts.cc)
+file(RELATIVE_PATH FFGRAPH_RESOURCE_RELATIVE "${CMAKE_INSTALL_FULL_BINDIR}" "${CMAKE_INSTALL_FULL_LIBDIR}/ffgraph")
+configure_file(misc/FFRuntimePathsConfig.h.in generated/FFRuntimePathsConfig.h @ONLY)
+add_executable(ffgraph ffmain.cc misc/FFDefaultLayouts.cc misc/FFRuntimePaths.cc)
+target_include_directories(ffgraph PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_compile_features(ffgraph PRIVATE cxx_std_17)
 # Preserve historical static archive resolution order.
 target_link_libraries(ffgraph PRIVATE FFGraph FFGraphic FFlayout FFcontainer PkgConfig::TK X11::X11 ${XPM_LIBRARY})
@@ -137,7 +140,12 @@ if(DL_LIBRARY)
 endif()
 
 install(TARGETS ffgraph RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(CODE "execute_process(COMMAND \"${CMAKE_COMMAND}\" -E create_symlink ffgraph \"$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/ffgraph3D\")")
+if(IS_ABSOLUTE "${CMAKE_INSTALL_BINDIR}")
+  set(FFGRAPH_LINK_DESTINATION "\$ENV{DESTDIR}${CMAKE_INSTALL_BINDIR}/ffgraph3D")
+else()
+  set(FFGRAPH_LINK_DESTINATION "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/ffgraph3D")
+endif()
+install(CODE "file(REMOVE \"${FFGRAPH_LINK_DESTINATION}\")\nfile(CREATE_LINK ffgraph \"${FFGRAPH_LINK_DESTINATION}\" SYMBOLIC)")
 install(DIRECTORY lib/ffgraph DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY include/ffgraph/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ffgraph FILES_MATCHING PATTERN "*.h")
 install(TARGETS FFGraph FFGraphic FFlayout FFcontainer ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -173,6 +181,10 @@ if(FFGRAPH_BUILD_PROFILER)
 endif()
 
 if(BUILD_TESTING)
+  add_executable(test_runtime_paths tests/test_runtime_paths.cpp misc/FFRuntimePaths.cc)
+  target_compile_features(test_runtime_paths PRIVATE cxx_std_17)
+  target_include_directories(test_runtime_paths PRIVATE misc "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  add_test(NAME test_runtime_paths COMMAND test_runtime_paths)
   add_executable(test_check_ndebug tests/test_check_ndebug.cpp)
   target_compile_features(test_check_ndebug PRIVATE cxx_std_17)
   target_compile_definitions(test_check_ndebug PRIVATE NDEBUG)
@@ -220,8 +232,13 @@ if(BUILD_TESTING)
       test_graph_layout_pass9
       test_spring_numerics
       test_spring_equilibrium
+      test_spring_weight_toggle
+      test_spring_force_compat
+      test_layout_controls
       test_sugiyama_missing_graphics
       test_sugiyama_barycenters
+      test_sugiyama_permutations
+      test_sugiyama_parallel_index
       test_sugiyama_crossings
       test_application_default_layouts
       test_sugiyama_layout)
@@ -730,6 +747,22 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME test_inspector_visibility
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_inspector_visibility>")
+
+    add_executable(test_layout_controls_gui tests/test_layout_controls_gui.cpp)
+    target_link_libraries(test_layout_controls_gui PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+    add_test(NAME test_layout_controls_gui
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_layout_controls_gui>")
+    set_tests_properties(test_layout_controls_gui PROPERTIES TIMEOUT 60
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    if(Python3_Interpreter_FOUND)
+      add_test(NAME test_installed_runtime
+        COMMAND "${XVFB_RUN_EXECUTABLE}" -a "${Python3_EXECUTABLE}"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_installed_runtime.py"
+          --build "${CMAKE_CURRENT_BINARY_DIR}" --libdir "${CMAKE_INSTALL_LIBDIR}")
+      set_tests_properties(test_installed_runtime PROPERTIES TIMEOUT 90)
+    endif()
   endif()
 endif()
 
@@ -744,7 +777,7 @@ if(BUILD_TESTING)
       test_ff_gui_file_workflow_pass12 test_gui_large_file_workflow_pass11
       test_rome_window_oracle_pass12 test_rome_gui_file_workflow_2d_pass12
       test_rome_gui_file_workflow_3d_pass12
-      test_tk_lifecycle_pass10 test_inspector_visibility)
+      test_tk_lifecycle_pass10 test_inspector_visibility test_layout_controls_gui test_installed_runtime)
     if(TEST ${gui_test})
       set_tests_properties(${gui_test} PROPERTIES LABELS gui)
     endif()

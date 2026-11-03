@@ -7,6 +7,8 @@ implementations have been retired.
 Use CMake; the historical Makefile fragments do not build the active FF/GML/Rome
 importers.
 
+The full application requires **CMake 3.24 or newer** (LINK_GROUP support).
+
 Install prerequisites:
 
 ```sh
@@ -28,6 +30,15 @@ cmake --preset release
 cmake --build --preset release --parallel
 ctest --preset release
 ```
+
+The latest correctness fixes and exact layout speedups are documented in
+[the layout-controls checkpoint](docs/FFGRAPH-LAYOUT-CONTROLS-CHECKPOINT.md) and
+[the performance checkpoint](docs/FFGRAPH-EXACT-LAYOUT-OPTIMIZATIONS.md).
+Spring keeps the selected-node pinning convention and its distinct legacy
+weighted formulas. Finite quality now honors the configured maximum iteration
+count; quality zero still runs until stopped. Sugiyama's configured offsets
+translate the drawing and its routes consistently in either orientation.
+The experimental aesthetic layouts remain parked.
 
 For reproducible headless import/layout profiling, build the optional driver:
 
@@ -91,8 +102,13 @@ cmake --install build/install
 ```
 
 The `ffgraph3D` symlink is installed alongside `ffgraph`. Runtime assets
-are installed under the library directory as in the original Makefiles.
-Check application-specific runtime asset lookup on your target installation.
+remain under the library directory. The application locates them relative to
+its installed executable, so it can launch from other working directories;
+build-tree executables use the configured source resources. Existing FF_LIBDIR
+and FF_ICONDIR overrides remain supported. Install-time --prefix and DESTDIR
+are honored by the symlink step. See
+[the runtime portability checkpoint](docs/FFGRAPH-RUNTIME-PORTABILITY-CHECKPOINT.md)
+for actual clean production-only builds and staged 2D/3D startup checks.
 
 ## Tcl/Tk window teardown
 

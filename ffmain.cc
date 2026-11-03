@@ -30,6 +30,7 @@
 #include <ffgraph/FFRandom.h>
 #include <ffgraph/FFShow.h>
 #include "misc/FFDefaultLayouts.h"
+#include "misc/FFRuntimePaths.h"
 #include <vector>
 #include <cerrno>
 #include <cstdlib>
@@ -58,6 +59,7 @@ static bool isPositiveIntegerArgument(const char* argument)
 
 int main(int argc, char **argv)
 {
+ ffgraph_app::configureRuntimePaths(argv[0]);
  // Keep SIGFPE at its default disposition. IEEE-754 floating-point
  // divisions normally produce infinities/NaNs without a signal, whereas
  // ignoring an integer divide-by-zero trap can repeatedly fault.

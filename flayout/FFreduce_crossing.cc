@@ -414,95 +414,40 @@ int r_c (int *matrix1, int *matrix2, int max_r, int max_c, int maxS)
   return (0);
 }
 
-int b_r (int *matrix1, int *matrix2, int max_r, int max_c, 
-	 int maxS)
-///////////////////////////////////////////////////////////////////
-//                                                               //
-// Ordnet Zeilen anhand des Barycenter der Zeilen, Nullzeilen    //
-// bleiben stehen.                                               //
-// Rueckgabewert 1, falls Fehler.                                //
-//                                                               //
-///////////////////////////////////////////////////////////////////
-{
-  FFCoord *b;
-  int k, 
-    i, 
-    j;
- 
-  b = new FFCoord [maxS];
-  if (b == 0)
-    return (1);
-
-  for (i = 1; i <= max_r; i++)
-    b[i] = row_barycenter (matrix1, i, max_c, maxS);   
-
-  for (j = max_r; j > 1; j--)
-    if (b[j] != 0.0)						
-      for (i = 1; i < j; i++)
-        if (b[i] != 0.0)
-          {
-            k = i+1;
-            while (b[k] == 0.0)
-              k++;
-
-            if (b[i] > b[k])
-              {
-                exch_double (&b[i], &b[k]);
-                exch_rows (matrix1, i, k, maxS);
-
-                if (matrix2 != 0)
-                  exch_columns (matrix2, i, k, maxS);
-              }
-          }
-  
-  delete[] b;
-  return (0);
-}					
-
-int b_c (int *matrix1, int *matrix2, int max_r, int max_c, 
-	 int maxS)
-///////////////////////////////////////////////////////////////////
-//                                                               //
-// Ordnet Spalten anhand des Barycenter der Spalten, Nullzeilen  //
-// bleiben stehen.                                               //
-// Rueckgabewert 1, falls Fehler.                                //
-//                                                               //
-///////////////////////////////////////////////////////////////////
-{
-  FFCoord *b;
-  int k, 
-    i, 
-    j;
-
-  b = new FFCoord [maxS];
-  if (b == 0)
-    return (1);
-  
-  for (i = 1; i <= max_c; i++)
-    b[i] = column_barycenter (matrix1, i, max_r, maxS);
-	
-  for (j = max_c; j > 1; j--)
-    if (b[j] != 0.0)						
-      for (i = 1; i < j; i++)
-        if (b[i] != 0.0)
-          {
-            k = i+1;
-            while (b[k] == 0.0)
-              k++;
-
-            if (b[i] > b[k])
-              {
-                exch_double (&b[i], &b[k]);
-                exch_columns (matrix1, i, k, maxS);
-		
-                if (matrix2 != 0)
-                  exch_rows (matrix2, i, k, maxS);
-              }
-          }
-  
-  delete[] b;
-  return (0);
-}	
+namespace {
+int barycenterPermutation(int* matrix, int* partner, int rows, int columns, int stride, bool byRows) {
+  std::vector<int> slots;
+  std::vector<std::pair<FFCoord,int>> order;
+  const int count = byRows ? rows : columns;
+  for (int i = 1; i <= count; ++i) {
+    const auto value = byRows ? row_barycenter(matrix,i,columns,stride) : column_barycenter(matrix,i,rows,stride);
+    if (value != 0) { slots.push_back(i); order.emplace_back(value,i); }
+  }
+  std::stable_sort(order.begin(),order.end(),[](const auto& a, const auto& b) { return a.first < b.first; });
+  bool changed = false;
+  for (std::size_t i = 0; i < slots.size(); ++i) changed |= slots[i] != order[i].second;
+  if (!changed) return 0;
+  // Move each selected full row/column once, including metadata and padding.
+  // The neighboring matrix receives the very same vertex permutation.
+  std::vector<int> buffer(slots.size()*std::size_t(stride));
+  auto apply = [&](int* cells, bool rowWise) {
+    for (std::size_t i = 0; i < slots.size(); ++i) for (int k = 0; k < stride; ++k)
+      buffer[i*stride+k] = rowWise ? cells[order[i].second*stride+k] : cells[k*stride+order[i].second];
+    for (std::size_t i = 0; i < slots.size(); ++i) for (int k = 0; k < stride; ++k)
+      if (rowWise) cells[slots[i]*stride+k] = buffer[i*stride+k];
+      else cells[k*stride+slots[i]] = buffer[i*stride+k];
+  };
+  apply(matrix,byRows);
+  if (partner) apply(partner,!byRows);
+  return 0;
+}
+}
+int b_r(int* matrix, int* partner, int rows, int columns, int stride) {
+  return barycenterPermutation(matrix,partner,rows,columns,stride,true);
+}
+int b_c(int* matrix, int* partner, int rows, int columns, int stride) {
+  return barycenterPermutation(matrix,partner,rows,columns,stride,false);
+}
 
 int phase1_down (int *matrixarray, int matrixSize, int *nodeArray, 
 		 int maxL, int maxS, int newmaxS)

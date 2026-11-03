@@ -1,5 +1,11 @@
 # Layout performance priorities — 2026-11-03
 
+**Implemented checkpoint:** the three exact optimization steps below are now
+implemented after control fixes and explicit user decisions. See
+`FFGRAPH-EXACT-LAYOUT-OPTIMIZATIONS.md` for frozen-kernel/permutation comparisons,
+actual timings and full verification. The remainder of this report records the
+original deferred plan and pre-optimization measurements.
+
 ## Status: deferred implementation plan
 
 The user requested a correctness review before further optimization. Complete

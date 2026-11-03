@@ -33,7 +33,9 @@ proc Sugi_SetupWindow {w} {
 
 
 global FF_LIBDIR
-set FF_LIBDIR "./lib/ffgraph"
+if {![info exists FF_LIBDIR]} {
+  set FF_LIBDIR "./lib/ffgraph"
+}
 source $FF_LIBDIR/tcl/xfmisc.tcl
 
 # procedure to show window .

@@ -84,7 +84,8 @@ to add your layouter to the graph using {\bf int
   FFGraphClass::addGraphLabel(FFGraphLabel *)} and it will
 automatically be added to the layout menu of {\bf FFTclWindow}. If the
 menu is invoked, the method {\bf void FFLayoutLabel::layout()}
-is called. If more than one node is selected, {\bf void
+is called. Spring retains its historical exception: nodes passed to
+the set overload are pinned, while the remaining nodes may move. If more than one node is selected, {\bf void
 FFLayoutLabel::layout(AVLSet\verb|<|FFNode\verb|>|)} is called.
 
 That is all you basically have to do.  If you want the user to be

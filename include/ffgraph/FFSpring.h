@@ -78,6 +78,7 @@ public:
  FFCoord getOptDistance ();
  BOOL    setOptDistance (FFCoord);
  
+ // Legacy offsets place a movable singleton; multi-node layout is unbounded.
  FFCoord getxoff ();
  BOOL    setxoff (FFCoord);
  FFCoord getyoff ();
@@ -90,6 +91,7 @@ public:
  
  void stop();
  
+ // The set contains pinned nodes. Empty means all nodes may move.
  void    layout (FFSet <FFNodeClass *>&);
  void    layout ();
  

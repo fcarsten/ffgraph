@@ -46,6 +46,26 @@ void setup(FFGraph& g, bool graphics) {
   g->addNodeLabel(new Probe<FFNodeLabel>);
   g->addEdgeLabel(new Probe<FFEdgeLabel>);
 }
+struct RenumberLabel : FFNodeLabel {
+  RenumberLabel() { _setType("Renumber"); }
+  FFNodeLabel* proto() const override { return new RenumberLabel; }
+  BOOL parse(const String&) override { node->setValue(2); return YES; }
+};
+void lookupMutationOracle() {
+  FFGraph graph(YES); graph->addNodeLabel(new RenumberLabel);
+  graph->addNode(); graph->addNode();
+  const auto& all = graph->allNodes(); Pix p = all.first();
+  auto first = all(p); all.next(p); auto cached = all(p);
+  first->setValue(1); cached->setValue(2);
+  const auto parsed = ffgraph_ff::parse("GRAPH \"\" = DIRECTED 2 \"cached\"; 1 {$ FF_L \"Renumber\" \"go\" $} \"renumbered\" 2 \"self\"; END");
+  check(parsed.ok && ffgraph_ff::applyToGraph(parsed,*graph.operator->(),false), "callback mutation replay");
+  // A cached pointer for ID 2 still has ID 2, yet it is no longer the correct
+  // first match after the label directly renumbers an earlier node.
+  check(cached->getValue() == 2 && graph->nodeWithValue(2) == first, "live duplicate winner after callback");
+  check(graph->getNumNodes() == 2 && graph->getNumEdges() == 1, "callback lookup structure");
+  auto edge = graph->allEdges()(graph->allEdges().first());
+  check(edge->source() == first && edge->target() == first, "callback must resolve current winner, not cached pointer");
+}
 std::string read(const std::filesystem::path& path) {
   std::ifstream in(path, std::ios::binary);
   check(in.good(), "open " + path.string());
@@ -297,6 +317,6 @@ int main(int argc, char** argv) {
   compareAPIs(historical, "contrib/out.g graphics", true, false);
   FFGraph sample(YES); setup(sample, true); loadModern(sample, historical);
   check(sample->getNumNodes() == 499 && sample->getNumEdges() == 499, "historical count oracle");
-  independentOracle(); attributeOracle(root); generatedRoundTrips();
+  independentOracle(); attributeOracle(root); generatedRoundTrips(); lookupMutationOracle();
   std::cout << count << " FF fixtures, historical graph, 24 writer graphs/reimports and independent oracles passed\n";
 }

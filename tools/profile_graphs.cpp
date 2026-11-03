@@ -231,7 +231,7 @@ int main(int argc, char** argv) {
           require(spring->setQuality(quality), "spring quality rejected");
           spring->setAnimation(NO);
           spring->setDimension(dimension);
-          springCap = std::max(30, 5000 * quality / graph->getNumNodes());
+          springCap = std::min(spring->getMaxIteration(),std::max(30, 5000 * quality / graph->getNumNodes()));
           layout = spring;
         } else if (algorithm == "sugi") {
           auto* sugi = new Headless<FFSugi>;

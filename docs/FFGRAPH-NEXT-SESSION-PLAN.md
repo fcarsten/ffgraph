@@ -66,7 +66,8 @@ unchanged. Native string imports remain FF. GUI File > Load still creates a
 window before parsing. Allocation/callback exceptions during replay remain a
 separate unverified transactional concern.
 
-The next recommended checkpoint is installed runtime and portability, below.
+The installed runtime and portability checkpoint below is now completed; see
+the November 3 follow-up results near the end of this document.
 Keep all graph/corpus/GUI tests active; do not reintroduce legacy generation or
 restart the already completed parser migration. Earlier reports retain their
 historical baseline counts and policies.
@@ -114,12 +115,12 @@ regression coverage; optimizing the Rome loader is low priority. Prefer FF/GML
 for new format work, and prioritize shared layout and FF-specific performance
 work over Rome loader optimization.
 
-The November 3 refresh is in `FFGRAPH-LAYOUT-PERFORMANCE-NEXT-STEPS.md`.
+The earlier November 3 refresh is in `FFGRAPH-LAYOUT-PERFORMANCE-NEXT-STEPS.md`.
 With the crossing counter optimized, sparse Sugiyama examples spend 91–92% of
 instructions in barycenter row/column sorting; the dense example instead spends
 94% in quadratic parallel-edge preprocessing. Spring spends approximately 94%
 in its weighted force calculation, with repeated point arithmetic a large cost.
-The optimization sequence is saved for later: private Spring force arithmetic,
+The optimization sequence at that point was: private Spring force arithmetic,
 batched stable Sugiyama matrix permutations, then indexed parallel-edge detection.
 Each needs old/new semantic comparison before promotion. Approximate Spring
 repulsion remains a later explicit optional mode, not a default behavior change.
@@ -140,6 +141,57 @@ Resolve those contracts before freezing corrected references for optimization.
 The manual-ASan default-layout prototype leak was reproduced and fixed, including
 the actual GUI `exit(0)` path. See `FFGRAPH-APPLICATION-DEFAULT-LAYOUT-OWNERSHIP.md`
 for strict headless and actual GUI results, including remaining dependency leaks.
+
+## Sugiyama drawing-quality experiments parked
+
+The user requested undoing the compact/BFS/parent-alignment/horizontal-postpass
+experiments after manual review found undesirable tradeoffs. At that checkpoint production code,
+layout registration, profiler options and tests were restored to `c1fc4bc`.
+The committed numerical, hang, crossing-counter and barycenter fixes remain.
+See `FFGRAPH-SUGIYAMA-EXPERIMENTS-PARKED.md` for the local archive and verification.
+Do not resume aesthetic refinement without a new user request.
+
+## Follow-up steps implemented after parking
+
+The user authorized the outstanding sequence. See:
+
+- `FFGRAPH-LAYOUT-CONTROLS-CHECKPOINT.md`: weights OFF, finite iteration caps,
+  pinned/singleton coordinates, Sugiyama reduction/start controls and offsets.
+  The user explicitly chose selected nodes as pinned and preservation of the
+  distinct weighted 2D/3D laws; manuals and tests now document those contracts.
+- `FFGRAPH-EXACT-LAYOUT-OPTIMIZATIONS.md`: private Spring force arithmetic,
+  stable batched barycenter permutations and indexed parallel preprocessing.
+  All eight frozen default Sugiyama layouts are unchanged. Measured cases are
+  approximately 4.2–6.3 times faster, with per-kernel/permutation differential
+  checks; no approximate solver or aesthetic postpass is introduced.
+- `FFGRAPH-RUNTIME-PORTABILITY-CHECKPOINT.md`: CMake minimum 3.24, runtime
+  resource lookup outside the checkout, install-time prefix/DESTDIR symlink
+  handling, source-build overrides and a clean BUILD_TESTING=OFF build.
+- `FFGRAPH-FF-IMPORT-INDEX-AUDIT.md`: a new actual-label callback regression
+  proves that pointer/value-validated ID caches can still select the wrong
+  duplicate. Production replay/indexing remains unchanged.
+
+Final combined local results: Debug 75/75, Release 77/77, strict headless
+ASan/UBSan/LSan 63/63 and GUI runtime sanitizers 12/12. See the reports for
+commands, limitations and saved provenance. No commits or pushes were made.
+
+## Remaining priorities
+
+1. Design mutation-aware FF ID indexing, covering direct setValue, membership,
+   callbacks and duplicate first-match policy before attempting acceleration.
+2. Use the five refreshed Callgrind profiles in
+   `FFGRAPH-EXACT-LAYOUT-OPTIMIZATIONS.md` before choosing further performance
+   work. Sparse Sugiyama still spends heavily on full-stride permutations;
+   Spring remains dominated by exact quadratic force interactions. Further
+   acceleration is a separate checkpoint, with compatibility evidence required.
+3. Validate a complete newer Tcl/Tk/font stack and strict GUI leak behavior
+   before proposing dependency changes. Keep the existing diagnostic policy.
+4. Address remaining large-input/overflow/exception-cleanup limits as separate
+   reproduced correctness patches. Spring global offset bounds and arbitrary
+   camera/spline/label geometry are not new features in this checkpoint.
+
+Aesthetic Sugiyama refinement remains parked. SPQR stays excluded, the WSLg
+inspector investigation remains parked, and Rome optimization is low priority.
 
 ## Starting commands
 

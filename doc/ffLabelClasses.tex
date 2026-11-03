@@ -387,7 +387,10 @@ Returns what algorithm is used to reduce crossings.
 \label{ffspring}
 
 The class {\bf FFSpring} is a subclass of {\bf FFLayoutLabel} and
-implements a spring-embedder layout algorithm. The class defines the
+implements a spring-embedder layout algorithm. For compatibility, its
+weighted force law differs between 2D and 3D, and nonzero parallel edges
+contribute separately in weighted mode. Unweighted mode ignores weights
+and collapses parallel neighbors. These legacy conventions are retained. The class defines the
 following methods:
 
 \begin{itemize}
@@ -426,11 +429,13 @@ Sets whether the weight of edges should be used.
 
 \item{\bf  int     getMaxIteration ()}
 
-Returns the maximum number of iterations.
+Returns the maximum number of iterations in finite-quality mode.
+Continuous mode (quality zero) runs until stopped.
 
 \item{\bf  BOOL    setMaxIteration (int n)}
 
-Sets the maximum number of iterations to {\bf n}.
+Sets the finite-mode iteration cap to {\bf n}. The quality-derived
+limit is also applied; the smaller limit wins. Continuous mode is unchanged.
 
 \item{\bf  int     getAnimationIntervals ()}
 
@@ -451,42 +456,45 @@ Returns the optimal distance between two nodes.
 
 \item{\bf  FFCoord getxoff ()}
 
-  Returns the lowest possible x-coordinate.
+  Returns the x-coordinate used to place a movable singleton.
+  Multi-node Spring layout does not enforce coordinate bounds.
 
 \item{\bf  BOOL    setxoff (FFCoord x)}
   
-  Sets the lowest possible x-coordinate to {\bf x}.
+  Sets the singleton placement x-coordinate to {\bf x}.
 
 \item{\bf  FFCoord getyoff ()}
 
-  Returns the lowest possible y-coordinate.
+  Returns the y-coordinate used to place a movable singleton.
+  Multi-node Spring layout does not enforce coordinate bounds.
 
 \item{\bf  BOOL    setyoff (FFCoord)}
 
-  Sets the lowest possible y-coordinate to {\bf y}.
+  Sets the singleton placement y-coordinate to {\bf y}.
 
 \item{\bf  FFCoord getzoff ()}
 
-  Returns the lowest possible z-coordinate.
+  Returns the z-coordinate used to place a movable singleton.
+  Multi-node Spring layout does not enforce coordinate bounds.
 
 \item{\bf  BOOL    setzoff (FFCoord)}
 
-  Sets the lowest possible z-coordinate to {\bf z}.
+  Sets the singleton placement z-coordinate to {\bf z}.
 
 \item{\bf  BOOL    getDimension ()}
   
-  Returns {\bf YES} if 3 dimensions are used and {\bf NO} if 2
-  dimensions are used.
+  Returns 2 or 3 for the layout dimension (the historical BOOL type is an integer).
 
 \item{\bf  void    setDimension (BOOL flag)}
 
-  If {\bf flag == YES} 3 dimensions are used for layout. If {\bf flag == NO},
-  2 dimensions are used.
+  Pass 2 or 3 to choose the dimension. Other values are ignored.
   
 \item{\bf  void    layout (AVLSet\verb|<|FFNodeClass *\verb|>|\& set)}
   
-  Does a local layout for the subgraph defined by the nodes in
-  {\bf set} and the edges between nodes in {\bf set}.
+  Keeps nodes in {\bf set} fixed and lays out the remaining nodes.
+  An empty set permits every node to move. Pinned singleton coordinates
+  are retained; an unpinned singleton uses the configured offsets, with Z zero
+  in 2D. The GUI invokes this overload when more than one node is selected.
 
 \item{\bf  void    layout ()}
   
