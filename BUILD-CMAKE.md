@@ -86,7 +86,18 @@ failure tests. The OS-limit tests are native-only because `RLIMIT_AS` conflicts
 with ASan's reserved shadow address space. See
 [resource-limit testing and the follow-up audit](docs/FFGRAPH-SUGIYAMA-RESOURCE-LIMITS.md)
 for exact coverage, refreshed performance measurements and the remaining
-extreme-zoom rendering overflow.
+limits of OS resource testing.
+
+The large-offset/4x zoom renderer overflow is now fixed at the shared Tk rendering
+boundary. Unsupported projected items are temporarily hidden while world geometry
+is retained; zooming or panning back into range restores them. Run its tests with:
+
+```sh
+ctest --preset debug -R '^test_renderer_coordinates' -V
+```
+
+See [renderer coordinate bounds](docs/FFGRAPH-RENDERER-COORDINATE-BOUNDS.md) for
+actual 2D/3D window coverage, whole-edge suppression and remaining toolkit limits.
 
 For reproducible headless import/layout profiling, build the optional driver:
 

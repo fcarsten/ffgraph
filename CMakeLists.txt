@@ -240,6 +240,7 @@ if(BUILD_TESTING)
       test_sugiyama_numeric
       test_sugiyama_failure
       test_sugiyama_resources
+      test_renderer_coordinates
       test_sugiyama_barycenters
       test_sugiyama_permutations
       test_sugiyama_parallel_index
@@ -794,6 +795,14 @@ if(BUILD_TESTING)
       PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
     add_test(NAME test_layout_controls_gui
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_layout_controls_gui>")
+    add_executable(test_renderer_coordinates_gui tests/test_renderer_coordinates_gui.cpp)
+    target_link_libraries(test_renderer_coordinates_gui PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+    add_test(NAME test_renderer_coordinates_gui
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_renderer_coordinates_gui>")
+    set_tests_properties(test_renderer_coordinates_gui PROPERTIES TIMEOUT 60
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
     add_test(NAME test_sugiyama_failure_gui
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_sugiyama_failure>" --gui)
     set_tests_properties(test_sugiyama_failure_gui PROPERTIES TIMEOUT 90
@@ -834,7 +843,7 @@ if(BUILD_TESTING)
       test_rome_window_oracle_pass12 test_rome_gui_file_workflow_2d_pass12
       test_rome_gui_file_workflow_3d_pass12
       test_tk_lifecycle_pass10 test_inspector_visibility test_layout_controls_gui test_installed_runtime test_sugiyama_failure_gui test_sugiyama_publication_gui
-      test_sugiyama_resource_limits_gui)
+      test_sugiyama_resource_limits_gui test_renderer_coordinates_gui)
     if(TEST ${gui_test})
       set_tests_properties(${gui_test} PROPERTIES LABELS gui)
     endif()

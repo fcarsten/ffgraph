@@ -218,36 +218,42 @@ The OS-resource checkpoint and follow-up audit are now in
 address-space exhaustion, partial large-matrix cleanup, exact graph/route recovery
 and real-window busy/update restoration. Moderate controls also run under
 sanitizers. Results: Debug **86/86**, Release **88/88**, strict headless sanitizers
-**70/70**, GUI runtime sanitizers **14/14**. Production code is unchanged.
+**70/70**, GUI runtime sanitizers **14/14**. Production code was unchanged in that checkpoint.
 
-The audit **reproduced a remaining GUI overflow**: valid model offset 1e9 with
+The audit **reproduced a GUI overflow**: valid model offset 1e9 with
 4x zoom projects to 4e9, then `FFTclBasicWindow::updateGraph(FFGraphicNode*)`
 casts to int outside its range. Its normal-range control passes. This expected
-failing audit probe is separate from the passing CTest suites; the issue remains
-unfixed. Refreshed first-layout benchmarks show negligible sparse backup cost
-within noise but about 0.66 ms / 15% on the 128-node/4,096-edge dense example.
+failing audit probe is separate from the passing CTest suites; the issue is now
+fixed by the rendering checkpoint below. Refreshed first-layout benchmarks show
+negligible sparse backup cost within noise but about 0.66 ms / 15% on the
+128-node/4,096-edge dense example.
 All control/production snapshots match. Current profiles still favor crossing
 evaluation/permutations on sparse inputs; allocator costs are significant on
 dense inputs.
 
-1. Fix projected-coordinate conversions at the shared rendering boundary, with
-   ordinary-coordinate compatibility and extreme settings tests for 2D/3D nodes,
-   edges, labels/icons, camera controls and recovery. Do not silently clamp world
-   coordinates or impose an arbitrary Sugiyama-only offset restriction.
-   Callback-driven structural mutation/reentrancy remains separate from the
-   completed renderer-exception recovery guarantee.
-2. Use the refreshed profiles for further exact Sugiyama work afterward.
+The user requested fixing that overflow. See
+`FFGRAPH-RENDERER-COORDINATE-BOUNDS.md`: checked conversion at the shared Tk
+rendering boundary suppresses unsupported items and restores them after supported
+zoom/pan/reset. World coordinates and layout results remain intact; whole edges
+are suppressed rather than reconnecting across unsupported points. Actual 2D/3D
+window tests cover truncation, labels/icons, camera controls and publication
+rollback. Results: Debug **88/88**, Release **90/90**, strict headless sanitizers
+**71/71**, GUI runtime sanitizers **15/15**. Toolkit clipping/rebasing and arbitrary
+camera validity remain separate; the report states the supported recovery limits.
+
+1. Use the refreshed profiles for further exact Sugiyama work afterward.
    Remaining sparse costs include barycenters, crossing evaluation and matrix-array
    comparisons. Dense work should examine allocation costs while retaining
    publication rollback, route-storage guarantees and crossing/geometry oracles.
-3. Design mutation-aware FF ID indexing later, covering direct setValue,
+2. Design mutation-aware FF ID indexing later, covering direct setValue,
    membership, callbacks and duplicate first-match policy. Import acceleration
    is currently lower priority at the user's request. Spring remains dominated
    by exact quadratic force interactions; approximation needs a separate mode.
-4. Validate a complete newer Tcl/Tk/font stack and strict GUI leak behavior
+3. Validate a complete newer Tcl/Tk/font stack and strict GUI leak behavior
    before proposing dependency changes. Keep the existing diagnostic policy.
-Spring global offset bounds remain separate. General camera/label geometry is
-not proven safe by model-coordinate validation. OS termination under system-wide
+Spring global offset bounds and callback-driven structural mutation/reentrancy
+remain separate from renderer-exception recovery. General camera/label geometry is
+not proven safe by these rendering checks. OS termination under system-wide
 memory pressure and exhaustion of arbitrary C/scalar allocations remain unverified;
 no production resource quota or maximum supported graph size has been introduced.
 
