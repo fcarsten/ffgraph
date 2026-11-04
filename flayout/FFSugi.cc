@@ -370,27 +370,18 @@ void FFSugi::setDimension (int value)
 //                                                                         //
 /////////////////////////////////////////////////////////////////////////////
 
-void FFSugi::layout (FFSet <FFNode> &locNodes)
-{
-  if (graph->getWindow ())
-    graph->getWindow ()->setBusy ();
-
-  sugiyama (graph, info, locNodes);
-
-  if (graph->getWindow ())
-    graph->getWindow ()->unsetBusy ();
+namespace {
+struct BusyScope {
+  FFGraphWindow* window;
+  explicit BusyScope(FFGraphWindow* w) : window(w) { if (window) window->setBusy(); }
+  ~BusyScope() { if (window) window->unsetBusy(); }
+};
 }
-
-
-void FFSugi::layout ()
-{
-  if (graph->getWindow ())
-    graph->getWindow ()->setBusy ();
-
-  sugiyama (graph, info, graph->allNodes ());
-
-  if (graph->getWindow ())
-    graph->getWindow ()->unsetBusy ();
+void FFSugi::layout(FFSet<FFNode>& locNodes) {
+  BusyScope busy(graph->getWindow());
+  sugiyama(graph,info,locNodes);
 }
-
-
+void FFSugi::layout() {
+  BusyScope busy(graph->getWindow());
+  sugiyama(graph,info,graph->allNodes());
+}

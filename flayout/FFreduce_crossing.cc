@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
+#include <memory>
+#include "FFsugi_sizes.h"
 #ifdef FFGRAPH_VERIFY_SUGIYAMA_COUNTS
 #include <stdexcept>
 #endif
@@ -157,9 +159,8 @@ FFCoord row_barycenter (int *matrix, int i, int max, int maxS)
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int r1 = 0, 
-    r2 = 0,
-    j;
+  std::int64_t r1 = 0, r2 = 0;
+  int j;
 	
   for (j = 1; j <= max; j++)
     if (matrix[i*maxS + j] == 1)
@@ -182,9 +183,8 @@ FFCoord column_barycenter (int *matrix, int j, int max, int maxS)
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int r1 = 0, 
-    r2 = 0,
-    i;
+  std::int64_t r1 = 0, r2 = 0;
+  int i;
 	
   for (i = 1; i <= max; i++)
     if (matrix[i*maxS + j] == 1)
@@ -343,9 +343,8 @@ int r_r (int *matrix1, int *matrix2, int max_r, int max_c,
   int i,
     j;
 	
-  b = new FFCoord [maxS];
-  if (b == 0)
-    return (1);
+  std::unique_ptr<FFCoord[]> buffer(new FFCoord[ffgraph_sugiyama::arrayCount<FFCoord>(maxS)]);
+  b = buffer.get();
 
   //  Zeilenbarycenter berechnen 
   for (i = 1; i <= max_r; i++)
@@ -368,7 +367,7 @@ int r_r (int *matrix1, int *matrix2, int max_r, int max_c,
         } 
     }
 
-  delete[] b;
+
   return (0);
 }
 
@@ -385,9 +384,8 @@ int r_c (int *matrix1, int *matrix2, int max_r, int max_c, int maxS)
   int i,
     j;
 	
-  b = new FFCoord [maxS];
-  if (b == 0)
-    return (1);
+  std::unique_ptr<FFCoord[]> buffer(new FFCoord[ffgraph_sugiyama::arrayCount<FFCoord>(maxS)]);
+  b = buffer.get();
 
   //  Spaltenbarycenter berechnen 
   for (i = 1; i <= max_c; i++)
@@ -410,7 +408,7 @@ int r_c (int *matrix1, int *matrix2, int max_r, int max_c, int maxS)
         } 
     }
 
-  delete[] b;
+
   return (0);
 }
 
@@ -575,9 +573,8 @@ int phase2_down (int *matrixarray, int matrixSize, int *nodeArray,
     i,
     test = 0;
 
-  b = new FFCoord [maxS];
-  if (b == 0)
-    return (1);
+  std::unique_ptr<FFCoord[]> buffer(new FFCoord[ffgraph_sugiyama::arrayCount<FFCoord>(maxS)]);
+  b = buffer.get();
   
   for (level = 0; level < maxL-1; level++)
     {
@@ -596,7 +593,7 @@ int phase2_down (int *matrixarray, int matrixSize, int *nodeArray,
 	}
       else 
         {
-          delete[] b;
+
           return (0);
         }
     }
@@ -614,7 +611,7 @@ int phase2_down (int *matrixarray, int matrixSize, int *nodeArray,
 	return (1);
     }
 
-  delete[] b;
+
   return (0);
 }	
 
@@ -635,9 +632,8 @@ int phase2_up (int *matrixarray, int matrixSize, int *nodeArray,
     i,
     test;
 
-  b = new FFCoord [maxS];
-  if (b == 0)
-    return (1);
+  std::unique_ptr<FFCoord[]> buffer(new FFCoord[ffgraph_sugiyama::arrayCount<FFCoord>(maxS)]);
+  b = buffer.get();
 
   for (level = maxL-1; level > 0; level--)
     {
@@ -656,7 +652,7 @@ int phase2_up (int *matrixarray, int matrixSize, int *nodeArray,
 	}
       else
         {
-          delete[] b;
+
           return (0);
         }
     }
@@ -671,7 +667,7 @@ int phase2_up (int *matrixarray, int matrixSize, int *nodeArray,
 	return (1);
     }
   
-  delete[] b;
+
   return (0);
 }
 
@@ -762,38 +758,12 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
     n2, 
     i,
     test; // Zur Ueberpruefung, ob Funktionen korrekt abgearbeitet wurden
-  int matrixSize = maxS * maxS; 
-  
-  a  = new int [(maxL+1) * matrixSize];
-  if (a == 0)
-    return (1);
+  const int matrixSize = ffgraph_sugiyama::matrixEntries(maxS);
+  const int entries = ffgraph_sugiyama::arrayCount<int>(ffgraph_sugiyama::matrixArrayEntries(maxL,maxS));
+  std::unique_ptr<int[]> aOwner(new int[entries]), a1Owner(new int[entries]);
+  std::unique_ptr<int[]> a2Owner(new int[entries]), asOwner(new int[entries]);
+  a = aOwner.get(); a1 = a1Owner.get(); a2 = a2Owner.get(); as = asOwner.get();
 
-  a1 = new int [(maxL+1) * matrixSize]; 
-  if (a1 == 0)
-    {
-      delete[] a;
-      return (1);
-    }
-
-  a2 = new int [(maxL+1) * matrixSize];  
-  if (a1 == 0)
-    {
-      delete[] a1;
-      delete[] a;
-      return (1);
-    }
-
-  // "a1" und "a2" dienen zum Vergleich, 
-  // um das Abbruchkriterium zu bestimmen. 
-  as = new int [(maxL+1) * matrixSize];
-  if (as == 0)
-    {
-      delete[] a2;
-      delete[] a1;
-      delete[] a;
-      return (1);
-    }
-  
   // Matrix erstellen
   for (i = 0; i < maxL; i++)
     make_matrix (nodes, i, a+i*matrixSize, maxS, newmaxS, nodeArray);
@@ -937,10 +907,10 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
     store_new_positions (nodes, as + (maxL-1)*matrixSize, maxL-1,
                          nodeArray, maxS, newmaxS);
   
-  delete[] as;
-  delete[] a2;
-  delete[] a1;
-  delete[] a;
+
+
+
+
 
   return (0);
 }
@@ -961,34 +931,11 @@ int bc_2 (SNode *nodes, int maxS, int newmaxS, int *nodeArray)
   int i,
     test;
 
-  m = new int [maxS * maxS];
-  if (m == 0)
-    return (1);
+  const int entries = ffgraph_sugiyama::arrayCount<int>(ffgraph_sugiyama::matrixEntries(maxS));
+  std::unique_ptr<int[]> mOwner(new int[entries]), m0Owner(new int[entries]), msOwner(new int[entries]);
+  std::unique_ptr<FFCoord[]> bOwner(new FFCoord[ffgraph_sugiyama::arrayCount<FFCoord>(maxS)]);
+  m = mOwner.get(); m0 = m0Owner.get(); ms = msOwner.get(); b = bOwner.get();
 
-  m0 = new int [maxS * maxS];
-  if (m0 == 0)
-    {
-      delete[] m;
-      return (1);
-    }
-
-  ms = new int [maxS * maxS];
-  if (ms == 0)
-    {
-      delete[] m0;
-      delete[] m;
-      return (1);
-    }
-
-  b = new FFCoord [maxS];
-  if (b == 0)
-    {
-      delete[] ms;
-      delete[] m0;
-      delete[] m;
-      return (1);
-    }
-      
   make_matrix (nodes, 0, m, maxS, newmaxS, nodeArray);
   copy_matrix (m, ms, maxS);
 
@@ -1059,10 +1006,10 @@ int bc_2 (SNode *nodes, int maxS, int newmaxS, int *nodeArray)
   // neue Positionen merken (in "nodeArray" aktualisieren)
   store_new_positions (nodes, ms, 0, nodeArray, maxS, newmaxS);
 
-  delete[] b;
-  delete[] m;
-  delete[] m0;
-  delete[] ms;
+
+
+
+
 
   return (0);
 }
@@ -1087,7 +1034,13 @@ int reduce_crossings (SNode *nodes,
 {
   int test = 0;
 
-  maxS++;
+  if (cross_alg != 0 || maxL == 0) return 0;
+  try {
+    ffgraph_sugiyama::levelEntries(maxL,newmaxS);
+    maxS = ffgraph_sugiyama::checkedAdd(maxS,1);
+    ffgraph_sugiyama::arrayCount<int>(ffgraph_sugiyama::reductionEntries(maxL,maxS));
+  } catch (const ffgraph_sugiyama::SizeError&) { return 1; }
+
   
   if (cross_alg == 0)  //  Algorithmus mittels Adjazenzmatrizen
     {

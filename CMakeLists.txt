@@ -236,6 +236,8 @@ if(BUILD_TESTING)
       test_spring_force_compat
       test_layout_controls
       test_sugiyama_missing_graphics
+      test_sugiyama_large_input
+      test_sugiyama_failure
       test_sugiyama_barycenters
       test_sugiyama_permutations
       test_sugiyama_parallel_index
@@ -267,6 +269,8 @@ if(BUILD_TESTING)
   endforeach()
   # Four 1,000-node layouts also run in instrumented builds.
   set_tests_properties(test_spring_numerics PROPERTIES TIMEOUT 90)
+  add_test(NAME test_sugiyama_deep_traversal COMMAND test_sugiyama_large_input --deep)
+  set_tests_properties(test_sugiyama_deep_traversal PROPERTIES TIMEOUT 60)
   add_test(NAME test_application_default_layouts_exit COMMAND test_application_default_layouts --exit)
   set_tests_properties(test_application_default_layouts_exit PROPERTIES TIMEOUT 30)
 
@@ -769,6 +773,10 @@ if(BUILD_TESTING)
       PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
     add_test(NAME test_layout_controls_gui
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_layout_controls_gui>")
+    add_test(NAME test_sugiyama_failure_gui
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_sugiyama_failure>" --gui)
+    set_tests_properties(test_sugiyama_failure_gui PROPERTIES TIMEOUT 90
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
     set_tests_properties(test_layout_controls_gui PROPERTIES TIMEOUT 60
       ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
     if(Python3_Interpreter_FOUND)
@@ -792,7 +800,7 @@ if(BUILD_TESTING)
       test_ff_gui_file_workflow_pass12 test_gui_large_file_workflow_pass11
       test_rome_window_oracle_pass12 test_rome_gui_file_workflow_2d_pass12
       test_rome_gui_file_workflow_3d_pass12
-      test_tk_lifecycle_pass10 test_inspector_visibility test_layout_controls_gui test_installed_runtime)
+      test_tk_lifecycle_pass10 test_inspector_visibility test_layout_controls_gui test_installed_runtime test_sugiyama_failure_gui)
     if(TEST ${gui_test})
       set_tests_properties(${gui_test} PROPERTIES LABELS gui)
     endif()

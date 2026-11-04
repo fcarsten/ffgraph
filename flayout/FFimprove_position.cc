@@ -4,6 +4,9 @@
 */
 
 #include <string.h>
+#include <memory>
+#include <cstdint>
+#include "FFsugi_sizes.h"
 
 #include <ffgraph/FFimprove_position.h>
 
@@ -153,7 +156,7 @@ int upper_barycenter (int node, SNode *nodes, int level)
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int result = 0;
+  std::int64_t result = 0;
   Pix p;
   int actCoord = (int) nodes[node].point.v[0];
 
@@ -210,7 +213,7 @@ int lower_barycenter (int node, SNode *nodes, int level)
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int result = 0;
+  std::int64_t result = 0;
   FFSet <int> predSuccN;
   Pix ps,
     pp;
@@ -931,7 +934,7 @@ int improve_positions (int *nodeArray, SNode *nodes, int maxL,
     j,
     l,
     tmpN,
-    anzND = anzN+dummies, // anzND - Anzahl echte Knoten und Dummy-Knoten
+    anzND = ffgraph_sugiyama::checkedAdd(anzN,dummies), // anzND - Anzahl echte Knoten und Dummy-Knoten
     minDiff = (int) xDistance, // minimaler Abstand zwischen Knoten
     *nodeNr, 
     *priority,
@@ -939,24 +942,9 @@ int improve_positions (int *nodeArray, SNode *nodes, int maxL,
   FFPoint actOff = offset;
   Pix p;
 
-  priority = new int [anzND+1];
-  if (priority == 0)
-    return (1);
-
-  done = new int [anzND+1];
-  if (done == 0)
-    {
-      delete[] priority;
-      return (1);
-    }
-
-  nodeNr = new int [anzND+1];
-  if (nodeNr == 0)
-    {
-      delete[] done;
-      delete[] priority;
-      return (1);
-    }
+  const int count = ffgraph_sugiyama::arrayCount<int>(ffgraph_sugiyama::checkedAdd(anzND,1));
+  std::unique_ptr<int[]> priorityOwner(new int[count]), doneOwner(new int[count]), nodeNrOwner(new int[count]);
+  priority = priorityOwner.get(); done = doneOwner.get(); nodeNr = nodeNrOwner.get();
 
   // maximale Position der dummy-Knoten bestimmen
   for (l = 0; l <= maxL; l++)
@@ -1198,9 +1186,9 @@ int improve_positions (int *nodeArray, SNode *nodes, int maxL,
 		     offset.v[0], maxL, newmaxS);
     } 
 
-  delete[] nodeNr;
-  delete[] done;
-  delete[] priority;
+
+
+
   
   return (0);
 }

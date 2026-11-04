@@ -6,6 +6,8 @@
 #include <ffgraph/FFsugiyama.h>
 #include <map>
 #include <vector>
+#include <memory>
+#include "FFsugi_sizes.h"
 
 // Explicitly instantiate the list/stack adapters used by this translation unit.
 // DLNode and SLNode were libg++ implementation details; the STL-backed
@@ -23,18 +25,24 @@ void sdfsvisit (int k, SNode *nodes, int &dfs, int &comp)
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  Pix p;
-  
-  // Fuer alle Nachfolger
-  for (p = nodes[k].succ.first (); p != 0; nodes[k].succ.next (p))
-    if (nodes[nodes[k].succ (p)].dfs == 0)
-      {
-	dfs++;
-	nodes[nodes[k].succ (p)].dfs = dfs;
-	sdfsvisit (nodes[k].succ (p), nodes, dfs, comp);
-	comp++;
-	nodes[nodes[k].succ (p)].comp = comp;
-      }
+  struct Frame { int node; Pix next; };
+  std::vector<Frame> stack{{k,nodes[k].succ.first()}};
+  while (!stack.empty()) {
+    auto& frame = stack.back();
+    if (!frame.next) {
+      const int finished = frame.node;
+      stack.pop_back();
+      // The caller historically assigns the root's completion number.
+      if (!stack.empty()) nodes[finished].comp = ++comp;
+      continue;
+    }
+    const int child = nodes[frame.node].succ(frame.next);
+    nodes[frame.node].succ.next(frame.next);
+    if (nodes[child].dfs == 0) {
+      nodes[child].dfs = ++dfs;
+      stack.push_back({child,nodes[child].succ.first()});
+    }
+  }
 }
 
 static void sdfs_from (SNode *nodes, int anzN, FFNode start)
@@ -42,7 +50,7 @@ static void sdfs_from (SNode *nodes, int anzN, FFNode start)
 //                                                               //
 // Tiefensuche mit zusaetzlicher Berechnung der dfs- und comp-   //
 // Nummern.                                                      //
-// (Bisher nur rekursiv, besser waere mit Stack.)                //
+// Expliziter Stack erhaelt die rekursive Besuchsreihenfolge.    //
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
@@ -113,15 +121,20 @@ void slevelvisit (int k, SNode *nodes)
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  Pix p;
-    
-  for (p = nodes[k].succ.first (); p != 0; nodes[k].succ.next (p))
-    if ((nodes[nodes[k].succ (p)].level) < nodes[k].level+1)
-      {
-	nodes[nodes[k].succ (p)].level = nodes[k].level+1;
-	nodes[nodes[k].succ (p)].attrib = 1;
-	slevelvisit (nodes[k].succ (p), nodes);
-      }
+  struct Frame { int node; Pix next; };
+  std::vector<Frame> stack{{k,nodes[k].succ.first()}};
+  while (!stack.empty()) {
+    auto& frame = stack.back();
+    if (!frame.next) { stack.pop_back(); continue; }
+    const int child = nodes[frame.node].succ(frame.next);
+    nodes[frame.node].succ.next(frame.next);
+    const int level = ffgraph_sugiyama::checkedAdd(nodes[frame.node].level,1);
+    if (nodes[child].level < level) {
+      nodes[child].level = level;
+      nodes[child].attrib = 1;
+      stack.push_back({child,nodes[child].succ.first()});
+    }
+  }
 }
 
 static void slevel_from (SNode *nodes, int anzN, FFNode start)
@@ -413,9 +426,9 @@ int set_positions (int *nodeArray, SNode *nodes, int anzN, int dummies,
     i,
     *vertUnit;
 
-  vertUnit = new int [maxL+1];
-  if (vertUnit == 0)
-    return (1);
+  std::unique_ptr<int[]> vertOwner(new int[ffgraph_sugiyama::arrayCount<int>(
+      ffgraph_sugiyama::checkedAdd(maxL,1))]);
+  vertUnit = vertOwner.get();
 
   for (n = 1; n <= anzN+dummies; n++)
     vertUnit[nodes[n].level] = nodes[n].vertUnit;
@@ -454,7 +467,7 @@ int set_positions (int *nodeArray, SNode *nodes, int anzN, int dummies,
     }
 
   
-  delete[] vertUnit;
+
   return (0);
 }
   
@@ -754,222 +767,109 @@ void init_nondet (FFSet <FFNode> &allNodes,
     allEdges (p)->setValue (0);
 }
 
-void sugiyama (FFGraph &graph, struct FSSugiInfo info, 
-	       FFSet <FFNode> locNodes)
-///////////////////////////////////////////////////////////////////
-//                                                               //
-//                                                               //
-///////////////////////////////////////////////////////////////////
-{
-  int anzN, 
-    anzE, 
-    anzEN, // Gesamtzahl Knoten und Kanten, Kanten dreifach (fuer dummies) 
-    anzRef, 
-    anzPar1, 
-    anzPar2, // Par2: parallele Kanten nach Umdrehen von Rueckwaertskanten
-    maxL, //maxLevel 
-    maxS, //maxSize
-    newmaxS, 
-    newmaxL,
-    i, 
-    j,
-    dummies = 0, 
-    test;
-  FFSet <FFNode> allNodes;
-  FFSet <FFEdge> allEdges;
-  DLList <int> backEdges, 
-    refEdges, 
-    parEdges;
-//  Pix p;
-  FFGraphWindow *window;
-  SNode *nodes;
-  SEdge *edges;
-  int *nodeArray; // Feld fuer relative Positionen der Knoten
-  FFPoint point;
-
-  window = graph->getWindow ();
-  if (window)
-    window->setUpdate (NO);
-
-  graph->allNodes (allNodes);
-  graph->allEdges (allEdges);
-  anzN = allNodes.length ();
-  anzE = allEdges.length ();
-  anzEN = anzN + 3*anzE;
-
-  // Falls Graph leer ist
-  if (anzN == 0)
-    {
-      if (window)
-	window->setUpdate (YES);
-      return;
-    }
-
-  // Entfernung aller Kantenstuetzpunkte
-  graph->straightenEdges (); 
-
-  nodes = new SNode [anzEN+1];
-  if (nodes == 0)
-    {
-      if (window)
-	window->setUpdate (YES);
-      return;
-    }
-
-  edges = new SEdge [anzE+1];
-  if (edges == 0)
-    {
-      delete[] nodes;
-      if (window)
-	window->setUpdate (YES);
-      return;
-    }
-
-  if (! info.deterministic)
-    init_nondet (allNodes, allEdges);
-
-  // Strukturen SNode und SEdge (nodes, edges) aufbauen.
-  init_sgraph (graph, nodes, edges, anzN, anzE, anzEN, allNodes, allEdges); 
-
-  // Paralelle und reflexive Kanten vorerst entfernen,
-  // diese muessen erst bei der Erstellung der Dummies 
-  // wieder beruecksichtigt werden.
-  rem_ref_edges (nodes, edges, anzE, anzRef, refEdges);
-  rem_par_edges (nodes, edges, anzE, anzPar1, 2, parEdges);
- 
-  sdfs_from(nodes,anzN,info.useStartNode ? graph->getStartNode() : nullptr);
-  init_backEdges (nodes, anzE, backEdges, edges);
-  change_edges (nodes, edges, backEdges); 
-
-  // Neu entstandene parallele Kanten temporaer beseitigen
-  // (solche koennen durch  das Umkehren der Rueckwaertskanten 
-  // enstehen).
-  rem_par_edges (nodes, edges, anzE, anzPar2, 3, parEdges);
-
-  slevel_from(nodes,anzN,info.useStartNode ? graph->getStartNode() : nullptr);
-  slevel_correct (nodes, edges, anzN, parEdges);
-
-  // Falls Blaetter nach unten gesetzt werden sollen
-  if (info.leavesDown != 0)
-    {
-      maxL = get_max_level (nodes, anzN+dummies);
-      leaves_down (nodes, edges, anzN, parEdges, maxL);
-    }
-
-  dummies = make_dummies (nodes, edges, anzN, anzE, refEdges, parEdges); 
-  maxL = get_max_level (nodes, anzN+dummies);
-  maxS = get_max_size (nodes, anzN, dummies, maxL);  
-  newmaxS = maxS+(2*anzRef)+anzPar1+anzPar2;
-  newmaxL = maxL+1;
-
-  // Fuer ueberlange Dummy-Kanten "posList" (Liste bzw. hier Array fuer
-  // Positionen anlegen
-  for (i = anzN; i <= anzN+dummies; i++)
-    {
-      nodes[i].posList = new FFPoint [maxL+1];
-      if (nodes[i].posList == 0)
-	{
-	  delete[] edges;
-	  delete[] nodes;
-	  
-	  if (window)
-	    window->setUpdate (YES);
-	  return;
-	}
-      
-      for (j = 0; j <= maxL; j++)
-	nodes[i].posList[j] = point;
-    }
-
-  nodeArray = new int [(newmaxL+1)*(newmaxS+1)];
-  if (nodeArray == 0)
-    {
-      delete[] edges;
-      delete[] nodes;
-
-      if (window)
-	window->setUpdate (YES);
-      return;
-    }
-
-  for (i = 0; i <= (maxL+1)*(newmaxS+1)-1; i++)
-    nodeArray[i] = 0;
-
-  // "nodeArray" initialisieren
-  init_positions (nodeArray, nodes, anzN, maxL, maxS, newmaxS, dummies);
-  
-  // Kreuzungsreduzierung
-  test = reduce_crossings (nodes, maxL, maxS, newmaxS, anzN+dummies, 
-			   info.crossingAlg, nodeArray, 
-			   info.iteration1, info.iteration2);
-  if (test != 0)
-    {
-      delete[] nodeArray;
-      delete[] edges;
-      delete[] nodes;
-
-      if (window)
-	window->setUpdate (YES);
-      return;
-    }
-    
-  // absolute Positionen der Knoten setzen
-  test = improve_positions (nodeArray, nodes, maxL, anzN, dummies, 
-                            info.xDistance, info.yDistance, FFPoint(),
-			    info.orient, info.grid, info.sameSize, newmaxS); 
-	
-  if (test != 0)
-    {
-      delete[] nodeArray;
-      delete[] edges;
-      delete[] nodes;
-
-      if (window)
-	window->setUpdate (YES);
-      return;
-    }
-  
-  compute_edges_of_level (nodeArray, nodes, anzN, dummies, maxL, info.orient);
-  test = set_positions (nodeArray, nodes, anzN, dummies, info, maxL);
-  if (test != 0)
-    {
-      delete[] nodeArray;
-      delete[] edges;
-      delete[] nodes;
-
-      if (window)
-	window->setUpdate (YES);
-      return;
-    }
-
-  delete[] nodeArray;
-
-  // Offsets translate the finished relative drawing, including all route
-  // arrays. Keep them out of coordinate compaction and its rounding rules.
-  const int crossAxis = info.orient == 1 ? 0 : 1;
-  const int layerAxis = 1-crossAxis;
-  for (int n = 1; n <= anzN+dummies; ++n) {
-    nodes[n].point.v[0] += info.offset.v[crossAxis];
-    nodes[n].point.v[1] += info.offset.v[layerAxis];
-    if (nodes[n].anzDum == 2)
-      for (int level = nodes[n].level+1; level <= nodes[n].elevel; ++level) {
-        nodes[n].posList[level].v[0] += info.offset.v[crossAxis];
-        nodes[n].posList[level].v[1] += info.offset.v[layerAxis];
-      }
+namespace {
+struct UpdateScope {
+  FFGraphWindow* window;
+  BOOL previous;
+  bool active = true;
+  explicit UpdateScope(FFGraphWindow* w) : window(w), previous(w ? w->setUpdate(NO) : YES) {}
+  void restore() { if (active && window) window->setUpdate(previous); active = false; }
+  ~UpdateScope() { restore(); }
+};
+struct ScratchIds {
+  std::vector<std::pair<FFNode,int>> nodes;
+  std::vector<std::pair<FFEdge,int>> edges;
+  bool published = false;
+  ScratchIds(const FFSet<FFNode>& ns, const FFSet<FFEdge>& es) {
+    nodes.reserve(ns.length()); edges.reserve(es.length());
+    for (Pix p = ns.first(); p; ns.next(p)) nodes.emplace_back(ns(p),ns(p)->getValue());
+    for (Pix p = es.first(); p; es.next(p)) edges.emplace_back(es(p),es(p)->getValue());
   }
-  finish_sgraph (graph, nodes, edges, anzN, anzE, dummies, backEdges, 
-		 info.xDistance, info.yDistance, info.orient);
-
-  for (i = anzN; i <= anzN+dummies; i++)
-    delete[] nodes[i].posList;
-  
-  delete[] edges;
-  delete[] nodes;
-  
-  if (window)
-    {
-      window->setUpdate (YES);
-      window->updateGraph ();
-      window->adjustWindowSize ();
+  ~ScratchIds() {
+    if (!published) {
+      for (auto [node,id] : nodes) node->setValue(id);
+      for (auto [edge,id] : edges) edge->setValue(id);
     }
+  }
+};
+}
+
+void sugiyama(FFGraph& graph, FSSugiInfo info, FFSet<FFNode> locNodes)
+{
+  using namespace ffgraph_sugiyama;
+  FFGraphWindow* window = graph->getWindow();
+  UpdateScope updates(window);
+  try {
+    FFSet<FFNode> allNodes;
+    FFSet<FFEdge> allEdges;
+    graph->allNodes(allNodes); graph->allEdges(allEdges);
+    const int anzN = allNodes.length(), anzE = allEdges.length();
+    if (anzN == 0) return;
+    const int nodeCount = arrayCount<SNode>(scratchNodes(anzN,anzE));
+    const int edgeCount = arrayCount<SEdge>(checkedAdd(anzE,1));
+    ScratchIds originalIds(allNodes,allEdges);
+    std::unique_ptr<SNode[]> nodeOwner(new SNode[nodeCount]);
+    std::unique_ptr<SEdge[]> edgeOwner(new SEdge[edgeCount]);
+    auto* nodes = nodeOwner.get(); auto* edges = edgeOwner.get();
+    DLList<int> backEdges, refEdges, parEdges;
+    if (!info.deterministic) init_nondet(allNodes,allEdges);
+    init_sgraph(graph,nodes,edges,anzN,anzE,nodeCount-1,allNodes,allEdges);
+    int anzRef, anzPar1, anzPar2;
+    rem_ref_edges(nodes,edges,anzE,anzRef,refEdges);
+    rem_par_edges(nodes,edges,anzE,anzPar1,2,parEdges);
+    sdfs_from(nodes,anzN,info.useStartNode ? graph->getStartNode() : nullptr);
+    init_backEdges(nodes,anzE,backEdges,edges);
+    change_edges(nodes,edges,backEdges);
+    rem_par_edges(nodes,edges,anzE,anzPar2,3,parEdges);
+    slevel_from(nodes,anzN,info.useStartNode ? graph->getStartNode() : nullptr);
+    slevel_correct(nodes,edges,anzN,parEdges);
+    if (info.leavesDown) leaves_down(nodes,edges,anzN,parEdges,get_max_level(nodes,anzN));
+    const int dummies = make_dummies(nodes,edges,anzN,anzE,refEdges,parEdges);
+    const int count = checkedAdd(anzN,dummies);
+    const int maxL = get_max_level(nodes,count);
+    const int maxS = get_max_size(nodes,anzN,dummies,maxL);
+    const int newmaxS = checkedAdd(checkedAdd(maxS,checkedProduct(2,anzRef)),checkedAdd(anzPar1,anzPar2));
+    const int entries = arrayCount<int>(levelEntries(maxL,newmaxS));
+    const int pointCount = arrayCount<FFPoint>(checkedAdd(maxL,1));
+    // Check every int-indexed reduction slab before allocating route/level arrays.
+    if (info.crossingAlg == 0 && maxL > 0)
+      arrayCount<int>(reductionEntries(maxL,checkedAdd(maxS,1)));
+    std::vector<std::unique_ptr<FFPoint[]>> positions(checkedAdd(dummies,1));
+    for (int i = anzN; i <= count; ++i) {
+      positions[i-anzN].reset(new FFPoint[pointCount]);
+      nodes[i].posList = positions[i-anzN].get();
+    }
+    std::unique_ptr<int[]> levelOwner(new int[entries]());
+    auto* nodeArray = levelOwner.get();
+    init_positions(nodeArray,nodes,anzN,maxL,maxS,newmaxS,dummies);
+    if (reduce_crossings(nodes,maxL,maxS,newmaxS,count,info.crossingAlg,nodeArray,info.iteration1,info.iteration2))
+      throw SizeError();
+    if (improve_positions(nodeArray,nodes,maxL,anzN,dummies,info.xDistance,info.yDistance,
+                          FFPoint(),info.orient,info.grid,info.sameSize,newmaxS)) throw std::bad_alloc();
+    compute_edges_of_level(nodeArray,nodes,anzN,dummies,maxL,info.orient);
+    if (set_positions(nodeArray,nodes,anzN,dummies,info,maxL)) throw std::bad_alloc();
+    const int crossAxis = info.orient == 1 ? 0 : 1, layerAxis = 1-crossAxis;
+    for (int n = 1; n <= count; ++n) {
+      nodes[n].point.v[0] += info.offset.v[crossAxis];
+      nodes[n].point.v[1] += info.offset.v[layerAxis];
+      if (nodes[n].anzDum == 2)
+        for (int level = nodes[n].level+1; level <= nodes[n].elevel; ++level) {
+          nodes[n].posList[level].v[0] += info.offset.v[crossAxis];
+          nodes[n].posList[level].v[1] += info.offset.v[layerAxis];
+        }
+    }
+    // Preparation changes only scratch IDs. Leave existing routes intact until
+    // all dimension checks, traversals and scratch allocations have succeeded.
+    graph->straightenEdges();
+    finish_sgraph(graph,nodes,edges,anzN,anzE,dummies,backEdges,info.xDistance,info.yDistance,info.orient);
+    originalIds.published = true; // Preserve historical successful scratch-ID behavior.
+    updates.restore();
+    if (window) { window->updateGraph(); window->adjustWindowSize(); }
+  } catch (const SizeError&) {
+    updates.restore();
+    ffError(USER_ERROR,GRAPH_TOO_LARGE);
+  } catch (const std::bad_alloc&) {
+    updates.restore();
+    ffError(USER_ERROR,NO_MEMORY);
+  }
 }

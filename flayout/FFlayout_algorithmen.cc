@@ -4,6 +4,8 @@
 */
 
 #include <string.h>
+#include <memory>
+#include "FFsugi_sizes.h"
 
 #include <ffgraph/FFlayout_algorithmen.h>
 #include <ffgraph/FFGraphicNode.h>
@@ -486,9 +488,9 @@ int get_max_size (SNode *nodes, int anzN, int dummies, int maxL)
     j,
     *nodesOfLevel;
   
-  nodesOfLevel = new int [maxL+1];
-  if (nodesOfLevel == 0)
-    return (anzN + dummies);
+  std::unique_ptr<int[]> levelOwner(new int[ffgraph_sugiyama::arrayCount<int>(
+      ffgraph_sugiyama::checkedAdd(maxL,1))]);
+  nodesOfLevel = levelOwner.get();
 
   for (i = 0; i <= maxL; i++)
     nodesOfLevel[i] = 0;
@@ -512,7 +514,7 @@ int get_max_size (SNode *nodes, int anzN, int dummies, int maxL)
     if (nodesOfLevel[i] > maxS)
       maxS = nodesOfLevel[i];
   
-  delete[] nodesOfLevel;
+
 
   return (maxS);
 }

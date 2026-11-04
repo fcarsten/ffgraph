@@ -196,18 +196,30 @@ independent crossing oracles. The original geometry oracles remain unchanged.
 Latest local totals are Debug 77/77, Release 79/79 (two external Rome tests),
 strict headless sanitizers 65/65 and GUI runtime sanitizers 12/12.
 
-1. Use the refreshed profiles in that report to select further exact Sugiyama
-   work. Remaining costs include barycenter calculation, crossing evaluation
-   and matrix-array comparisons; retain crossing and geometry compatibility.
-2. Design mutation-aware FF ID indexing later, covering direct setValue,
+The user next chose large-input correctness. The first checkpoint is implemented
+in `FFGRAPH-SUGIYAMA-LARGE-INPUT-CORRECTNESS.md`: checked scratch dimensions,
+64-bit barycenter sums, iterative DFS/rank propagation and scoped preparation
+cleanup with ID/route/window-state recovery. Reproduced overflow, stack crashes
+and allocation-failure route loss now have permanent regressions. Traversal order
+matches recursive references; existing geometry/crossing coverage still passes.
+Latest results: Debug 81/81, Release 83/83, strict headless sanitizers 68/68 and
+GUI runtime sanitizers 13/13. No commits or pushes made by the agent.
+
+1. Continue large-input correctness with reproduced extreme-coordinate casts,
+   spacing/displacement and degree-accumulation boundaries. Then address scalar
+   allocation/callback failures during geometry publication; the current recovery
+   guarantee covers preparation, not a transactional final drawing update.
+2. Use the refreshed profiles to select further exact Sugiyama work later.
+   Remaining costs include barycenters, crossing evaluation and matrix-array
+   comparisons; retain crossing and geometry compatibility.
+3. Design mutation-aware FF ID indexing later, covering direct setValue,
    membership, callbacks and duplicate first-match policy. Import acceleration
    is currently lower priority at the user's request. Spring remains dominated
    by exact quadratic force interactions; approximation needs a separate mode.
-3. Validate a complete newer Tcl/Tk/font stack and strict GUI leak behavior
+4. Validate a complete newer Tcl/Tk/font stack and strict GUI leak behavior
    before proposing dependency changes. Keep the existing diagnostic policy.
-4. Address remaining large-input/overflow/exception-cleanup limits as separate
-   reproduced correctness patches. Spring global offset bounds and arbitrary
-   camera/spline/label geometry are not new features in this checkpoint.
+Spring global offset bounds and arbitrary camera/spline/label geometry remain
+separate features, not part of the completed layout-correctness checkpoint.
 
 Aesthetic Sugiyama refinement remains parked. SPQR stays excluded, the WSLg
 inspector investigation remains parked, and Rome optimization is low priority.

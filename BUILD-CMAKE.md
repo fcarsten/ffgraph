@@ -52,6 +52,17 @@ ctest --preset debug -R '^test_sugiyama_corpus_' -V
 See [the corpus README](tests/sugiyama_corpus/README.md) and
 [verification report](docs/FFGRAPH-SUGIYAMA-CORPUS-EXPANSION.md).
 
+Sugiyama large-input regressions cover checked scratch dimensions, wide
+barycenter sums, 20,000-deep traversals, a 1,024-level full layout and injected
+array-allocation failures in headless/GUI operation:
+
+```sh
+ctest --preset debug -R 'sugiyama_large_input|sugiyama_deep_traversal|sugiyama_failure' -V
+```
+
+See [the large-input checkpoint](docs/FFGRAPH-SUGIYAMA-LARGE-INPUT-CORRECTNESS.md)
+for recovery guarantees and remaining numeric/publication limits.
+
 For reproducible headless import/layout profiling, build the optional driver:
 
 ```sh
