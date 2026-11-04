@@ -213,22 +213,43 @@ repaint is best effort. Tests cover 772 renderer-failure points and allocation-f
 model rollback. Latest results are Debug 83/83, Release 85/85, strict headless
 sanitizers 69/69 and GUI runtime sanitizers 14/14, with float-cast checking enabled.
 
-1. Continue with deterministic memory-limited stress/resource-budget tests for
-   representable but huge requests, and audit downstream camera/projection casts
-   under extreme settings. Callback-driven structural mutation/reentrancy remains
-   separate from the completed renderer-exception recovery guarantee.
-2. Use the refreshed profiles to select further exact Sugiyama work later.
-   Remaining costs include barycenters, crossing evaluation and matrix-array
-   comparisons; retain crossing and geometry compatibility.
+The OS-resource checkpoint and follow-up audit are now in
+`FFGRAPH-SUGIYAMA-RESOURCE-LIMITS.md`. Native Linux subprocesses exercise actual
+address-space exhaustion, partial large-matrix cleanup, exact graph/route recovery
+and real-window busy/update restoration. Moderate controls also run under
+sanitizers. Results: Debug **86/86**, Release **88/88**, strict headless sanitizers
+**70/70**, GUI runtime sanitizers **14/14**. Production code is unchanged.
+
+The audit **reproduced a remaining GUI overflow**: valid model offset 1e9 with
+4x zoom projects to 4e9, then `FFTclBasicWindow::updateGraph(FFGraphicNode*)`
+casts to int outside its range. Its normal-range control passes. This expected
+failing audit probe is separate from the passing CTest suites; the issue remains
+unfixed. Refreshed first-layout benchmarks show negligible sparse backup cost
+within noise but about 0.66 ms / 15% on the 128-node/4,096-edge dense example.
+All control/production snapshots match. Current profiles still favor crossing
+evaluation/permutations on sparse inputs; allocator costs are significant on
+dense inputs.
+
+1. Fix projected-coordinate conversions at the shared rendering boundary, with
+   ordinary-coordinate compatibility and extreme settings tests for 2D/3D nodes,
+   edges, labels/icons, camera controls and recovery. Do not silently clamp world
+   coordinates or impose an arbitrary Sugiyama-only offset restriction.
+   Callback-driven structural mutation/reentrancy remains separate from the
+   completed renderer-exception recovery guarantee.
+2. Use the refreshed profiles for further exact Sugiyama work afterward.
+   Remaining sparse costs include barycenters, crossing evaluation and matrix-array
+   comparisons. Dense work should examine allocation costs while retaining
+   publication rollback, route-storage guarantees and crossing/geometry oracles.
 3. Design mutation-aware FF ID indexing later, covering direct setValue,
    membership, callbacks and duplicate first-match policy. Import acceleration
    is currently lower priority at the user's request. Spring remains dominated
    by exact quadratic force interactions; approximation needs a separate mode.
 4. Validate a complete newer Tcl/Tk/font stack and strict GUI leak behavior
    before proposing dependency changes. Keep the existing diagnostic policy.
-Spring global offset bounds and arbitrary camera/label geometry remain separate
-features. The new report documents publication backup costs and point-reference
-lifetime; remeasure performance before selecting further optimization work.
+Spring global offset bounds remain separate. General camera/label geometry is
+not proven safe by model-coordinate validation. OS termination under system-wide
+memory pressure and exhaustion of arbitrary C/scalar allocations remain unverified;
+no production resource quota or maximum supported graph size has been introduced.
 
 Aesthetic Sugiyama refinement remains parked. SPQR stays excluded, the WSLg
 inspector investigation remains parked, and Rome optimization is low priority.

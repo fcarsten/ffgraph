@@ -239,6 +239,7 @@ if(BUILD_TESTING)
       test_sugiyama_large_input
       test_sugiyama_numeric
       test_sugiyama_failure
+      test_sugiyama_resources
       test_sugiyama_barycenters
       test_sugiyama_permutations
       test_sugiyama_parallel_index
@@ -260,7 +261,13 @@ if(BUILD_TESTING)
     if(DL_LIBRARY)
       target_link_libraries(${test_name} PRIVATE ${DL_LIBRARY})
     endif()
-    if(test_name STREQUAL "test_sugiyama_layout")
+    if(test_name STREQUAL "test_sugiyama_resources")
+      if(FFGRAPH_SANITIZERS)
+        target_compile_definitions(${test_name} PRIVATE FFGRAPH_RESOURCE_ASAN=1)
+      endif()
+      # Registered below after the required Python interpreter is located.
+      continue()
+    elseif(test_name STREQUAL "test_sugiyama_layout")
       add_test(NAME ${test_name} COMMAND ${test_name}
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/sugiyama_oracles")
     else()
@@ -268,6 +275,20 @@ if(BUILD_TESTING)
     endif()
     set_tests_properties(${test_name} PROPERTIES TIMEOUT 30)
   endforeach()
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  add_test(NAME test_sugiyama_resource_controls
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_sugiyama_resources.py"
+      --binary "$<TARGET_FILE:test_sugiyama_resources>" --mode controls)
+  set_tests_properties(test_sugiyama_resource_controls PROPERTIES TIMEOUT 300)
+  # RLIMIT_AS needs Linux /proc and conflicts with ASan's huge virtual shadow.
+  # Sanitizer builds retain the moderate successful controls above and all
+  # existing injected allocation/publication failure regressions.
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT FFGRAPH_SANITIZERS)
+    add_test(NAME test_sugiyama_resource_limits
+      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_sugiyama_resources.py"
+        --binary "$<TARGET_FILE:test_sugiyama_resources>" --mode limits)
+    set_tests_properties(test_sugiyama_resource_limits PROPERTIES TIMEOUT 450)
+  endif()
   # Four 1,000-node layouts also run in instrumented builds.
   set_tests_properties(test_spring_numerics PROPERTIES TIMEOUT 90)
   add_test(NAME test_sugiyama_deep_traversal COMMAND test_sugiyama_large_input --deep)
@@ -344,7 +365,6 @@ if(BUILD_TESTING)
   if(NOT FFGRAPH_GML_DIFFERENTIAL_PROFILE MATCHES "^(smoke|standard|stress)$")
     message(FATAL_ERROR "Unsupported FFGRAPH_GML_DIFFERENTIAL_PROFILE")
   endif()
-  find_package(Python3 COMPONENTS Interpreter REQUIRED)
   set(FFGRAPH_DIFF_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus")
   set(FFGRAPH_DIFF_GRAPHS
     "${CMAKE_CURRENT_BINARY_DIR}/gml-differential-${FFGRAPH_GML_DIFFERENTIAL_PROFILE}")
@@ -782,6 +802,14 @@ if(BUILD_TESTING)
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_sugiyama_failure>" --publication-gui)
     set_tests_properties(test_sugiyama_publication_gui PROPERTIES TIMEOUT 180
       ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT FFGRAPH_SANITIZERS)
+      add_test(NAME test_sugiyama_resource_limits_gui
+        COMMAND "${XVFB_RUN_EXECUTABLE}" -a "${Python3_EXECUTABLE}"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_sugiyama_resources.py"
+          --binary "$<TARGET_FILE:test_sugiyama_resources>" --mode gui)
+      set_tests_properties(test_sugiyama_resource_limits_gui PROPERTIES TIMEOUT 120
+        ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    endif()
     set_tests_properties(test_layout_controls_gui PROPERTIES TIMEOUT 60
       ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
     if(Python3_Interpreter_FOUND)
@@ -805,7 +833,8 @@ if(BUILD_TESTING)
       test_ff_gui_file_workflow_pass12 test_gui_large_file_workflow_pass11
       test_rome_window_oracle_pass12 test_rome_gui_file_workflow_2d_pass12
       test_rome_gui_file_workflow_3d_pass12
-      test_tk_lifecycle_pass10 test_inspector_visibility test_layout_controls_gui test_installed_runtime test_sugiyama_failure_gui test_sugiyama_publication_gui)
+      test_tk_lifecycle_pass10 test_inspector_visibility test_layout_controls_gui test_installed_runtime test_sugiyama_failure_gui test_sugiyama_publication_gui
+      test_sugiyama_resource_limits_gui)
     if(TEST ${gui_test})
       set_tests_properties(${gui_test} PROPERTIES LABELS gui)
     endif()

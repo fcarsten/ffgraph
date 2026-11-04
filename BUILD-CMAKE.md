@@ -74,6 +74,20 @@ ctest --preset debug -R 'sugiyama_numeric|sugiyama_publication_gui|test_mplex_st
 See [numeric bounds and publication recovery](docs/FFGRAPH-SUGIYAMA-NUMERIC-PUBLICATION-RECOVERY.md)
 for route-storage lifetime, repaint limits and measured validation coverage.
 
+Linux native builds also exercise real OS address-space limits in isolated
+subprocesses, including actual-window recovery and successful reuse:
+
+```sh
+ctest --preset debug -R '^test_sugiyama_resource_' -V
+```
+
+Sanitizer builds run the moderate successful controls and existing injected
+failure tests. The OS-limit tests are native-only because `RLIMIT_AS` conflicts
+with ASan's reserved shadow address space. See
+[resource-limit testing and the follow-up audit](docs/FFGRAPH-SUGIYAMA-RESOURCE-LIMITS.md)
+for exact coverage, refreshed performance measurements and the remaining
+extreme-zoom rendering overflow.
+
 For reproducible headless import/layout profiling, build the optional driver:
 
 ```sh
