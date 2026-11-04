@@ -294,6 +294,8 @@ if(BUILD_TESTING)
   set_tests_properties(test_spring_numerics PROPERTIES TIMEOUT 90)
   add_test(NAME test_sugiyama_deep_traversal COMMAND test_sugiyama_large_input --deep)
   set_tests_properties(test_sugiyama_deep_traversal PROPERTIES TIMEOUT 60)
+  add_test(NAME test_sugiyama_scalar_failure COMMAND test_sugiyama_failure --scalar)
+  set_tests_properties(test_sugiyama_scalar_failure PROPERTIES TIMEOUT 120)
   add_test(NAME test_application_default_layouts_exit COMMAND test_application_default_layouts --exit)
   set_tests_properties(test_application_default_layouts_exit PROPERTIES TIMEOUT 30)
 
@@ -807,6 +809,10 @@ if(BUILD_TESTING)
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_sugiyama_failure>" --gui)
     set_tests_properties(test_sugiyama_failure_gui PROPERTIES TIMEOUT 90
       ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    add_test(NAME test_sugiyama_scalar_failure_gui
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_sugiyama_failure>" --scalar-gui)
+    set_tests_properties(test_sugiyama_scalar_failure_gui PROPERTIES TIMEOUT 300
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
     add_test(NAME test_sugiyama_publication_gui
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_sugiyama_failure>" --publication-gui)
     set_tests_properties(test_sugiyama_publication_gui PROPERTIES TIMEOUT 180
@@ -843,7 +849,7 @@ if(BUILD_TESTING)
       test_rome_window_oracle_pass12 test_rome_gui_file_workflow_2d_pass12
       test_rome_gui_file_workflow_3d_pass12
       test_tk_lifecycle_pass10 test_inspector_visibility test_layout_controls_gui test_installed_runtime test_sugiyama_failure_gui test_sugiyama_publication_gui
-      test_sugiyama_resource_limits_gui test_renderer_coordinates_gui)
+      test_sugiyama_resource_limits_gui test_renderer_coordinates_gui test_sugiyama_scalar_failure_gui)
     if(TEST ${gui_test})
       set_tests_properties(${gui_test} PROPERTIES LABELS gui)
     endif()

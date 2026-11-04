@@ -99,6 +99,17 @@ ctest --preset debug -R '^test_renderer_coordinates' -V
 See [renderer coordinate bounds](docs/FFGRAPH-RENDERER-COORDINATE-BOUNDS.md) for
 actual 2D/3D window coverage, whole-edge suppression and remaining toolkit limits.
 
+Ordinary C++ allocation failures are also swept through both Sugiyama entry
+points and real Tk rendering, with exact model/canvas recovery checks:
+
+```sh
+ctest --preset debug -R '^test_sugiyama_scalar_failure' -V
+```
+
+See [ordinary allocation recovery](docs/FFGRAPH-SUGIYAMA-SCALAR-ALLOCATION-RECOVERY.md)
+for argument-copy, busy cleanup and stream-formatting fixes, successful sorting
+fallback checks and the limits of one-shot failure testing.
+
 For reproducible headless import/layout profiling, build the optional driver:
 
 ```sh

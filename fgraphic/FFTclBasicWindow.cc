@@ -1898,6 +1898,7 @@ void FFTclBasicWindow::updateGraph(FFGraphicNode *n)
    return;
  }
  std::ostringstream tmpS;
+ tmpS.exceptions(std::ios::badbit | std::ios::failbit);
  
  tmpS << " " << ffgraph_canvas::integer(tmpCoord.v[0]) << " " << ffgraph_canvas::integer(tmpCoord.v[1])
       << " " << ffgraph_canvas::integer(tmpCoord.v[2]);
@@ -2019,6 +2020,7 @@ String FFTclBasicWindow::changeToIcon(FFGraphicNode *n, const String& icon,
  const bool visible=ffgraph_canvas::supported(tmpCoord,true);
  if(!visible) tmpCoord=FFPoint(0,0,RADIUS);
  std::ostringstream tmpScti;
+ tmpScti.exceptions(std::ios::badbit | std::ios::failbit);
  
  tmpScti << ffgraph_canvas::integer(tmpCoord.v[0]) << " " << ffgraph_canvas::integer(tmpCoord.v[1]);
 
@@ -2060,6 +2062,7 @@ String FFTclBasicWindow::changeToFigure(FFGraphicNode *n, ffShape shape)
  const bool visible=ffgraph_canvas::supported(tmpCoord,true);
  if(!visible) tmpCoord=FFPoint(0,0,RADIUS);
  std::ostringstream tmpSctf;
+ tmpSctf.exceptions(std::ios::badbit | std::ios::failbit);
  
  tmpSctf << ffgraph_canvas::integer(tmpCoord.v[0]) << " " << ffgraph_canvas::integer(tmpCoord.v[1])
          << " " <<  ffgraph_canvas::integer(tmpCoord.v[2]);
@@ -2204,6 +2207,7 @@ void FFTclBasicWindow::updateGraph(FFGraphicEdge *e)
 String FFTclBasicWindow::modifyEdge(FFGraphicEdge *e, String command)
 {
  std::ostringstream tmpArg;
+ tmpArg.exceptions(std::ios::badbit | std::ios::failbit);
 
  int numPoints = e->anzPoints();
  
@@ -2286,6 +2290,7 @@ String FFTclBasicWindow::modifyEdge(FFGraphicEdge *e, String command)
       return tmp;
     }
     std::ostringstream tmpS;
+    tmpS.exceptions(std::ios::badbit | std::ios::failbit);
     
     tmpS << " " << ffgraph_canvas::integer(tmpCoord.v[0]) << " " << ffgraph_canvas::integer(tmpCoord.v[1]);
     

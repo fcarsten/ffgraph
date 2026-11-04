@@ -8,6 +8,7 @@
 #include <ffgraph/FFGraphWindow.h>
 #include <ffgraph/FFSugiInsp.h>
 #include <cmath>
+#include <new>
 
 FFSugi::FFSugi ()
 {
@@ -379,10 +380,19 @@ struct BusyScope {
 };
 }
 void FFSugi::layout(FFSet<FFNode>& locNodes) {
-  BusyScope busy(graph->getWindow());
-  sugiyama(graph,info,locNodes);
+  try {
+    BusyScope busy(graph->getWindow());
+    sugiyama(graph,info,locNodes);
+  } catch(const std::bad_alloc&) {
+    // The legacy by-value argument copy happens before sugiyama's own try.
+    ffError(USER_ERROR,NO_MEMORY);
+  }
 }
 void FFSugi::layout() {
-  BusyScope busy(graph->getWindow());
-  sugiyama(graph,info,graph->allNodes());
+  try {
+    BusyScope busy(graph->getWindow());
+    sugiyama(graph,info,graph->allNodes());
+  } catch(const std::bad_alloc&) {
+    ffError(USER_ERROR,NO_MEMORY);
+  }
 }

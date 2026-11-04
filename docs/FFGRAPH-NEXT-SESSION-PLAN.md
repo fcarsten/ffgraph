@@ -241,6 +241,18 @@ rollback. Results: Debug **88/88**, Release **90/90**, strict headless sanitizer
 **71/71**, GUI runtime sanitizers **15/15**. Toolkit clipping/rebasing and arbitrary
 camera validity remain separate; the report states the supported recovery limits.
 
+The user then requested continuing large-input correctness. The ordinary C++
+allocation continuation is in `FFGRAPH-SUGIYAMA-SCALAR-ALLOCATION-RECOVERY.md`:
+both public layout entry points now report allocation failure during argument
+copying, busy updates no longer allocate a C++ vector for their fixed Tcl script,
+and rendering streams propagate allocation errors before sending malformed Tcl.
+New sweeps check original geometry/IDs/route storage and actual canvas/cursor
+recovery, plus correct successful sorting fallbacks, on the same graph objects.
+Full results: Debug **90/90**, Release **92/92**, strict headless sanitizers
+**72/72**, GUI runtime sanitizers **16/16**. Persistent C/Tcl exhaustion,
+arbitrary callback mutation and all alternate failure-path combinations remain
+explicitly unverified; these are not a claim of universal OOM recovery.
+
 1. Use the refreshed profiles for further exact Sugiyama work afterward.
    Remaining sparse costs include barycenters, crossing evaluation and matrix-array
    comparisons. Dense work should examine allocation costs while retaining
