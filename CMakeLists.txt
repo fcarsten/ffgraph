@@ -270,6 +270,21 @@ if(BUILD_TESTING)
   add_test(NAME test_application_default_layouts_exit COMMAND test_application_default_layouts --exit)
   set_tests_properties(test_application_default_layouts_exit PROPERTIES TIMEOUT 30)
 
+  # Actual FF/GML loads and generated graphs, with frozen-reference checks on
+  # every incoming permutation and complete layouts on the same graph objects.
+  # The verified reduction object is test-only; application code has no oracle.
+  add_executable(test_sugiyama_corpus tests/test_sugiyama_corpus.cpp
+    tests/sugiyama_verified_reduction.cpp)
+  target_compile_features(test_sugiyama_corpus PRIVATE cxx_std_17)
+  target_link_libraries(test_sugiyama_corpus PRIVATE
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+  foreach(corpus_mode real synthetic)
+    add_test(NAME test_sugiyama_corpus_${corpus_mode} COMMAND test_sugiyama_corpus
+      ${corpus_mode} "${CMAKE_CURRENT_SOURCE_DIR}/tests/sugiyama_corpus")
+    set_tests_properties(test_sugiyama_corpus_${corpus_mode} PROPERTIES TIMEOUT 300)
+  endforeach()
+
   # Exercise the public FFGraphClass::load() entry point independently of
   # direct event replay.
   add_executable(test_gml_production_backend_pass11

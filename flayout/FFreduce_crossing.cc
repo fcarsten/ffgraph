@@ -427,15 +427,51 @@ int barycenterPermutation(int* matrix, int* partner, int rows, int columns, int 
   bool changed = false;
   for (std::size_t i = 0; i < slots.size(); ++i) changed |= slots[i] != order[i].second;
   if (!changed) return 0;
-  // Move each selected full row/column once, including metadata and padding.
-  // The neighboring matrix receives the very same vertex permutation.
-  std::vector<int> buffer(slots.size()*std::size_t(stride));
+  // Decompose destination <- source into disjoint cycles. Fixed nonzero slots,
+  // like zero-barycenter slots, need no copying. Keep the same permutation for
+  // the neighboring matrix's opposite axis, including metadata and padding.
+  std::vector<int> sourceForSlot(count+1);
+  for (std::size_t i = 0; i < slots.size(); ++i) sourceForSlot[slots[i]] = order[i].second;
+  std::vector<unsigned char> visited(count+1,0);
+  std::vector<int> cycleStarts;
+  for (int start : slots) {
+    if (visited[start] || sourceForSlot[start] == start) continue;
+    cycleStarts.push_back(start);
+    int current = start;
+    do {
+      visited[current] = 1;
+      current = sourceForSlot[current];
+    } while (current != start);
+  }
+  // Rows are contiguous; columns are processed one physical row at a time.
+  // Only a single row of scratch is needed, rather than slots.size()*stride.
+  std::vector<int> savedRow(byRows || partner ? stride : 0);
   auto apply = [&](int* cells, bool rowWise) {
-    for (std::size_t i = 0; i < slots.size(); ++i) for (int k = 0; k < stride; ++k)
-      buffer[i*stride+k] = rowWise ? cells[order[i].second*stride+k] : cells[k*stride+order[i].second];
-    for (std::size_t i = 0; i < slots.size(); ++i) for (int k = 0; k < stride; ++k)
-      if (rowWise) cells[slots[i]*stride+k] = buffer[i*stride+k];
-      else cells[k*stride+slots[i]] = buffer[i*stride+k];
+    if (rowWise) {
+      for (int start : cycleStarts) {
+        std::copy_n(cells+std::size_t(start)*stride,stride,savedRow.data());
+        int current = start;
+        while (sourceForSlot[current] != start) {
+          const int source = sourceForSlot[current];
+          std::copy_n(cells+std::size_t(source)*stride,stride,cells+std::size_t(current)*stride);
+          current = source;
+        }
+        std::copy_n(savedRow.data(),stride,cells+std::size_t(current)*stride);
+      }
+    } else {
+      for (int row = 0; row < stride; ++row) {
+        int* values = cells+std::size_t(row)*stride;
+        for (int start : cycleStarts) {
+          const int saved = values[start];
+          int current = start;
+          while (sourceForSlot[current] != start) {
+            values[current] = values[sourceForSlot[current]];
+            current = sourceForSlot[current];
+          }
+          values[current] = saved;
+        }
+      }
+    }
   };
   apply(matrix,byRows);
   if (partner) apply(partner,!byRows);
@@ -443,10 +479,18 @@ int barycenterPermutation(int* matrix, int* partner, int rows, int columns, int 
 }
 }
 int b_r(int* matrix, int* partner, int rows, int columns, int stride) {
+#ifdef FFGRAPH_VERIFY_SUGIYAMA_PERMUTATIONS
+  return ffgraph_test::checkedPermutation(matrix,partner,rows,columns,stride,true,barycenterPermutation);
+#else
   return barycenterPermutation(matrix,partner,rows,columns,stride,true);
+#endif
 }
 int b_c(int* matrix, int* partner, int rows, int columns, int stride) {
+#ifdef FFGRAPH_VERIFY_SUGIYAMA_PERMUTATIONS
+  return ffgraph_test::checkedPermutation(matrix,partner,rows,columns,stride,false,barycenterPermutation);
+#else
   return barycenterPermutation(matrix,partner,rows,columns,stride,false);
+#endif
 }
 
 int phase1_down (int *matrixarray, int matrixSize, int *nodeArray, 

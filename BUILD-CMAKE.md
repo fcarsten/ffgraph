@@ -40,6 +40,18 @@ count; quality zero still runs until stopped. Sugiyama's configured offsets
 translate the drawing and its routes consistently in either orientation.
 The experimental aesthetic layouts remain parked.
 
+The default suite now includes a broader Sugiyama corpus: 13 real FF/GML graphs
+and 18 synthetic graphs, each under six configurations with reference/optimized
+geometry and crossing comparisons. Inputs are stored in the repository; sibling
+graph directories are not required. Run it directly with:
+
+```sh
+ctest --preset debug -R '^test_sugiyama_corpus_' -V
+```
+
+See [the corpus README](tests/sugiyama_corpus/README.md) and
+[verification report](docs/FFGRAPH-SUGIYAMA-CORPUS-EXPANSION.md).
+
 For reproducible headless import/layout profiling, build the optional driver:
 
 ```sh

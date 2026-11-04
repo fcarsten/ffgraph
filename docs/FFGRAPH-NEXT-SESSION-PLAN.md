@@ -1,6 +1,6 @@
 # ffgraph — current modernisation plan
 
-Updated: 3 November 2026. The current Git checkout and its diffs are authoritative.
+Updated: 4 November 2026. The current Git checkout and its diffs are authoritative.
 This replaces the earlier roadmap that still recommended beginning Pass 8.
 Historical checkpoint reports retain their original test counts and scope.
 
@@ -177,13 +177,32 @@ commands, limitations and saved provenance. No commits or pushes were made.
 
 ## Remaining priorities
 
-1. Design mutation-aware FF ID indexing, covering direct setValue, membership,
-   callbacks and duplicate first-match policy before attempting acceleration.
-2. Use the five refreshed Callgrind profiles in
-   `FFGRAPH-EXACT-LAYOUT-OPTIMIZATIONS.md` before choosing further performance
-   work. Sparse Sugiyama still spends heavily on full-stride permutations;
-   Spring remains dominated by exact quadratic force interactions. Further
-   acceleration is a separate checkpoint, with compatibility evidence required.
+The user prioritized Sugiyama optimization over import acceleration on November 4.
+The first continuation is implemented in
+`FFGRAPH-SUGIYAMA-PERMUTATION-COPY-OPTIMIZATION.md`: cycle-based permutations
+skip fixed slots, improve column locality and replace the large scratch buffer
+with one saved row. Expanded matrix/crossing checks and all frozen layouts pass.
+Matching first-layout workloads measured 12–29% less time on sparse examples;
+the dense example was essentially unchanged. Final suite counts remain
+75 Debug / 77 Release / 63 strict headless sanitizers / 12 GUI runtime sanitizers.
+The report distinguishes matching first-layout snapshots from the existing
+allocation-history-dependent warmed FF drawings.
+
+The user then requested broader regression coverage. See
+`FFGRAPH-SUGIYAMA-CORPUS-EXPANSION.md`: 13 repository-contained real FF/GML inputs
+from the sibling collections/contrib and 18 synthetic graphs now run under six
+configurations, with full reference/optimized layouts on the same objects and
+independent crossing oracles. The original geometry oracles remain unchanged.
+Latest local totals are Debug 77/77, Release 79/79 (two external Rome tests),
+strict headless sanitizers 65/65 and GUI runtime sanitizers 12/12.
+
+1. Use the refreshed profiles in that report to select further exact Sugiyama
+   work. Remaining costs include barycenter calculation, crossing evaluation
+   and matrix-array comparisons; retain crossing and geometry compatibility.
+2. Design mutation-aware FF ID indexing later, covering direct setValue,
+   membership, callbacks and duplicate first-match policy. Import acceleration
+   is currently lower priority at the user's request. Spring remains dominated
+   by exact quadratic force interactions; approximation needs a separate mode.
 3. Validate a complete newer Tcl/Tk/font stack and strict GUI leak behavior
    before proposing dependency changes. Keep the existing diagnostic policy.
 4. Address remaining large-input/overflow/exception-cleanup limits as separate

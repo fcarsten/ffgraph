@@ -1,0 +1,109 @@
+{
+  "note": "Unmodified local FF/GML input copies selected 2026-11-04. Counts recorded before adding corpus tests; no drawing-quality oracle inferred from them.",
+  "files": [
+    {
+      "source": "../graphs/b4_alledges_2d.g",
+      "name": "b4-alledges.g",
+      "bytes": 8870,
+      "source_sha256": "a1673891ce33133e01fa711b657111fb93e2a4bb78d652be04b5d77d435dc626",
+      "nodes": 64,
+      "edges": 126
+    },
+    {
+      "source": "../graphs/dataflow.g",
+      "name": "dataflow.g",
+      "bytes": 16387,
+      "source_sha256": "7231475f0a0a4ed62133364fc470403327239fe5c66c6f39b96a98e6cec57db6",
+      "nodes": 158,
+      "edges": 234
+    },
+    {
+      "source": "../graphs/hierachy.g",
+      "name": "hierarchy.g",
+      "bytes": 8751,
+      "source_sha256": "b5e476369ce5d7ed7e2ed7fb056422c563a6b5af464b0326b4be39547ed6dc6c",
+      "nodes": 43,
+      "edges": 31
+    },
+    {
+      "source": "../graphs/cluster1.g",
+      "name": "cluster.g",
+      "bytes": 2692,
+      "source_sha256": "c17a4bff6633a4c9c7726fe5c084631ce6e656260c6a0f30401aa7fa0de1c22b",
+      "nodes": 11,
+      "edges": 14
+    },
+    {
+      "source": "../graphs/cme2.g",
+      "name": "cme.g",
+      "bytes": 3819,
+      "source_sha256": "46209bff8281713e98e94d35482992eea2d2648df3ce608be295219d6bc922fd",
+      "nodes": 18,
+      "edges": 26
+    },
+    {
+      "source": "../graphs/10dm.gml",
+      "name": "ten-dm.gml",
+      "bytes": 13905,
+      "source_sha256": "28ce47d4fef5f5e2fb980ffc7d7463840fd09dfcbd318708596a8f2a96378cf7",
+      "nodes": 17,
+      "edges": 32
+    },
+    {
+      "source": "../demographs/graphed/bigTree.g",
+      "name": "big-tree.g",
+      "bytes": 37982,
+      "source_sha256": "e047987794c562c6024dafec272fdcbf654d2504ae15ea9fd1fe1fcb8376f6c0",
+      "nodes": 180,
+      "edges": 179
+    },
+    {
+      "source": "../demographs/graphed/planar4.g",
+      "name": "planar.g",
+      "bytes": 16821,
+      "source_sha256": "5a9458680139a74d06d49d28826ef6b3b2fb88fd0a201ddb1d3f7339a78c416b",
+      "nodes": 57,
+      "edges": 148
+    },
+    {
+      "source": "../demographs/3D/cube.g",
+      "name": "cube.g",
+      "bytes": 1178,
+      "source_sha256": "d9f1dd31bdd3553a9028f45f28ae20105fbe225e05023c613ef23473233d6e44",
+      "nodes": 8,
+      "edges": 12
+    },
+    {
+      "source": "../demographs/3D/dodekaeder.g",
+      "name": "dodekaeder.g",
+      "bytes": 2371,
+      "source_sha256": "1902d903140720b8accff73de17640ea2a53df722cb9f3dbcd8b1d88df2f16d3",
+      "nodes": 12,
+      "edges": 30
+    },
+    {
+      "source": "../demographs/gml/sample2.gml",
+      "name": "gml-sample.gml",
+      "bytes": 680,
+      "source_sha256": "e72804d4246ae2f081708274e728b2ac6a31ba378b499bc3ab6b3e1757a34873",
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "source": "../demographs/nase.gml",
+      "name": "nase.gml",
+      "bytes": 4477,
+      "source_sha256": "b02452a215d4a09cf7d191bc7ce106fa7a4786bb34838b47539bc43c42d319c6",
+      "nodes": 32,
+      "edges": 69
+    },
+    {
+      "source": "contrib/out.g",
+      "name": "process-tree.g",
+      "bytes": 39681,
+      "source_sha256": "d0f7b2dd760afec05cacf5205c5e7772338dae88285d773d9f59a8b9a57eda16",
+      "nodes": 499,
+      "edges": 499
+    }
+  ]
+}
