@@ -23,6 +23,7 @@ class FFEdgeClass;
 class FFGraphWindow;
 class FFGraphicNode;
 class FFTclGraphInsp;
+namespace ffgraph_sugiyama { struct Publication; }
 #include "FFEdgeLabel.h"
 
 #define ffEdgeWindowType String("FFGraphicEdge")
@@ -102,6 +103,7 @@ public:
   inline FFEdgeClass *operator()() {return edge;}
   inline FFEdgeClass *operator->() {return edge;}
   friend class FFTclGraphInsp;
+  friend struct ffgraph_sugiyama::Publication;
   
 };
 

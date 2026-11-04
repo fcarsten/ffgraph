@@ -110,6 +110,16 @@ public:
     this->fnc = other.fnc;
     this->csize = other.csize;
   }
+  // Exchange complete storage without allocation; Pix/slot addresses follow
+  // their storage into the other container, including logically deleted slots.
+  void swap(MPlex& other) noexcept {
+    slots_.swap(other.slots_);
+    std::swap(unused_,other.unused_);
+    std::swap(this->hd,other.hd);
+    std::swap(this->lo,other.lo);
+    std::swap(this->fnc,other.fnc);
+    std::swap(this->csize,other.csize);
+  }
 
   Type& operator[](int idx) override { require_slot(idx); return slots_.at(idx).value; }
   const Type& operator[](int idx) const override { require_slot(idx); return slots_.at(idx).value; }

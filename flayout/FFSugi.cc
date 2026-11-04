@@ -7,6 +7,7 @@
 #include <ffgraph/FFGraphClass.h>
 #include <ffgraph/FFGraphWindow.h>
 #include <ffgraph/FFSugiInsp.h>
+#include <cmath>
 
 FFSugi::FFSugi ()
 {
@@ -218,7 +219,7 @@ FFCoord FFSugi::getxoff ()
 
 BOOL FFSugi::setxoff (FFCoord value)
 {
-  if (value < 0)
+  if (!std::isfinite(value) || value < 0)
     return (NO);
   else
     {
@@ -236,7 +237,7 @@ FFCoord FFSugi::getyoff ()
 
 BOOL FFSugi::setyoff (FFCoord value)
 {
-  if (value < 0)
+  if (!std::isfinite(value) || value < 0)
     return (NO);
   else
     {
@@ -254,7 +255,7 @@ FFCoord FFSugi::getzoff ()
 
 BOOL FFSugi::setzoff (FFCoord value)
 {
-  if (value < 0)
+  if (!std::isfinite(value) || value < 0)
     return (NO);
   else
     {
@@ -272,7 +273,7 @@ FFCoord FFSugi::getxDistance ()
 
 BOOL FFSugi::setxDistance (FFCoord value)
 {
-  if (value < 1)
+  if (!std::isfinite(value) || value < 1)
     return (NO);
   else
     {
@@ -290,7 +291,7 @@ FFCoord FFSugi::getyDistance ()
 
 BOOL FFSugi::setyDistance (FFCoord value)
 {
-  if (value < 1)
+  if (!std::isfinite(value) || value < 1)
     return (NO);
   else
     {
@@ -308,7 +309,7 @@ FFCoord FFSugi::getzDistance ()
 
 BOOL FFSugi::setzDistance (FFCoord value)
 {
-  if (value < 1)
+  if (!std::isfinite(value) || value < 1)
     return (NO);
   else
     {

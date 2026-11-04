@@ -28,8 +28,8 @@ if(FFGRAPH_SANITIZERS)
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     message(FATAL_ERROR "Sanitizer configuration requires GCC or Clang")
   endif()
-  add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-  add_link_options(-fsanitize=address,undefined)
+  add_compile_options(-fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address,undefined,float-cast-overflow)
 endif()
 
 # FF, GML and Rome use generated GNU Bison/Flex parsers in all CMake builds.
@@ -237,6 +237,7 @@ if(BUILD_TESTING)
       test_layout_controls
       test_sugiyama_missing_graphics
       test_sugiyama_large_input
+      test_sugiyama_numeric
       test_sugiyama_failure
       test_sugiyama_barycenters
       test_sugiyama_permutations
@@ -777,6 +778,10 @@ if(BUILD_TESTING)
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_sugiyama_failure>" --gui)
     set_tests_properties(test_sugiyama_failure_gui PROPERTIES TIMEOUT 90
       ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    add_test(NAME test_sugiyama_publication_gui
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_sugiyama_failure>" --publication-gui)
+    set_tests_properties(test_sugiyama_publication_gui PROPERTIES TIMEOUT 180
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
     set_tests_properties(test_layout_controls_gui PROPERTIES TIMEOUT 60
       ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
     if(Python3_Interpreter_FOUND)
@@ -800,7 +805,7 @@ if(BUILD_TESTING)
       test_ff_gui_file_workflow_pass12 test_gui_large_file_workflow_pass11
       test_rome_window_oracle_pass12 test_rome_gui_file_workflow_2d_pass12
       test_rome_gui_file_workflow_3d_pass12
-      test_tk_lifecycle_pass10 test_inspector_visibility test_layout_controls_gui test_installed_runtime test_sugiyama_failure_gui)
+      test_tk_lifecycle_pass10 test_inspector_visibility test_layout_controls_gui test_installed_runtime test_sugiyama_failure_gui test_sugiyama_publication_gui)
     if(TEST ${gui_test})
       set_tests_properties(${gui_test} PROPERTIES LABELS gui)
     endif()

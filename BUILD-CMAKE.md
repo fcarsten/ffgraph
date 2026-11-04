@@ -63,6 +63,17 @@ ctest --preset debug -R 'sugiyama_large_input|sugiyama_deep_traversal|sugiyama_f
 See [the large-input checkpoint](docs/FFGRAPH-SUGIYAMA-LARGE-INPUT-CORRECTNESS.md)
 for recovery guarantees and remaining numeric/publication limits.
 
+The numeric/publication continuation rejects unsupported numeric ranges and
+restores the graphic model after renderer exceptions. Sanitizer builds also check
+floating-to-integer overflow. Run its focused tests with:
+
+```sh
+ctest --preset debug -R 'sugiyama_numeric|sugiyama_publication_gui|test_mplex_stl' -V
+```
+
+See [numeric bounds and publication recovery](docs/FFGRAPH-SUGIYAMA-NUMERIC-PUBLICATION-RECOVERY.md)
+for route-storage lifetime, repaint limits and measured validation coverage.
+
 For reproducible headless import/layout profiling, build the optional driver:
 
 ```sh

@@ -7,6 +7,9 @@
 #include <memory>
 #include <cstdint>
 #include "FFsugi_sizes.h"
+#include "FFsugi_numeric.h"
+using ffgraph_sugiyama::coordinateInt;
+using ffgraph_sugiyama::signedInt;
 
 #include <ffgraph/FFimprove_position.h>
 
@@ -64,12 +67,12 @@ void make_node_list_up (int *nodeArray, SNode *nodes,
       if (nodes[nodeNr[i]].dummy == 0)
         {
           if (nodes[nodeNr[i]].outdeg > 0)
-            priority[i] = nodes[nodeNr[i]].indeg + 1; 
+            priority[i] = ffgraph_sugiyama::checkedAdd(nodes[nodeNr[i]].indeg,1);
           else
             priority[i] = 1;
         }
       else
-        priority[i] = nodeArray[(newmaxS+1)*(lev+1)] + 2;
+        priority[i] = ffgraph_sugiyama::checkedAdd(nodeArray[(newmaxS+1)*(lev+1)],2);
     }
 }
     
@@ -92,13 +95,13 @@ void make_node_list_down (int *nodeArray, SNode *nodes,
       done[i] = 0;
           
       if (nodes[nodeNr[i]].dummy == 0)
-        priority[i] = nodes[nodeNr[i]].outdeg + 1;        
+        priority[i] = ffgraph_sugiyama::checkedAdd(nodes[nodeNr[i]].outdeg,1);
       else
         {
           if (lev < maxL)
-            priority[i] = nodeArray[(newmaxS+1)*(lev+1)] + 2;
+            priority[i] = ffgraph_sugiyama::checkedAdd(nodeArray[(newmaxS+1)*(lev+1)],2);
           else
-            priority[i] = nodeArray[(newmaxS+1)*lev] + 2;	    
+            priority[i] = ffgraph_sugiyama::checkedAdd(nodeArray[(newmaxS+1)*lev],2);
         }
     }
 }	
@@ -158,10 +161,10 @@ int upper_barycenter (int node, SNode *nodes, int level)
 {
   std::int64_t result = 0;
   Pix p;
-  int actCoord = (int) nodes[node].point.v[0];
+  int actCoord = coordinateInt(nodes[node].point.v[0]);
 
   for (p = nodes[node].pred.first (); p != 0; nodes[node].pred.next (p))
-    result += (int) nodes[nodes[node].pred (p)].point.v[0];
+    result += coordinateInt(nodes[nodes[node].pred (p)].point.v[0]);
   
   // Einfache Dummies bleiben unter Umstaenden dort, wo sie stehen. 
   if ((nodes[node].anzDum == 1) && (result < actCoord))
@@ -174,12 +177,12 @@ int upper_barycenter (int node, SNode *nodes, int level)
 	if (nodes[node].level+1 == level)
 	  result = actCoord;
 	else
-	  result = (int) nodes[node].posList[level-1].v[0];
+	  result = coordinateInt(nodes[node].posList[level-1].v[0]);
 
 	// nodes[node].posList[level].v[0] tritt bei langen (Dummy-) Kanten
 	// auf und entspricht actCoord fuer normale Knoten
 	if (result < nodes[node].posList[level].v[0])
-	  return ((int) nodes[node].posList[level].v[0]);
+	  return (coordinateInt(nodes[node].posList[level].v[0]));
 	else 
 	  return (result);
       }
@@ -189,7 +192,7 @@ int upper_barycenter (int node, SNode *nodes, int level)
 	// falls wir am letzten Knoten einer langen Dummy-Kante sind 
 	if ((nodes[node].edgeNum == nodes[node-1].edgeNum) &&
 	    (nodes[node-1].level != level-1))
-	  return ((int) nodes[node-1].posList[level-1].v[0]);
+	  return (coordinateInt(nodes[node-1].posList[level-1].v[0]));
 	if (result < actCoord)
 	  return (actCoord);
       }
@@ -225,9 +228,9 @@ int lower_barycenter (int node, SNode *nodes, int level)
     if (nodes[node].level < level)
       {
 	if (nodes[node].elevel == level)
-	  return ((int) nodes[node+1].point.v[0]);
+	  return (coordinateInt(nodes[node+1].point.v[0]));
 	else
-	  return ((int) nodes[node].posList[level+1].v[0]);
+	  return (coordinateInt(nodes[node].posList[level+1].v[0]));
       }
     else
       {
@@ -236,11 +239,11 @@ int lower_barycenter (int node, SNode *nodes, int level)
 	if ((nodes[node].level == level) &&
 	    (nodes[node].edgeNum == nodes[node+1].edgeNum) &&
 	    (nodes[node+1].level == level+1))
-	  return ((int) nodes[node+1].point.v[0]);
+	  return (coordinateInt(nodes[node+1].point.v[0]));
 	if ((nodes[node].level == level) &&
 	    (nodes[node].edgeNum == nodes[node+1].edgeNum) &&
 	    (nodes[node+1].level != level+1))
-	  return ((int) nodes[node].posList[level+1].v[0]);
+	  return (coordinateInt(nodes[node].posList[level+1].v[0]));
       }
   }
 
@@ -268,7 +271,7 @@ int lower_barycenter (int node, SNode *nodes, int level)
     }
     
   for (ps = nodes[node].succ.first (); ps != 0; nodes[node].succ.next (ps))
-    result += (int) nodes[nodes[node].succ (ps)].point.v[0];
+    result += coordinateInt(nodes[nodes[node].succ (ps)].point.v[0]);
 
   if (result == 0)
     return (0);
@@ -278,7 +281,7 @@ int lower_barycenter (int node, SNode *nodes, int level)
       if (ps != 0)
 	if ((nodes[node].anzDum == 2) &&
 	    (nodes[nodes[node].succ (ps)].dummy == 0))
-	  return ((int) (nodes[node].point.v[0]));
+	  return (coordinateInt((nodes[node].point.v[0])));
     }
 
   return (result / nodes[node].outdeg);
@@ -351,9 +354,9 @@ void make_down (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 		      move = NO;
 		    
 		    // hier minimalen Abstand berechnen 		
-		    minDiff = origMinDiff + 
-		      (int) (nodes[nodeNr[j-1]].width / 2.0) +
-		      (int) (nodes[nodeNr[j]].width / 2.0);
+		    minDiff = signedInt(std::int64_t(origMinDiff) +
+		      coordinateInt((nodes[nodeNr[j-1]].width / 2.0)) +
+		      coordinateInt((nodes[nodeNr[j]].width / 2.0)));
 		    
 		    // Hier fuer Knoten aktuelle Position bestimmen,
 		    // abhaengig von echter Position oder Position in
@@ -374,8 +377,8 @@ void make_down (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 		  }
 		else       // j == 1 , also kein Knoten links 
 		  {
-		    minDiff = origMinDiff +
-		      (int) (nodes[nodeNr[j]].width / 2.0);
+		    minDiff = signedInt(std::int64_t(origMinDiff) +
+		      coordinateInt((nodes[nodeNr[j]].width / 2.0)));
 		    
 		    if ((nodes[nodeNr[j]].anzDum == 2) &&
 			(nodes[nodeNr[j]].level != lev))
@@ -397,12 +400,12 @@ void make_down (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
           while (distance > 0)
             {
               if (j == 1)
-                d = (int) distance;
+                d = coordinateInt(distance);
               else
                 {
-		  minDiff = origMinDiff + 
-		    (int) (nodes[nodeNr[j]].width / 2.0) +
-		    (int) (nodes[nodeNr[j-1]].width / 2.0);
+		  minDiff = signedInt(std::int64_t(origMinDiff) +
+		    coordinateInt((nodes[nodeNr[j]].width / 2.0)) +
+		    coordinateInt((nodes[nodeNr[j-1]].width / 2.0)));
                   
 		  if ((nodes[nodeNr[j]].anzDum == 2) &&
 		      (nodes[nodeNr[j]].level != lev))
@@ -416,10 +419,10 @@ void make_down (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 		  else
 		    node_jm = nodes[nodeNr[j-1]].point.v[0];
 
-                  d = (int) (node_j - node_jm - minDiff);
+                  d = coordinateInt((node_j - node_jm - minDiff));
         
 		  if (d > distance)
-                    d = (int) distance;
+                    d = coordinateInt(distance);
                 }
 	      
               for (k = j; k <= index; k++)    
@@ -496,9 +499,9 @@ void make_down (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 	      if (j < nodesL)
 		{
 		  // hier min. Abstand berechnen 
-		  minDiff = origMinDiff +
-		    (int) (nodes[nodeNr[j]].width / 2.0) +
-		    (int) (nodes[nodeNr[j+1]].width / 2.0);
+		  minDiff = signedInt(std::int64_t(origMinDiff) +
+		    coordinateInt((nodes[nodeNr[j]].width / 2.0)) +
+		    coordinateInt((nodes[nodeNr[j+1]].width / 2.0)));
 		  
 		  // Hier fuer Knoten aktuelle Position bestimmen,
 		  // abhaengig von echter Position oder Position in
@@ -533,12 +536,12 @@ void make_down (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 	  while (distance > 0)
 	    {
 	      if (j == nodesL)
-		d = (int) distance;
+		d = coordinateInt(distance);
 	      else
 		{
-		  minDiff = origMinDiff + 
-		    (int) (nodes[nodeNr[j]].width / 2.0) +
-		    (int) (nodes[nodeNr[j+1]].width / 2.0);
+		  minDiff = signedInt(std::int64_t(origMinDiff) +
+		    coordinateInt((nodes[nodeNr[j]].width / 2.0)) +
+		    coordinateInt((nodes[nodeNr[j+1]].width / 2.0)));
 		  
 		  // Hier fuer Knoten aktuelle Position bestimmen,
 		  // abhaengig von echter Position oder Position in
@@ -555,9 +558,9 @@ void make_down (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 		  else
 		    node_jp = nodes[nodeNr[j+1]].point.v[0];
 
-		  d = (int) (node_jp - node_j - minDiff);
+		  d = coordinateInt((node_jp - node_j - minDiff));
 		  if (d > distance)
-		    d = (int) distance;
+		    d = coordinateInt(distance);
 		}
 	      
 	      // Alle folgenden Knoten ebenfalls verschieben
@@ -641,9 +644,9 @@ void make_up (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 		      move = NO;
 
 		    // hier minimalen Abstand berechnen 
-		    minDiff = origMinDiff + 
-		      (int) (nodes[nodeNr[j-1]].width / 2.0) +
-		      (int) (nodes[nodeNr[j]].width / 2.0);
+		    minDiff = signedInt(std::int64_t(origMinDiff) +
+		      coordinateInt((nodes[nodeNr[j-1]].width / 2.0)) +
+		      coordinateInt((nodes[nodeNr[j]].width / 2.0)));
 		    
 		    // Hier fuer Knoten aktuelle Position bestimmen,
 		    // abhaengig von echter Position oder Position in
@@ -664,8 +667,8 @@ void make_up (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 		  }
 		else       // j == 1 , also kein Knoten links 
 		  {
-		    minDiff = origMinDiff +
-		      (int) (nodes[nodeNr[j]].width / 2.0);
+		    minDiff = signedInt(std::int64_t(origMinDiff) +
+		      coordinateInt((nodes[nodeNr[j]].width / 2.0)));
 		    
 		    if ((nodes[nodeNr[j]].anzDum == 2) &&
 			(nodes[nodeNr[j]].level != lev))
@@ -686,12 +689,12 @@ void make_up (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
           while (distance > 0)
             {
               if (j == 1)
-                d = (int) distance;
+                d = coordinateInt(distance);
               else
                 {
-		  minDiff = origMinDiff +
-		    (int) (nodes[nodeNr[j-1]].width / 2.0) +
-		    (int) (nodes[nodeNr[j]].width / 2.0);
+		  minDiff = signedInt(std::int64_t(origMinDiff) +
+		    coordinateInt((nodes[nodeNr[j-1]].width / 2.0)) +
+		    coordinateInt((nodes[nodeNr[j]].width / 2.0)));
 
 		  // Hier fuer Knoten aktuelle Position bestimmen,
 		  // abhaengig von echter Position oder Position in
@@ -708,9 +711,9 @@ void make_up (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 		  else
 		    node_jm = nodes[nodeNr[j-1]].point.v[0];	      
 		  
-                  d = (int) (node_j - node_jm - minDiff);
+                  d = coordinateInt((node_j - node_jm - minDiff));
                   if (d > distance)
-                    d = (int) distance;
+                    d = coordinateInt(distance);
                 }
 
 	      // Alle vorhergehenden Knoten mit verschieben
@@ -748,9 +751,9 @@ void make_up (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 		    else
 		      {
 			// hier minimalen Abstand berechnen 
-			minDiff = origMinDiff +
-			  (int) (nodes[nodeNr[j]].width / 2.0) +
-			  (int) (nodes[nodeNr[j+1]].width / 2.0);
+			minDiff = signedInt(std::int64_t(origMinDiff) +
+			  coordinateInt((nodes[nodeNr[j]].width / 2.0)) +
+			  coordinateInt((nodes[nodeNr[j+1]].width / 2.0)));
 			
 			// Hier fuer Knoten aktuelle Position bestimmen,
 			// abhaengig von echter Position oder Position in
@@ -788,12 +791,12 @@ void make_up (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
           while (distance > 0)
             {
               if (j == nodesL)
-                d = (int) distance;
+                d = coordinateInt(distance);
               else
                 {
-		  minDiff = origMinDiff + 
-		    (int) (nodes[nodeNr[j]].width / 2.0) +
-		    (int) (nodes[nodeNr[j+1]].width / 2.0);
+		  minDiff = signedInt(std::int64_t(origMinDiff) +
+		    coordinateInt((nodes[nodeNr[j]].width / 2.0)) +
+		    coordinateInt((nodes[nodeNr[j+1]].width / 2.0)));
 
 		  if ((nodes[nodeNr[j]].anzDum == 2) &&
 		      (nodes[nodeNr[j]].level != lev))
@@ -807,9 +810,9 @@ void make_up (int *nodeArray, int lev, SNode *nodes, int *nodeNr,
 		  else
 		    node_jp = nodes[nodeNr[j+1]].point.v[0];
 		  
-                  d = (int) (node_jp - node_j - minDiff);
+                  d = coordinateInt((node_jp - node_j - minDiff));
                   if (d > distance)
-                    d = (int) distance;
+                    d = coordinateInt(distance);
                 }
 
 	      // Alle folgenden Knoten mit verschieben
@@ -865,7 +868,7 @@ void correct_lines (SNode *nodes, int *nodeArray, int minDiff, int anzN,
         {
 	  if (nodes[j].point.v[0] == x)
 	    {
-	      x = x + minDiff;
+	      x = ffgraph_sugiyama::advanceCoordinate(x,minDiff);
 	      j = 0;
 	    }
 	  if ((j != 0) && (nodes[j].anzDum == 2))
@@ -873,7 +876,7 @@ void correct_lines (SNode *nodes, int *nodeArray, int minDiff, int anzN,
 	      {
 		if (nodes[j].posList[l].v[0] == x)
 		  {
-		    x = x + minDiff;
+		    x = ffgraph_sugiyama::advanceCoordinate(x,minDiff);
 		    j = 0;
 		  } 
 	      }
@@ -909,7 +912,7 @@ void correct_lines (SNode *nodes, int *nodeArray, int minDiff, int anzN,
 		      - nextPos;
 	    }
 	    
-          x = x + minDiff;
+          x = ffgraph_sugiyama::advanceCoordinate(x,minDiff);
         }
     }  
 }
@@ -935,7 +938,7 @@ int improve_positions (int *nodeArray, SNode *nodes, int maxL,
     l,
     tmpN,
     anzND = ffgraph_sugiyama::checkedAdd(anzN,dummies), // anzND - Anzahl echte Knoten und Dummy-Knoten
-    minDiff = (int) xDistance, // minimaler Abstand zwischen Knoten
+    minDiff = coordinateInt(xDistance), // minimaler Abstand zwischen Knoten
     *nodeNr, 
     *priority,
     *done;
@@ -1060,7 +1063,7 @@ int improve_positions (int *nodeArray, SNode *nodes, int maxL,
       actOff.v[0] = actOff.v[1];
       actOff.v[1] = h;
       
-      minDiff = (int) yDistance;
+      minDiff = coordinateInt(yDistance);
     }    
   
   for (i = 1; i <= anzN; i++)
@@ -1082,14 +1085,14 @@ int improve_positions (int *nodeArray, SNode *nodes, int maxL,
 	  if (nodes[i].anzDum == 2)
 	    {
 	      nodes[i].point.v[0] = (nodes[i].point.v[0] - 1) * 
-		(minDiff + (int) max) + actOff.v[0]; 
+		signedInt(std::int64_t(minDiff) + coordinateInt(max)) + actOff.v[0];
 	      for (l = nodes[i].level+1; l <= nodes[i].elevel; l++)
 		nodes[i].posList[l].v[0] = (nodes[i].posList[l].v[0] - 1) * 
-		  (minDiff + (int) max) + actOff.v[0];
+		  signedInt(std::int64_t(minDiff) + coordinateInt(max)) + actOff.v[0];
 	    }
 	  else
 	    nodes[i].point.v[0] = (nodes[i].point.v[0] - 1) * 
-	      (minDiff + (int) max) + actOff.v[0]; 
+	      signedInt(std::int64_t(minDiff) + coordinateInt(max)) + actOff.v[0];
 	}
     }
   else
@@ -1178,9 +1181,9 @@ int improve_positions (int *nodeArray, SNode *nodes, int maxL,
       ((sameSize == 1) && (grid != NO)))
     {
       if (orient == 1)
-	minDiff = (int) xDistance + (int) max;
+	minDiff = signedInt(std::int64_t(coordinateInt(xDistance)) + coordinateInt(max));
       else
-	minDiff = (int) yDistance + (int) max;
+	minDiff = signedInt(std::int64_t(coordinateInt(yDistance)) + coordinateInt(max));
       
       correct_lines (nodes, nodeArray, minDiff, anzN, anzND, 
 		     offset.v[0], maxL, newmaxS);

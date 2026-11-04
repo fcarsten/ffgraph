@@ -205,10 +205,18 @@ matches recursive references; existing geometry/crossing coverage still passes.
 Latest results: Debug 81/81, Release 83/83, strict headless sanitizers 68/68 and
 GUI runtime sanitizers 13/13. No commits or pushes made by the agent.
 
-1. Continue large-input correctness with reproduced extreme-coordinate casts,
-   spacing/displacement and degree-accumulation boundaries. Then address scalar
-   allocation/callback failures during geometry publication; the current recovery
-   guarantee covers preparation, not a transactional final drawing update.
+The continuation is in `FFGRAPH-SUGIYAMA-NUMERIC-PUBLICATION-RECOVERY.md`:
+checked coordinate conversions/spacing/priority increments, rejected nonfinite
+settings and a float-progress hang fix now accompany guarded geometry publication.
+Renderer failures restore positions, routes, spline flags, IDs and point storage;
+repaint is best effort. Tests cover 772 renderer-failure points and allocation-free
+model rollback. Latest results are Debug 83/83, Release 85/85, strict headless
+sanitizers 69/69 and GUI runtime sanitizers 14/14, with float-cast checking enabled.
+
+1. Continue with deterministic memory-limited stress/resource-budget tests for
+   representable but huge requests, and audit downstream camera/projection casts
+   under extreme settings. Callback-driven structural mutation/reentrancy remains
+   separate from the completed renderer-exception recovery guarantee.
 2. Use the refreshed profiles to select further exact Sugiyama work later.
    Remaining costs include barycenters, crossing evaluation and matrix-array
    comparisons; retain crossing and geometry compatibility.
@@ -218,8 +226,9 @@ GUI runtime sanitizers 13/13. No commits or pushes made by the agent.
    by exact quadratic force interactions; approximation needs a separate mode.
 4. Validate a complete newer Tcl/Tk/font stack and strict GUI leak behavior
    before proposing dependency changes. Keep the existing diagnostic policy.
-Spring global offset bounds and arbitrary camera/spline/label geometry remain
-separate features, not part of the completed layout-correctness checkpoint.
+Spring global offset bounds and arbitrary camera/label geometry remain separate
+features. The new report documents publication backup costs and point-reference
+lifetime; remeasure performance before selecting further optimization work.
 
 Aesthetic Sugiyama refinement remains parked. SPQR stays excluded, the WSLg
 inspector investigation remains parked, and Rome optimization is low priority.

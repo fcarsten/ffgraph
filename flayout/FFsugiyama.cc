@@ -8,6 +8,8 @@
 #include <vector>
 #include <memory>
 #include "FFsugi_sizes.h"
+#include "FFsugi_numeric.h"
+#include "FFsugi_publication.h"
 
 // Explicitly instantiate the list/stack adapters used by this translation unit.
 // DLNode and SLNode were libg++ implementation details; the STL-backed
@@ -780,17 +782,20 @@ struct ScratchIds {
   std::vector<std::pair<FFNode,int>> nodes;
   std::vector<std::pair<FFEdge,int>> edges;
   bool published = false;
+  bool restored = false;
   ScratchIds(const FFSet<FFNode>& ns, const FFSet<FFEdge>& es) {
     nodes.reserve(ns.length()); edges.reserve(es.length());
     for (Pix p = ns.first(); p; ns.next(p)) nodes.emplace_back(ns(p),ns(p)->getValue());
     for (Pix p = es.first(); p; es.next(p)) edges.emplace_back(es(p),es(p)->getValue());
   }
-  ~ScratchIds() {
-    if (!published) {
+  void restore() noexcept {
+    if (!published && !restored) {
       for (auto [node,id] : nodes) node->setValue(id);
       for (auto [edge,id] : edges) edge->setValue(id);
+      restored = true;
     }
   }
+  ~ScratchIds() { restore(); }
 };
 }
 
@@ -805,6 +810,17 @@ void sugiyama(FFGraph& graph, FSSugiInfo info, FFSet<FFNode> locNodes)
     graph->allNodes(allNodes); graph->allEdges(allEdges);
     const int anzN = allNodes.length(), anzE = allEdges.length();
     if (anzN == 0) return;
+    for (auto distance : {info.xDistance,info.yDistance,info.zDistance})
+      if (!std::isfinite(distance) || distance < 1) throw NumericError();
+    coordinateInt(info.xDistance); coordinateInt(info.yDistance);
+    for (auto value:info.offset.v) if (!std::isfinite(value)) throw NumericError();
+    for (Pix p=allNodes.first();p;allNodes.next(p)) if (auto* g=allNodes(p)->getGraphicNode()) {
+      finitePoint(g->getCoords());
+      for (int i=0;i<3;++i)
+        if (!std::isfinite(g->getRange().v[i]) || g->getRange().v[i]<0) throw NumericError();
+    }
+    for (Pix p=allEdges.first();p;allEdges.next(p)) if (auto* g=allEdges(p)->getGraphicEdge())
+      for (int i=0;i<g->anzPoints();++i) finitePoint(g->getPointAt(i));
     const int nodeCount = arrayCount<SNode>(scratchNodes(anzN,anzE));
     const int edgeCount = arrayCount<SEdge>(checkedAdd(anzE,1));
     ScratchIds originalIds(allNodes,allEdges);
@@ -858,13 +874,31 @@ void sugiyama(FFGraph& graph, FSSugiInfo info, FFSet<FFNode> locNodes)
           nodes[n].posList[level].v[1] += info.offset.v[layerAxis];
         }
     }
-    // Preparation changes only scratch IDs. Leave existing routes intact until
-    // all dimension checks, traversals and scratch allocations have succeeded.
-    graph->straightenEdges();
-    finish_sgraph(graph,nodes,edges,anzN,anzE,dummies,backEdges,info.xDistance,info.yDistance,info.orient);
-    originalIds.published = true; // Preserve historical successful scratch-ID behavior.
+    for (int n=1;n<=count;++n) {
+      finitePoint(nodes[n].point);
+      if (nodes[n].anzDum==2)
+        for (int level=nodes[n].level+1;level<=nodes[n].elevel;++level) finitePoint(nodes[n].posList[level]);
+    }
+    Publication publication(allNodes,allEdges);
+    publication.begin();
+    try {
+      graph->straightenEdges();
+      finish_sgraph(graph,nodes,edges,anzN,anzE,dummies,backEdges,info.xDistance,info.yDistance,info.orient);
+      updates.restore();
+      if (window) { window->updateGraph(); window->adjustWindowSize(); }
+      publication.commit();
+      originalIds.published = true; // Preserve historical successful scratch-ID behavior.
+    } catch (...) {
+      publication.rollback(); // No allocation or callback needed to restore model geometry.
+      originalIds.restore();
+      updates.restore();
+      try { publication.refresh(window); } catch (...) { /* Model is restored even if repaint fails. */ }
+      if (window) window->setUpdate(updates.previous);
+      throw;
+    }
+  } catch (const NumericError& error) {
     updates.restore();
-    if (window) { window->updateGraph(); window->adjustWindowSize(); }
+    ffError(USER_ERROR,error.what());
   } catch (const SizeError&) {
     updates.restore();
     ffError(USER_ERROR,GRAPH_TOO_LARGE);

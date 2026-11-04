@@ -562,9 +562,9 @@ void compute_edges_of_level (int *nodeArray, SNode *nodes, int anzN,
 	    // bzw. ausgehender Kanten zwischen Knoten von Level l und l+1.
 	    // (Jedoch nur, falls die Orientierung nicht vertauscht wurde.)
 	    if (orient == 2)
-	      nodes[n].vertUnit = abs + 1;
+	      nodes[n].vertUnit = ffgraph_sugiyama::checkedAdd(abs,1);
 	    else
-	      nodes[n].vertUnit = abs + 1 + (int) (max / 3);
+	      nodes[n].vertUnit = ffgraph_sugiyama::checkedAdd(ffgraph_sugiyama::checkedAdd(abs,1),max/3);
 
             nodes[n].vertUnit = nodes[n].vertUnit;
             tmp = nodes[n].vertUnit;

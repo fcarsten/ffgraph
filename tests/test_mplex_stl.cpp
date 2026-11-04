@@ -45,4 +45,18 @@ int main() {
   FF_CHECK(copy[12] == 30 && copy[13] == 40 && copy.OK());
   copy.clear();
   FF_CHECK(copy.empty() && copy.length() == 0 && copy.OK());
+
+  MPlex<int> left(-7,4),right(20,9);
+  left.add_high(11);left.add_high(22);left.del_index(-7);
+  right.add_high(33);right.add_high(44);
+  const Pix lp=left.first(),rp=right.first();
+  int* la=&left(lp);int* ra=&right(rp);
+  static_assert(noexcept(left.swap(right)),"rollback exchange must not allocate or throw");
+  left.swap(right);
+  FF_CHECK(left.low()==20 && right.low()==-6 && left.OK() && right.OK());
+  FF_CHECK(&left(rp)==ra && &right(lp)==la && left(rp)==33 && right(lp)==22);
+  FF_CHECK(right.available()==1 && !right.valid(-7));
+  left.swap(right);
+  FF_CHECK(&left(lp)==la && &right(rp)==ra && left.available()==1);
+  left.swap(left);FF_CHECK(left.OK() && &left(lp)==la);
 }
