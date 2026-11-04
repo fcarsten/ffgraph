@@ -253,9 +253,26 @@ Full results: Debug **90/90**, Release **92/92**, strict headless sanitizers
 arbitrary callback mutation and all alternate failure-path combinations remain
 explicitly unverified; these are not a claim of universal OOM recovery.
 
+The user next authorized repeated crossing evaluation/matrix comparison work.
+See `FFGRAPH-SUGIYAMA-CROSSING-COMPARISON-OPTIMIZATION.md`: crossing queries and
+column updates now use one scan per row, and active matrix rectangles use
+contiguous comparisons without including unused padding. Counter width,
+metadata, sweep scheduling and best-state decisions are unchanged. New frozen
+comparison checks passed before production edits; all existing geometry,
+crossing and failure oracles remain active.
+
+Archive-matched first-layout controls measured **10.8–14.5% less time** on the four
+sparse examples; the dense example measured **0.3% slower**. All **480 complete
+snapshots** match their respective workload baselines. `out.g` layout instruction
+count fell **20.9%**; equality is now **1.16% inclusive**. These are local workload
+measurements, not universal speedups. Latest verification: Debug **91/91**,
+Release **93/93**, strict headless sanitizers **73/73**, GUI runtime sanitizers
+**16/16**. No commits or pushes made by the agent.
+
 1. Use the refreshed profiles for further exact Sugiyama work afterward.
-   Remaining sparse costs include barycenters, crossing evaluation and matrix-array
-   comparisons. Dense work should examine allocation costs while retaining
+   Remaining sparse costs include barycenters/permutations and crossing evaluation;
+   matrix equality is now a lower priority on the measured sparse example.
+   Dense work should examine allocation costs while retaining
    publication rollback, route-storage guarantees and crossing/geometry oracles.
 2. Design mutation-aware FF ID indexing later, covering direct setValue,
    membership, callbacks and duplicate first-match policy. Import acceleration

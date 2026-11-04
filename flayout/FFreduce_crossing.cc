@@ -140,13 +140,16 @@ BOOL equal_matrix (int *matrix1, int *matrix2, int r, int c,
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int i,
-    j;
-
-  for (i = 0; i <= r; i++)
-    for (j = 0; j <= c; j++)
-      if (matrix1[i*maxS + j] != matrix2[i*maxS + j])
-        return (NO);
+  if (r < 0 || c < 0) return YES;
+  const auto width = static_cast<std::size_t>(c) + 1;
+  // Include row/column-zero IDs, but never compare unused padding. Full-width
+  // rectangles are contiguous; otherwise compare only each active row span.
+  if (maxS > 0 && width == static_cast<std::size_t>(maxS))
+    return std::equal(matrix1,matrix1+(static_cast<std::size_t>(r)+1)*width,matrix2) ? YES : NO;
+  for (int row = 0; row <= r; ++row) {
+    const auto offset = static_cast<std::ptrdiff_t>(row)*maxS;
+    if (!std::equal(matrix1+offset,matrix1+offset+width,matrix2+offset)) return NO;
+  }
 
   return (YES);
 }
@@ -212,11 +215,13 @@ CrossingCount countCrossings(const int* matrix, int r, int c, int maxS)
       right -= columns[col];
       // Count earlier-row endpoints strictly to the right. Equal columns
       // share a target and do not cross; only cells equal to 1 are edges.
-      if (cells[col] == 1) result += right;
+      if (cells[col] == 1) {
+        result += right;
+        // right started with earlier-row edges, and each column is consumed
+        // once. Updating this column now cannot affect later queries this row.
+        ++columns[col]; ++previousEdges;
+      }
     }
-    // Update after the entire row so shared-source edges cannot cross.
-    for (int col = 1; col <= c; ++col)
-      if (cells[col] == 1) { ++columns[col]; ++previousEdges; }
   }
 #ifdef FFGRAPH_VERIFY_SUGIYAMA_COUNTS
   // Diagnostic builds compare every actual matrix state with the former

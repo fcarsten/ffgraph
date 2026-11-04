@@ -110,6 +110,16 @@ See [ordinary allocation recovery](docs/FFGRAPH-SUGIYAMA-SCALAR-ALLOCATION-RECOV
 for argument-copy, busy cleanup and stream-formatting fixes, successful sorting
 fallback checks and the limits of one-shot failure testing.
 
+The latest exact Sugiyama optimization combines each crossing counter row's two
+scans and accelerates active matrix comparisons. Run its focused coverage with:
+
+```sh
+ctest --preset debug -R '^test_sugiyama_(matrix_comparisons|crossings|corpus_)' -V
+```
+
+See [crossing scans and matrix comparisons](docs/FFGRAPH-SUGIYAMA-CROSSING-COMPARISON-OPTIMIZATION.md)
+for unchanged geometry/crossing checks, controlled timing results and limits.
+
 For reproducible headless import/layout profiling, build the optional driver:
 
 ```sh

@@ -245,6 +245,7 @@ if(BUILD_TESTING)
       test_sugiyama_permutations
       test_sugiyama_parallel_index
       test_sugiyama_crossings
+      test_sugiyama_matrix_comparisons
       test_application_default_layouts
       test_sugiyama_layout)
     add_executable(${test_name} tests/${test_name}.cpp)
