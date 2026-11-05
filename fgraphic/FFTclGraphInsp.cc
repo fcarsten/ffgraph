@@ -17,7 +17,7 @@
 #include <config.h>
 #include <ffgraph/ffError.h>
 
-#include <String.h>
+#include <FFString.h>
 #include <stream.h>
 #include <malloc.h>
 #include <algorithm>

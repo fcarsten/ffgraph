@@ -10,7 +10,7 @@
 // #include <ffgraph/FFNodeClass.h>
 #include <ffgraph/FFsugiyama.h>
 #include <ffgraph/FFLayoutLabel.h>
-#include <String.h>
+#include <FFString.h>
 
 class FFNodeClass;
 

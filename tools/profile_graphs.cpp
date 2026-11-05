@@ -242,7 +242,7 @@ int main(int argc, char** argv) {
         else layout = new FFRandom;
         graph->addGraphLabel(layout); // Graph owns this label.
       }
-      srand48(12345);
+      ffgraph_platform::seedRandom(12345);
       std::srand(12345);
       Parsed parsed;
       if (sample >= 0) CALLGRIND_START_INSTRUMENTATION;

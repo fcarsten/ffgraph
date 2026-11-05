@@ -6,7 +6,7 @@
 #include <ffgraph/FFEdgeClass.h>
 #include <ffgraph/FFGraphicNode.h>
 #include <ffgraph/FFGraphicEdge.h>
-#include <String.h>
+#include <FFString.h>
 #include <ffgraph/ffError.h>
 
 #include <cstdlib>
@@ -18,7 +18,11 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <unistd.h>
+#endif
 
 extern charErrorHandler* userCharErrorHandler;
 
@@ -38,6 +42,13 @@ Topology topology(FFGraphClass* graph) {
 struct TemporaryFile {
   std::filesystem::path path;
   explicit TemporaryFile(const char* extension) {
+#ifdef _WIN32
+    wchar_t filename[MAX_PATH];
+    require(GetTempFileNameW(std::filesystem::temp_directory_path().c_str(), L"ffg", 0, filename) != 0,
+            "GetTempFileNameW");
+    path = std::filesystem::path(filename).wstring() + std::wstring(extension, extension + std::strlen(extension));
+    std::filesystem::rename(filename, path);
+#else
     // mkstemp handles concurrent CTest jobs without predictable filenames.
     std::string pattern = (std::filesystem::temp_directory_path() / "ffgraph-pass10-XXXXXX").string();
     const int fd = mkstemp(pattern.data());
@@ -45,6 +56,7 @@ struct TemporaryFile {
     close(fd);
     path = pattern + extension;
     require(std::rename(pattern.c_str(), path.c_str()) == 0, "rename temp file");
+#endif
   }
   ~TemporaryFile() { std::error_code ec; std::filesystem::remove(path, ec); }
 };

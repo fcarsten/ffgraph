@@ -2,7 +2,7 @@
 #  pragma implementation
 #endif
 
-#include <String.h>
+#include <FFString.h>
 #include <DLList.h>
 #include <SLList.h>
 #include "AVL.cc"

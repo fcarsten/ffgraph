@@ -1,5 +1,9 @@
 # CMake build (Ubuntu 24.04)
 
+For the initial native Windows build without X11/Xpm, see
+[BUILD-WINDOWS.md](BUILD-WINDOWS.md). Linux keeps its existing full test suite;
+Windows starts with an explicitly selected portable suite.
+
 The CMake build now selects the modern GNU Bison/Flex GML importer by default.
 FF/sgraph also uses its modern GNU Bison/Flex importer in every build.
 All three parser/scanner pairs are generated in the build tree; their legacy

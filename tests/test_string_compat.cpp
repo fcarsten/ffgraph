@@ -1,5 +1,5 @@
 #include "test_check.h"
-#include <String.h>
+#include <FFString.h>
 
 int main() {
   String value("  alpha beta  ");

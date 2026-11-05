@@ -14,7 +14,7 @@
 #pragma interface
 #endif // __GNUG__
 
-#include <String.h>
+#include <FFString.h>
 #include <iostream.h>
 
 template<class T1, class T2>

@@ -206,6 +206,14 @@ proc createIcon { iconFile {selIconFile "__NoIcon__"} } {
 #     puts $selIconFile
   global iconCache
   
+  # Xpm is deprecated and the native Windows build has no pixmap handler.
+  if {[lsearch -exact [image types] pixmap] < 0 &&
+      ([file extension $iconFile] in {"" ".xpm"} ||
+       ($selIconFile ne "__NoIcon__" && [file extension $selIconFile] in {"" ".xpm"}))} {
+    puts stderr "Xpm images are not supported in this build: $iconFile"
+    return ""
+  }
+
   set bild [file rootname $iconFile]
   set typ [file extension $iconFile]	
   if { $typ == "" } {
@@ -1536,6 +1544,10 @@ proc changeWindowSize { parent id xoff yoff } {
 
 # Procedure: changeMask
 proc changeMask { item mask {selMask "__NoMask__"} {canv "." } } {
+  if {[lsearch -exact [image types] pixmap] < 0} {
+    puts stderr "Pixmap masks are not supported in this build"
+    return
+  }
   global ICON_LIB_DIR
     
   if {$canv == "." } {
@@ -2007,6 +2019,9 @@ proc showIconBox {} {
   [glob -nocomplain $ICON_LIB_DIR/ppm/*.ppm] \
   [glob -nocomplain $ICON_LIB_DIR/xbm/*.xbm] " {
     
+    if {[file extension $i] eq ".xpm" && [lsearch -exact [image types] pixmap] < 0} {
+      continue
+    }
     set bild [file tail $i]
     set typ [file extension $i]	
     

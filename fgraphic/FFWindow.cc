@@ -142,10 +142,12 @@ void FFWindow::initFromFile(const String& file, int argc, char **argv)
   w=Tk_MainWindow(interp);
 #endif
 
-  if (synchronize) 
+#ifndef _WIN32
+  if (synchronize)
     {
       XSynchronize(Tk_Display(w), True);
     }
+#endif
 
   
   if(argv)

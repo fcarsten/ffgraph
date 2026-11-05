@@ -29,7 +29,7 @@ class FFGraphicEdge;
 #include <container/VHSet.h>
 #include <container/MPlex.h>
 #include <SLList.h>
-#include <String.h>
+#include <FFString.h>
 #include <ffgraph/ffError.h>
 #include <ffgraph/FFPoint.h>
 #include <ffgraph/FFLabelClass.h>

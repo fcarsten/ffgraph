@@ -15,7 +15,7 @@
 #include "globdefs.h"
 #include "FFPoint.h"
 
-#include <String.h>
+#include <FFString.h>
 #include <container/MPlex.h>
 
 class FFEdgeClass;

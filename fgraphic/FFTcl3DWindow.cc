@@ -20,7 +20,9 @@ extern "C" {
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#ifndef _WIN32
 #include <X11/Xatom.h>
+#endif
 }
 
 #include <stream.h>

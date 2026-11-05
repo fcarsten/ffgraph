@@ -1,0 +1,54 @@
+name: Native Windows
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mingw-w64:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            bison flex
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-python
+            mingw-w64-ucrt-x86_64-tcl
+            mingw-w64-ucrt-x86_64-tk
+      - name: Configure native Windows build (no X11 or Xpm)
+        run: >-
+          cmake -S . -B build/windows -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DBUILD_TESTING=ON -DFFGRAPH_INITIAL_TESTS_ONLY=ON
+      - name: Build application and initial tests
+        run: cmake --build build/windows --parallel 2
+      - name: Run initial suite and native GUI tests
+        run: ctest --test-dir build/windows --output-on-failure --parallel 1
+      - name: Stage application with native runtime dependencies
+        run: cmake --install build/windows --prefix "$PWD/build/windows-stage"
+      - name: Preserve native application
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffgraph-windows-${{ matrix.build_type }}
+          path: build/windows-stage/

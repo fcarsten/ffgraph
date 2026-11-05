@@ -15,7 +15,7 @@
 
 // #include <ffgraph/FFspringembedder.h>
 #include <ffgraph/FFLayoutLabel.h>
-#include <String.h>
+#include <FFString.h>
 
 #define ffSpringType String("FFSpringembedder")
 

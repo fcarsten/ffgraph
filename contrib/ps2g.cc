@@ -8,7 +8,7 @@
 
 #include <stream.h>
 #include <fstream.h>
-#include <String.h>
+#include <FFString.h>
 
 void sigchld (int)
 {

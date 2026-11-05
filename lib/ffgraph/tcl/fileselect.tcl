@@ -887,7 +887,7 @@ proc FileSelectorBox {title pattern given_start_dir args} {
     if {[FileSelectorBox_MessageBox \
 	   "The Directory\n\n[file dirname $result]\n\ndoesn't exists!\nShall i create it?" \
 	   "Attention" "Do it" "Forget it"] =="1"} {
-      catch "exec sh -c \"mkdir -p [file dirname $result]\"" tmp
+      catch {file mkdir [file dirname $result]} tmp
       if {$tmp != ""} {
 	puts stderr  "FSBox: Start action-> $tmp"
       }

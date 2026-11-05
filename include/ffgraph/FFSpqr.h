@@ -8,7 +8,7 @@
 
 #include <ffgraph/FFLayoutLabel.h>
 #include <ffgraph/FFSpqrNodeLabel.h>
-#include <String.h>
+#include <FFString.h>
 
 class FFTINodeLabel;
 class FFTIEdgeLabel;

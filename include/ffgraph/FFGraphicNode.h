@@ -14,7 +14,7 @@
 
 #include "globdefs.h"
 
-#include <String.h>
+#include <FFString.h>
 #include "FFPoint.h"
 
 #include "FFNodeClass.h"

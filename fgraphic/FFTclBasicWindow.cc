@@ -21,6 +21,7 @@ extern "C" {
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+// Windows Tk supplies these compatibility constants; no X11 library is used.
 #include <X11/Xatom.h>
 }
 
@@ -140,6 +141,13 @@ void FFTclBasicWindow::_buildExportString()
   }
  
  graph->saveToString(exportString, tmpSet);
+#ifdef _WIN32
+ // PRIMARY is local to a Tk interpreter on Windows. Use the native clipboard
+ // so graph copy/paste also works between independently owned graph windows.
+ if (Tk_ClipboardClear(interp, w) != TCL_OK ||
+     Tk_ClipboardAppend(interp, w, XA_STRING, XA_STRING, exportString.c_str()) != TCL_OK)
+   ffError(CF_TCL, Tcl_GetStringResult(interp));
+#endif
  return;
 }
 
@@ -518,7 +526,11 @@ int FFTclBasicWindow::recall(Tcl_Interp *, int , const char **c)
      {
       importString = String("");
       
-#if(TK_MAJOR_VERSION < 4)
+#ifdef _WIN32
+      if (FF_TclEvalObjv(interp, {"clipboard", "get", "-displayof", Tk_PathName(w)}) != TCL_OK)
+       return TCL_ERROR;
+      importString = Tcl_GetStringResult(interp);
+#elif(TK_MAJOR_VERSION < 4)
       Tk_GetSelection(interp, w, XA_STRING, fgraphWindowGetSel, 
                       (ClientData) this);
 #else

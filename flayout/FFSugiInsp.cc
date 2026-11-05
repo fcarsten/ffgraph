@@ -8,7 +8,7 @@
 
 #include <stream.h>
 #include <string.h>
-#include <String.h>
+#include <FFString.h>
 extern "C"
 {
 #include <stdlib.h>

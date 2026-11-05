@@ -8,7 +8,7 @@ static inline unsigned int ffgraph_pointer_hash(T* pointer)
     bits ^= bits >> (sizeof(unsigned int) * 8);
   return static_cast<unsigned int>(bits);
 }
-#include <String.h>
+#include <FFString.h>
 #include <builtin.h>
 
 // int

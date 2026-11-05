@@ -9,7 +9,7 @@
 #ifndef _utils_hh
 #define _utils_hh
 
-#include <String.h>
+#include <FFString.h>
 #include <DLList.h>
 
 String listToTclList(DLList<String>& sList);
