@@ -2031,22 +2031,16 @@ String FFTclBasicWindow::changeToIcon(FFGraphicNode *n, const String& icon,
  FFPoint tmpCoord = proj(n->getCoords(), n->getRange());
  const bool visible=ffgraph_canvas::supported(tmpCoord,true);
  if(!visible) tmpCoord=FFPoint(0,0,RADIUS);
- std::ostringstream tmpScti;
- tmpScti.exceptions(std::ios::badbit | std::ios::failbit);
- 
- tmpScti << ffgraph_canvas::integer(tmpCoord.v[0]) << " " << ffgraph_canvas::integer(tmpCoord.v[1]);
+ const std::string x = std::to_string(ffgraph_canvas::integer(tmpCoord.v[0]));
+ const std::string y = std::to_string(ffgraph_canvas::integer(tmpCoord.v[1]));
 
- if(Tcl_VarEval(interp, "changeToIcon {", (const char *)n->getId(), "} {",
-                (const char *)icon, "} {", (const char *)selIcon, "} ", 
-                tmpScti.str().c_str(), " ", (const char *)canvas, NULL) 
-    != TCL_OK)
-  { 
+ if(FF_TclEvalObjv(interp, {"changeToIcon", n->getId().c_str(), icon.c_str(),
+                           selIcon.c_str(), x.c_str(), y.c_str(), canvas.c_str()}) != TCL_OK)
+  {
    ffError(CF_TCL, Tcl_GetStringResult(interp));
-   if(Tcl_VarEval(interp, "changeToIcon {", (const char *)n->getId(), 
-                  "} ", "default.xbm",  " default.xbm ", 
-                tmpScti.str().c_str(), " ", (const char *)canvas, NULL) 
-      != TCL_OK)
-    { 
+   if(FF_TclEvalObjv(interp, {"changeToIcon", n->getId().c_str(), "xbm/default.png",
+                             "xbm/default.png", x.c_str(), y.c_str(), canvas.c_str()}) != TCL_OK)
+    {
      ffError(CF_TCL, "Couldn't find default icon, please check installation");
      ffError(CF_TCL, Tcl_GetStringResult(interp));
      return String("");
@@ -2101,10 +2095,8 @@ String FFTclBasicWindow::changeToFigure(FFGraphicNode *n, ffShape shape)
 void FFTclBasicWindow::changeMask(FFGraphicNode *n, const String& mask, 
                                   const String& selMask)
 {
-  if(Tcl_VarEval(interp, "changeMask ", (const char *)n->getId(), " {",
-		 (const char *)mask, "} {", (const char *)selMask,
-                 "} ", (const char *)canvas, NULL) 
-     != TCL_OK)
+  if(FF_TclEvalObjv(interp, {"changeMask", n->getId().c_str(), mask.c_str(),
+                            selMask.c_str(), canvas.c_str()}) != TCL_OK)
     ffError(CF_TCL, Tcl_GetStringResult(interp));
 }
 

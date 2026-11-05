@@ -16,8 +16,16 @@ The full application requires **CMake 3.24 or newer** (LINK_GROUP support).
 Install prerequisites:
 
 ```sh
-sudo apt install build-essential cmake ninja-build pkg-config bison flex tcl-dev tk-dev libx11-dev libxpm-dev
+sudo apt install build-essential cmake ninja-build pkg-config bison flex tcl-dev tk-dev libx11-dev
 ```
+
+Bundled icons and masks use PNG, read directly by Tk 8.6. Xpm is not needed
+for the normal Linux build. For external legacy Xpm images only, install
+`libxpm-dev` and explicitly configure `-DFFGRAPH_XPM=ON`. Existing build
+caches may retain the old ON value; use `-DFFGRAPH_XPM=OFF` to remove it.
+Legacy graph names for bundled images (such as `redball.xpm`) work in either
+build through PNG aliases, without changing serialized graph metadata.
+See [the PNG migration report](docs/FFGRAPH-PNG-ASSET-MIGRATION.md).
 
 Build and test:
 

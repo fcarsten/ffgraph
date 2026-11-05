@@ -57,7 +57,9 @@
 /* #undef HAVE_STRCHR */
 
 /* Define if you have the <X11/xpm.h> header file.  */
+#if !defined(_WIN32) && !defined(FFGRAPH_NO_XPM)
 #define HAVE_X11_XPM_H 1
+#endif
 
 /* Define if you have the <dirent.h> header file.  */
 #define HAVE_DIRENT_H 1
@@ -102,7 +104,9 @@
 #define HAVE_UNISTD_H 1
 
 /* Define if you have the Xpm library (-lXpm).  */
+#if !defined(_WIN32) && !defined(FFGRAPH_NO_XPM)
 #define HAVE_LIBXPM 1
+#endif
 
 /* Define if you have the nsl library (-lnsl).  */
 #define HAVE_LIBNSL 1

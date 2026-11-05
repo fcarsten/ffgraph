@@ -31,7 +31,7 @@ ctest --test-dir build/windows --output-on-failure --parallel 1
 ```
 
 Windows defaults to `FFGRAPH_INITIAL_TESTS_ONLY=ON`. This registers the initial
-23 tests, including containers, graph invariants and geometry, layouts and
+24 tests, including containers, graph invariants and geometry, layouts and
 allocation recovery, FF/GML loading and serialization, GML/Rome parsers,
 resource lookup, native 2D/3D windows, cross-window graph copy/paste, inspector
 controls, and staged application startup. GUI tests use native Tk directly.
@@ -52,11 +52,12 @@ and explicit `FF_LIBDIR`/`FF_ICONDIR` overrides, with MSYS2 removed from the
 child application's `PATH`. It also inspects bundled PE imports for X11/Xpm,
 MSYS2, and Cygwin dependencies.
 
-Xpm icons and the old pixmap mask extension are omitted. Loading an Xpm icon
-returns an unsupported-image diagnostic; the icon chooser skips those files.
-Existing GIF/PPM/XBM handling remains. Windows uses the system clipboard for
-graph copy/paste. Linux keeps its existing selection behavior and defaults to
-building its Xpm extension.
+Bundled icons and masks use PNG on Windows and Linux. Graphs referencing
+historical bundled Xpm/XBM filenames resolve to the converted PNG assets;
+normal/selected images and masks work without an Xpm library. External Xpm
+files remain an optional Linux-only compatibility feature (`FFGRAPH_XPM=ON`).
+Windows uses the system clipboard for graph copy/paste. See
+[the PNG migration report](docs/FFGRAPH-PNG-ASSET-MIGRATION.md).
 
 The new [Windows workflow](.github/workflows/windows.yml) builds Debug and
 Release, runs the initial suite, and uploads the staged application. Workflow

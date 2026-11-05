@@ -1,9 +1,11 @@
-#!/public/bin/pixmap-wish -f
+#!/usr/bin/env wish
 # Program: sugi
 # Tcl version: 7.3 (Tcl/Tk/XF)
 # Tk version: 3.6
 # XF version: 2.3
 #
+
+source [file join [file dirname [info script]] icons.tcl]
 
 # proc setBusy
 proc setBusy { } {
@@ -186,151 +188,8 @@ proc addLine { canv col args} {
   return $cfTmpTag
 }
 
-proc createIcon { iconFile {selIconFile "__NoIcon__"} } {
-  global ICON_LIB_DIS
-  global iconCache
-  global iconFileCache
-  set unselErg [_createIcon $iconFile]
-  
-  if {$selIconFile == "__NoIcon__"} {
-    set selErg $unselErg
-  } {
-    set selErg [_createIcon $selIconFile]
-  }
-}
-  
-proc createIcon { iconFile {selIconFile "__NoIcon__"} } {
-  global ICON_LIB_DIR
-#     puts "Create Icon"
-#     puts $iconFile
-#     puts $selIconFile
-  global iconCache
-  
-  # Xpm is deprecated and the native Windows build has no pixmap handler.
-  if {[lsearch -exact [image types] pixmap] < 0 &&
-      ([file extension $iconFile] in {"" ".xpm"} ||
-       ($selIconFile ne "__NoIcon__" && [file extension $selIconFile] in {"" ".xpm"}))} {
-    puts stderr "Xpm images are not supported in this build: $iconFile"
-    return ""
-  }
-
-  set bild [file rootname $iconFile]
-  set typ [file extension $iconFile]	
-  if { $typ == "" } {
-    set typ xpm
-  } {
-    set typ [string trimleft $typ {.}]
-  }
-  
-  switch $typ {xbm} {
-    set createTyp bitmap
-  } {xpm} {
-    set createTyp pixmap
-  } {default} {
-    set createTyp photo
-  }       
-
-  if { $selIconFile != "__NoIcon__" } {
-    set selBild [file rootname $selIconFile]
-    set selTyp [file extension $selIconFile]	
-    if { $selTyp == "" } {
-      set selTyp xpm
-    } {
-      set selTyp [string trimleft $selTyp {.}]
-    }
-
-    switch $selTyp {xbm} {
-      set selCreateTyp bitmap
-    } {xpm} {
-      set selCreateTyp pixmap
-    } {default} {
-      set selCreateTyp photo
-    }       
-  } {
-    set selTyp $typ
-    set selBild $bild
-    set selCreateTyp $createTyp
-  }
-  
-
-# Wir haben das Bild und evlt. auch ein Select Bild
-# Wenn kein Select Bild => Bild := Select Bild
-
-  set tmpF 0
-  
-  if { [info exists iconCache($bild,$typ)] } {
-    # puts "Using Cache for icon"
-    set cfTmpImage $iconCache($bild,$typ)
-    set tmpF 1
-  } {
-    if { [file exists $ICON_LIB_DIR/$typ/[set bild].$typ] } {
-      set normalBild $ICON_LIB_DIR/$typ/[set bild].$typ
-      set tmpF 1
-    }
-  }
-  
-  if { $tmpF == 1 } {
-    if { $selBild != "" } {
-      if { [info exists selIconCache($selBild,$selTyp)] } {
-        # puts "Using Cache for selectIcon"
-        set cfTmpSelImage $iconCache($selBild,$selTyp)
-      } {
-        if {[file exists $ICON_LIB_DIR/$selTyp/[set selBild].$selTyp]} {
-          set selectBild $ICON_LIB_DIR/$selTyp/[set selBild].$selTyp
-        } {
-          set selectBild $normalBild
-        }
-      }
-    } {
-      set selBild $bild
-      set selTyp $typ
-    }
-  } { 
-# Wir haben kein Bild gefunden und suchen nach der alten *N *S 
-    if { [file exists $ICON_LIB_DIR/$typ/[set bild]N.$typ] } {
-      set normalBild $ICON_LIB_DIR/$typ/[set bild]N.$typ
-      if { [file exists $ICON_LIB_DIR/$typ/[set bild]S.$typ] } {
-        set selectBild $ICON_LIB_DIR/$typ/[set bild]S.$typ 
-      } {
-        set selectBild $normalBild
-      }
-      set selCreateTyp $createTyp
-    } {
-      puts stderr " Couldn't find icon \"$iconFile\" !!! "
-      return ""
-    }
-  }
-
-  if { [info exists cfTmpImage] } {
-    # puts "Bestätige Icon Cache"
-  } {
-    set cfTmpImage [image create $createTyp -file $normalBild ]
-    set iconCache($bild,$typ) $cfTmpImage
-    global iconFileCache
-    set iconFileCache($cfTmpImage,$typ) $normalBild
-    puts "Building Icon Cache"
-    puts "set iconFileCache($cfTmpImage,$typ) $normalBild"
-  }
-  
-  set tmpA $selBild.$selTyp
-  set tmpB $bild.$typ
-  if { $tmpA != $tmpB } {
-    if { [info exists cfTmpSelImage] } {
-      # puts "Bestätige selIcon Cache"
-    } {
-      set cfTmpSelImage [image create $selCreateTyp -file $selectBild]
-      set iconCache($selBild,$selTyp) $cfTmpSelImage
-      global iconFileCache
-      set iconFileCache($cfTmpImage,$typ) $normalBild
-      puts "Building Icon Cache"
-      puts "set iconFileCache($cfTmpImage,$typ) $normalBild"
-    }
-  } {
-    set cfTmpSelImage $cfTmpImage
-  }
-  
-#   puts "$cfTmpImage $cfTmpSelImage $typ $selTyp"
-  return "$cfTmpImage $cfTmpSelImage $typ $selTyp"
+proc createIcon {iconFile {selIconFile "__NoIcon__"}} {
+  return [::ffgraph_icons::pair $iconFile $selIconFile]
 }
 
 proc nodeButton3 {befehl W X Y x y} {
@@ -390,8 +249,12 @@ proc addUserNodeBinding {canv cfTmpTag befehl} {
 
 proc addDefFigure {canv x y x2 y2} {
   global DefShape
-#  puts "addDefFigure $DefShape $canv $x $y $x2 $y2"
-  case $DefShape {Circle} {
+  # Interactive creation first draws the plain node, then applies the chosen
+  # icon in C++. Keep a valid item ID during that interval without changing
+  # the user's selected creation mode.
+  set figure $DefShape
+  if {$figure eq "Icon"} {set figure Circle}
+  case $figure {Circle} {
     return [$canv create oval [expr ($x-$x2)] [expr ($y+$x2)] \
               [expr ($x+$x2)] [expr ($y-$x2)]] 
   } {Oval} {
@@ -414,62 +277,20 @@ proc addDefFigure {canv x y x2 y2} {
 }
 
 # Procedure: addNode
-proc addNode { canv x y r col {iconFile "__NoIcon__"} {selIconFile "__NoIcon__"}} {
-  global DefShape
-  set tmpShape $DefShape
-  
-#   if {$iconFile != "__NoIcon__"} {
-#     set tmpShape "Icon"
-#   } else {
-#     if {$DefShape == "Icon"} {
-#       set DefShape "Circle"
-#       set tmpR [addNode $canv $x $y 1 $col]
-#       set DefShape "Icon"
-#       return $tmpR
-#     }
-#   }
-
-#   case $tmpShape {Window} {
-#     set cfTmpTag [addSubWindow $canv $x $y]
-#   } {Icon} {
-#     global ICON_LIB_DIR
-#     global tk_version
-    
-#     global selectImage
-#     global unselectImage
-#     global iconType    
-#     global iconSelType    
-    
-#     set tmpCreate [createIcon $iconFile $selIconFile]
-    
-#     if {$tmpCreate == ""} {
-#       return [addNode $canv $x $y $r $col]
-#     }
-    
-#     set cfTmpTag [$canv create image $x $y]
-    
-#     scan  $tmpCreate "%s %s %s %s" \
-#       unselectImage($canv,$cfTmpTag) \
-#       selectImage($canv,$cfTmpTag) iconType($canv,$cfTmpTag) \
-#       iconSelType($canv,$cfTmpTag)
-    
-#     $canv itemconfigure $cfTmpTag -image $unselectImage($canv,$cfTmpTag)
-#     $canv addtag iconNode withtag $cfTmpTag
-#   } {default} {
-    set cfTmpTag [addDefFigure $canv $x $y $r $r]
-    $canv itemconfigure $cfTmpTag -fill "black" \
-      -outline $col -width {2}
-#  } 
-  
-  $canv addtag nodetag withtag $cfTmpTag
-
-  if {$tmpShape == "Window"} {
-    set cfTmpTag "$canv.$cfTmpTag.canvas2 $cfTmpTag"
+proc addNode {canv x y r col {iconFile "__NoIcon__"} {selIconFile "__NoIcon__"}} {
+  if {$iconFile ne "__NoIcon__"} {
+    set pair [createIcon $iconFile $selIconFile]
+    if {$pair eq ""} {error "Cannot find icon: $iconFile"}
+    set item [$canv create image $x $y -image [lindex $pair 0]]
+    ::ffgraph_icons::remember $canv $item $pair
+    $canv addtag iconNode withtag $item
+  } else {
+    set item [addDefFigure $canv $x $y $r $r]
+    $canv itemconfigure $item -fill black -outline $col -width 2
   }
-  
-  addNodeBindings $canv $cfTmpTag
-
-  return $cfTmpTag
+  $canv addtag nodetag withtag $item
+  addNodeBindings $canv $item
+  return $item
 }
 
 # Procedure: addStdLine
@@ -625,50 +446,19 @@ proc changeEdgeColor { edge col {canv "."}} {
 
 # Procedure: changeToIcon
 proc changeToIcon {item icon selIcon {x 0} {y 0} {canv "."}} {
-  global ICON_LIB_DIR
-  if {$canv == "."} {
-    global symbolicName
-    set canv [set symbolicName(graphView)]
-  }
-  
- # puts "Change to Icon :$icon: :$selIcon: at ($x,$y)"
-
+  global symbolicName
+  if {$canv eq "."} {set canv $symbolicName(graphView)}
+  # Load first: a missing/unsupported image must not delete the existing item.
+  set pair [createIcon $icon $selIcon]
+  if {$pair eq ""} {error "Cannot find icon: $icon"}
   focus $canv
-  
-  if { ($item != {}) && ([lsearch [$canv gettags $item] iconNode] != -1)} {
-      global tk_version
-      if { $tk_version < 4 } {
-        global icons
-        $canv itemconfigure $item  -bitmap \
-          @$ICON_LIB_DIR/xpm/[set icon]N.xpm
-        set icons($canv,$item) $icon
-      } {
-        global selectImage
-        global unselectImage
-        global iconType    
-        global iconSelType    
-        
-        set tmpCreate [createIcon $icon $selIcon]
-        
-        if {$tmpCreate == ""} {
-          return ""
-        }
-      
-        scan $tmpCreate "%s %s %s %s" \
-          unselectImage($canv,$item) \
-          selectImage($canv,$item) iconType($canv,$item) \
-          iconSelType($canv,$item)
-      
-        $canv itemconfigure $item -image $unselectImage($canv,$item)
-      }
-      return "" 
-  } {
-#    scan [$canv coords $item] {%f %f} x y
-    if {$item != ""} {
-      removeItem $canv $item
-    }
-    return [addNode $canv $x $y 10 {black} $icon $selIcon]
+  if {$item ne "" && [lsearch -exact [$canv gettags $item] iconNode] >= 0} {
+    ::ffgraph_icons::remember $canv $item $pair
+    $canv itemconfigure $item -image [lindex $pair 0]
+    return ""
   }
+  if {$item ne ""} {removeItem $canv $item}
+  return [addNode $canv $x $y 10 black $icon $selIcon]
 }
 
 proc clearLayoutMenu {} {
@@ -1543,137 +1333,11 @@ proc changeWindowSize { parent id xoff yoff } {
 }
 
 # Procedure: changeMask
-proc changeMask { item mask {selMask "__NoMask__"} {canv "." } } {
-  if {[lsearch -exact [image types] pixmap] < 0} {
-    puts stderr "Pixmap masks are not supported in this build"
-    return
-  }
-  global ICON_LIB_DIR
-    
-  if {$canv == "." } {
-    global symbolicName
-    set canv $symbolicName(graphView)
-  }
-  
-  if {[lsearch [$canv gettags $item] iconNode] != -1} {
-    global tk_version
-    global selectImage
-    global unselectImage
-    global iconType    
-    global iconSelType    
-    global iconCache
-    
-    set ffHasSelectImage 0
-    
-    if { $selectImage($canv,$item) == $unselectImage($canv,$item) } {
-      set ffHasSelectImage 1
-    }
-
-    set maskBild [file rootname $mask]
-
-    if { $selMask != "__NoMask__" } {
-      set selMaskBild [file rootname $selMask]
-      set selMaskType $iconSelType($canv,$item)
-    } {
-      set selMaskBild $maskBild
-      set selMaskType $iconSelType($canv,$item)  
-      # ??? obere Zeile evtl. nicht korrekt
-    }
-    
-
-    set tmpImage $unselectImage($canv,$item)
-    set tmpTyp $iconType($canv,$item)
-    
-    if { $mask != "__NoMask__" } {
-      switch $iconType($canv,$item) {xbm} {
-        
-        if { [info exists iconCache($tmpImage,$tmpTyp,$maskBild)] } {
-          puts "Using Mask Cache"
-          set tmpNewImage $iconCache($tmpImage,$tmpTyp,$maskBild)
-        } {
-          global iconFileCache
-          puts "Building Mask Cache"
-          puts "Image: [$canv itemconfigure $item -image]"
-
-          set tmpNewImage [image create pixmap -file \
-                             $iconFileCache($tmpImage,$tmpTyp)]
-
-          $tmpNewImage configure -maskfile $ICON_LIB_DIR/xbm/$maskBild.xbm
-          set iconCache($tmpImage,$tmpTyp,$maskBild) $tmpNewImage
-        }
-
-        set $unselectImage($canv,$item) $tmpNewImage
-        $canv itemconfigure $item -image $tmpNewImage
-        
-      } {xpm} {
-
-        if { [info exists iconCache($tmpImage,$tmpTyp,$maskBild)] } {
-          puts "Using Mask Cache"
-          set tmpNewImage $iconCache($tmpImage,$tmpTyp,$maskBild)
-        } {
-          global iconFileCache
-          puts "Building Mask Cache"
-          puts "Image: $iconFileCache($tmpImage,$tmpTyp)"
-          set tmpNewImage [image create pixmap -file \
-                             $iconFileCache($tmpImage,$tmpTyp)]
-          $tmpNewImage configure -maskfile $ICON_LIB_DIR/xbm/$maskBild.xbm
-          set iconCache($tmpImage,$tmpTyp,$maskBild) $tmpNewImage
-        }
-        
-        set $unselectImage($canv,$item) $tmpNewImage
-        $canv itemconfigure $item -image $tmpNewImage
-
-      } {default} {
-        puts stderr "Masks ($mask) not supported for type $iconType($canv,$item)"
-      }
-    }
-    
-    if { $ffHasSelectImage == 1} {
-      set selectImage($canv,$item) $unselectImage($canv,$item)
-    } {
-      set tmpImage $selectImage($canv,$item)
-      set tmpTyp $selMaskType
-
-      if {$selMaskBild != "__NoMask__"} {
-        switch $selMaskType {xbm} {
-          
-          if { [info exists iconCache($tmpImage,$tmpTyp,$selMaskBild)] } {
-            puts "Using Mask Cache"
-            set tmpNewImage $iconCache($tmpImage,$tmpTyp,$selMaskBild)
-          } {
-            puts "Building Mask Cache"
-            set tmpNewImage [image create bitmap]
-          $tmpNewImage copy $tmpImage
-            $tmpNewImage configure -maskfile $ICON_LIB_DIR/xbm/$selMaskBild.xbm
-            set iconCache($tmpImage,$tmpTyp,$selMaskBild) $tmpNewImage
-          }
-          
-          set selectImage($canv,$item) $tmpNewImage
-          $canv itemconfigure $item -image $tmpNewImage
-          
-        } {xpm} {
-          if { [info exists iconCache($tmpImage,$tmpTyp,$selMaskBild)] } {
-            puts "Using Mask Cache"
-            set tmpNewImage $iconCache($tmpImage,$tmpTyp,$selMaskBild)
-          } {
-            puts "Building Mask Cache"
-            set tmpNewImage [image create pixmap]
-            $tmpNewImage copy $tmpImage
-            $tmpNewImage configure -maskfile $ICON_LIB_DIR/xbm/$selMaskBild.xbm
-            set iconCache($tmpImage,$tmpTyp,$selMaskBild) $tmpNewImage
-          }
-        
-          set selectImage($canv,$item) $tmpNewImage
-          $canv itemconfigure $item -image $tmpNewImage
-
-        } {default} {
-          if { $mask != "__NoMask__" } {
-            # puts $selMaskType
-            puts stderr "Masks ($mask) not supported for type $selMaskType"
-          }
-        }
-      }
-    }
+proc changeMask {item mask {selMask "__NoMask__"} {canv "."}} {
+  global symbolicName
+  if {$canv eq "."} {set canv $symbolicName(graphView)}
+  if {[lsearch -exact [$canv gettags $item] iconNode] >= 0} {
+    ::ffgraph_icons::applyMask $canv $item $mask $selMask
   }
 }
 
@@ -2014,15 +1678,24 @@ proc showIconBox {} {
   set y 10
   set maxY 0
   
-  foreach i "[glob -nocomplain $ICON_LIB_DIR/xpm/*.xpm] \
-  [glob -nocomplain $ICON_LIB_DIR/gif/*.gif] \
-  [glob -nocomplain $ICON_LIB_DIR/ppm/*.ppm] \
-  [glob -nocomplain $ICON_LIB_DIR/xbm/*.xbm] " {
-    
-    if {[file extension $i] eq ".xpm" && [lsearch -exact [image types] pixmap] < 0} {
-      continue
+  set files [concat \
+    [glob -nocomplain -directory $ICON_LIB_DIR/png *.png] \
+    [glob -nocomplain -directory $ICON_LIB_DIR/png/xbm *.png] \
+    [glob -nocomplain -directory $ICON_LIB_DIR/gif *.gif] \
+    [glob -nocomplain -directory $ICON_LIB_DIR/ppm *.ppm] \
+    [glob -nocomplain -directory $ICON_LIB_DIR/xbm *.xbm]]
+  if {[lsearch -exact [image types] pixmap] >= 0} {
+    set files [concat $files [glob -nocomplain -directory $ICON_LIB_DIR/xpm *.xpm]]
+  }
+  foreach i $files {
+    # A previous installation may still contain old bundled files. Prefer
+    # their PNG aliases and reserve the compatibility gallery for custom files.
+    if {[file extension $i] in {".xpm" ".xbm"}} {
+      set oldReference [file join [file tail [file dirname $i]] [file tail $i]]
+      if {[file extension [::ffgraph_icons::resolve $oldReference]] eq ".png"} {continue}
     }
     set bild [file tail $i]
+    if {[file normalize [file dirname $i]] eq [file normalize [file join $ICON_LIB_DIR png xbm]]} {set bild xbm/$bild}
     set typ [file extension $i]	
     
     if { $typ == "" } {
@@ -2030,14 +1703,6 @@ proc showIconBox {} {
     } {
       set typ [string trimleft $typ {.}]
     }
-    
-    switch $typ {xbm} {
-      set createTyp bitmap
-    } {xpm} {
-      set createTyp pixmap
-    } {default} {
-      set createTyp photo
-    }       
     
     global iconCache
     set cacheBild [file rootname $bild]
@@ -2048,7 +1713,7 @@ proc showIconBox {} {
       set neuesImage $iconCache($cacheBild,$typ)
       set tmpF 0
     } {
-      set tmpF [catch  "image create $createTyp -file $i" neuesImage]
+      set tmpF [catch {::ffgraph_icons::load $i} neuesImage]
     }
     
     if {$tmpF == 0} {
@@ -2061,7 +1726,7 @@ proc showIconBox {} {
       puts "Building Icon Cache"
       puts "set iconFileCache($neuesImage,$typ) $i"
       
-#     set neuesImage [image create $createTyp -file $i]
+
     
 
       $canv itemconfigure $tmpTag -image $neuesImage
@@ -2097,24 +1762,14 @@ proc showIconBox {} {
               recall setCurrentIcon $iconBox([%W itemcget $tmpTag -image])
               recall setNoMask
 
-              if { [file extension $iconBox([%W itemcget $tmpTag -image])]
-                   == ".xpm" } {
-                fillMaskCanvas .topIcon.frameLeft.framem0.canvas %W \
-                  [%W find withtag [expr $tw-$tx]x[expr $th-$ty]xxbm]
-              } {
-                fillMaskCanvas .topIcon.frameLeft.framem0.canvas %W ""
-              }
+              fillMaskCanvas .topIcon.frameLeft.framem0.canvas %W \
+                [%W find withtag [expr $tw-$tx]x[expr $th-$ty]xmask]
             } 
             .topIcon.frameRight.frame1.canvas {
               recall setCurrentSelIcon $iconBox([%W itemcget $tmpTag -image])
               recall setNoSelMask
-              if { [file extension $iconBox([%W itemcget $tmpTag -image])]
-                   == ".xpm" } {
-                fillMaskCanvas .topIcon.frameRight.framem1.canvas %W \
-                  [%W find withtag [expr $tw-$tx]x[expr $th-$ty]xxbm]
-              } {
-                fillMaskCanvas .topIcon.frameRight.framem1.canvas %W ""
-              }
+              fillMaskCanvas .topIcon.frameRight.framem1.canvas %W \
+                [%W find withtag [expr $tw-$tx]x[expr $th-$ty]xmask]
             }
           }
         }
@@ -2130,7 +1785,11 @@ proc showIconBox {} {
       if { $dh > $maxY } {set maxY $dh}
       
       $canv addtag [set dw]x[set dh]x[set typ] withtag $tmpTag
-      $selCanv addtag [set dw]x[set dh]x[set typ] withtag $tmpSelTag    
+      $selCanv addtag [set dw]x[set dh]x[set typ] withtag $tmpSelTag
+      if {$typ eq "xbm" || [string match "xbm/*" $bild]} {
+        $canv addtag ${dw}x${dh}xmask withtag $tmpTag
+        $selCanv addtag ${dw}x${dh}xmask withtag $tmpSelTag
+      }
     
       set x [expr $x +$dw+5]
 #       puts "Breite:"
@@ -2243,15 +1902,8 @@ proc unsetSelected { c {canv "."} {col "black"} } {
   
   if {[lsearch $tmpSet iconNode] != -1} {
     global tk_version
-    if { $tk_version < 4 } {
-      global icons
-      global ICON_LIB_DIR
-      set tmpMap $icons($canv,$c)N.xpm
-      $canv itemconfigure $c  -bitmap @$ICON_LIB_DIR/$tmpMap
-    } {
       global unselectImage
       $canv itemconfigure $c -image $unselectImage($canv,$c)
-    }
   } {
     #        $canv itemconfigure $c -fill $col
     $canv itemconfigure $c -fill "black"
@@ -2301,14 +1953,8 @@ proc setSelected { c {canv "."}} {
   
   if {[lsearch [$canv gettags $c] iconNode] != -1} {
     global tk_version
-    if { $tk_version < 4 } {
-      global icons
-      global ICON_LIB_DIR
-      $canv itemconfigure $c  -bitmap @$ICON_LIB_DIR/xpm/$icons($canv,$c)S.xpm 
-    } {
       global selectImage
       $canv itemconfigure $c -image $selectImage($canv,$c)
-    }
   } {
     $canv itemconfigure $c -fill {#ffa0a0}
   }

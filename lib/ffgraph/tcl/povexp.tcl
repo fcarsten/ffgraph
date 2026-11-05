@@ -1,4 +1,4 @@
-#!/public/bin/pixmap-wish -f
+#!/usr/bin/env wish
 # Program: povexp
 #
 

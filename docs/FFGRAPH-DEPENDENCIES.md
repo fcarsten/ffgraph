@@ -2,6 +2,12 @@
 
 **Status:** Baseline dependency inventory based on `ffgraph-current.zip` and the subsequent patches discussed through Priority 2 Pass 7, **not a complete snapshot of the user's latest Git checkout**. Check current CMake declarations and the current Ubuntu machine before treating this as authoritative. Last reviewed: 1 November 2026.
 
+**PNG migration update (5 November 2026):** Normal builds no longer require
+Xpm. Bundled assets and masks use PNG with legacy filename aliases. Linux
+users needing external Xpm files may opt into `FFGRAPH_XPM=ON` and install
+`libxpm-dev`; Windows omits that compatibility extension. See
+[the migration report](FFGRAPH-PNG-ASSET-MIGRATION.md).
+
 ## 1. Recommended source of truth
 
 Use three complementary records instead of manually pinning every library in a README:
@@ -23,7 +29,7 @@ For stronger reproducibility, add an Ubuntu 24.04 CI job or container image refe
 | Tcl development files + runtime | Tcl interpreter, script and object APIs | `tcl-dev` / underlying `tcl8.6-dev`; linked via Tk/pkg-config | Yes |
 | Tk development files + runtime | Original graphical interface | `tk-dev` / underlying `tk8.6-dev`; `pkg-config tk` | Yes |
 | X11 headers/libraries | Xlib/Tk GUI | `libx11-dev`; `find_package(X11 REQUIRED)` | Yes |
-| Xpm | Pixmap handling and custom Tk image module | `libxpm-dev`; CMake `find_library(Xpm)` and `find_path(X11/xpm.h)` | Yes in current CMake |
+| Xpm | Optional Linux loading of external legacy Xpm images | `libxpm-dev`; discovered only with `FFGRAPH_XPM=ON` | No; OFF by default, bundled assets use PNG |
 | GNU libm / dynamic-loader support | Math, dynamic loading on applicable platforms | System libc development package; `find_library(m)` / `find_library(dl)` in CMake | Conditional/system |
 | Git | Development/patches | `git` | Strongly recommended |
 | Xvfb and xauth | Display-backed automated Tk tests without a desktop | `xvfb`, `xauth` | Optional for headless GUI tests |
@@ -42,7 +48,7 @@ The source has locally implemented STL-era compatibility containers; **legacy `l
 sudo apt update
 sudo apt install --no-install-recommends \
   build-essential cmake ninja-build pkg-config \
-  tcl-dev tk-dev libx11-dev libxpm-dev git
+  tcl-dev tk-dev libx11-dev git
 ```
 
 Optional testing/development:

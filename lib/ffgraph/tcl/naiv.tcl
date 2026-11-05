@@ -1,4 +1,4 @@
-#!/public/bin/pixmap-wish -f
+#!/usr/bin/env wish
 # Program: naiv
 # Tcl version: 7.3 (Tcl/Tk/XF)
 # Tk version: 3.6

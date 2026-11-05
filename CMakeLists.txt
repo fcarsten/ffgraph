@@ -4,7 +4,7 @@ project(ffgraph LANGUAGES C CXX VERSION 1.0)
 include(GNUInstallDirs)
 include(CTest)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(TK REQUIRED IMPORTED_TARGET tk)
+pkg_check_modules(TK REQUIRED IMPORTED_TARGET tk>=8.6)
 if(WIN32)
   if(NOT MINGW)
     message(FATAL_ERROR "The initial native Windows port requires MinGW-w64 (MSYS2 UCRT64). MSVC is not yet supported.")
@@ -14,7 +14,7 @@ if(WIN32)
 else()
   find_package(X11 REQUIRED)
   set(FFGRAPH_DISPLAY_LIBRARIES X11::X11)
-  option(FFGRAPH_XPM "Build deprecated Xpm image support" ON)
+  option(FFGRAPH_XPM "Enable legacy external Xpm images on Linux (bundled icons use PNG)" OFF)
   if(FFGRAPH_XPM)
     find_library(XPM_LIBRARY NAMES Xpm REQUIRED)
     find_path(XPM_INCLUDE_DIR NAMES X11/xpm.h REQUIRED)
@@ -183,11 +183,7 @@ else()
   install(PROGRAMS "$<TARGET_FILE:ffgraph>" DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME ffgraph3D.exe)
   include(cmake/WindowsRuntime.cmake)
 endif()
-if(WIN32)
-  install(DIRECTORY lib/ffgraph DESTINATION ${CMAKE_INSTALL_LIBDIR} PATTERN xpm EXCLUDE)
-else()
-  install(DIRECTORY lib/ffgraph DESTINATION ${CMAKE_INSTALL_LIBDIR})
-endif()
+install(DIRECTORY lib/ffgraph DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY include/ffgraph/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ffgraph FILES_MATCHING PATTERN "*.h")
 install(TARGETS FFGraph FFGraphic FFlayout FFcontainer ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 # Installed FFGraph static archives now depend on this generated parser.
@@ -884,12 +880,29 @@ if(BUILD_TESTING AND NOT FFGRAPH_INITIAL_TESTS_ONLY)
 endif()
 
 if(BUILD_TESTING)
+  # The same asset/graph regression runs in both the full and initial suites.
+  find_program(XVFB_RUN_EXECUTABLE NAMES xvfb-run)
+  if(WIN32 OR XVFB_RUN_EXECUTABLE)
+    add_executable(test_image_assets tests/test_image_assets.cpp)
+    target_compile_features(test_image_assets PRIVATE cxx_std_17)
+    target_compile_definitions(test_image_assets PRIVATE FFGRAPH_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+    target_link_libraries(test_image_assets PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
+    set(image_test_command ${CMAKE_CROSSCOMPILING_EMULATOR})
+    if(NOT WIN32)
+      set(image_test_command "${XVFB_RUN_EXECUTABLE}" -a)
+    endif()
+    add_test(NAME test_image_assets COMMAND ${image_test_command} "$<TARGET_FILE:test_image_assets>")
+    set_tests_properties(test_image_assets PROPERTIES TIMEOUT 90
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+  endif()
   # Parser subdirectories label their own tests, also in standalone builds.
   get_property(headless_tests DIRECTORY PROPERTY TESTS)
   set_tests_properties(${headless_tests} PROPERTIES LABELS headless)
   # All tests requiring Xvfb belong to the GUI partition, including stress tests.
   foreach(gui_test IN ITEMS
-      test_native_gui_smoke test_ffwindow_tk_teardown test_load_window_lifetime_pass11
+      test_image_assets test_native_gui_smoke test_ffwindow_tk_teardown test_load_window_lifetime_pass11
       test_ff_window_oracle_pass12 test_gui_file_workflow_pass11
       test_ff_gui_file_workflow_pass12 test_gui_large_file_workflow_pass11
       test_rome_window_oracle_pass12 test_rome_gui_file_workflow_2d_pass12

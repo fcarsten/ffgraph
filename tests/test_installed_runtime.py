@@ -38,6 +38,11 @@ def main():
     else:
         assert link.is_symlink() and link.resolve() == binary
     resources = prefix / args.libdir / "ffgraph"
+    assert (resources / "icons/png/redball.png").is_file()
+    assert (resources / "icons/png/xbm/default.png").is_file()
+    assert (resources / "icons/legacy-icons.tcl").is_file()
+    assert not list((resources / "icons").rglob("*.xpm"))
+    assert not list((resources / "icons").rglob("*.xbm"))
     custom = work / "custom resources"
     shutil.copytree(resources, custom)
     # These private staged scripts exercise the genuine app startup, inspectors
@@ -46,6 +51,12 @@ def main():
 after idle {
   if {![file exists $env(FF_LIBDIR)/tcl/xfmisc.tcl]} {exit 11}
   if {![file isdirectory $env(FF_ICONDIR)]} {exit 12}
+  # This idle hook can run inside the window constructor's nested update,
+  # before it publishes ICON_LIB_DIR. Resolve the resource through its loaded
+  # alias table and the actual runtime environment instead.
+  set png [dict get $::ffgraph_icons::aliases xpm/redball.xpm]
+  set icon [image create photo -file [file join $env(FF_ICONDIR) $png]]
+  if {$icon eq "" || [image type $icon] ne "photo"} {exit 13}
   set out [open $env(FFGRAPH_RUNTIME_RESULT) w]
   puts $out $env(FF_LIBDIR)
   puts $out $env(FF_ICONDIR)
@@ -77,9 +88,16 @@ after idle {
             if windows:
                 env.pop("TCL_LIBRARY", None)
                 env.pop("TK_LIBRARY", None)
-            run = subprocess.run([*args.emulator, str(executable)], cwd=work, env=env, text=True,
-                                 capture_output=True, timeout=20)
-            (work / f"{executable.name}-{override}.log").write_text(run.stdout + run.stderr)
+            log = work / f"{executable.name}-{override}.log"
+            try:
+                run = subprocess.run([*args.emulator, str(executable)], cwd=work, env=env, text=True,
+                                     capture_output=True, timeout=20)
+            except subprocess.TimeoutExpired as exc:
+                def output(value):
+                    return value.decode(errors="replace") if isinstance(value, bytes) else value or ""
+                log.write_text(output(exc.stdout) + output(exc.stderr))
+                raise
+            log.write_text(run.stdout + run.stderr)
             assert run.returncode == 0, run.stderr
             assert "Error:" not in run.stderr, run.stderr
             actual = result.read_text().splitlines()

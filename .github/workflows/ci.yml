@@ -29,7 +29,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
             build-essential cmake ninja-build pkg-config bison flex \
-            tcl-dev tk-dev libx11-dev libxpm-dev \
+            tcl-dev tk-dev libx11-dev \
             xvfb xauth
 
       - name: Configure
@@ -40,6 +40,30 @@ jobs:
 
       - name: Run tests (including Xvfb GUI tests)
         run: ctest --preset ${{ matrix.preset }} --output-on-failure --parallel 2
+
+  ubuntu-24-04-legacy-xpm:
+    name: Ubuntu 24.04 / optional legacy Xpm images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install build and compatibility dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential cmake ninja-build pkg-config bison flex \
+            tcl-dev tk-dev libx11-dev libxpm-dev xvfb xauth
+      - name: Configure optional external Xpm support
+        run: >-
+          cmake -S . -B build/xpm-compat -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+          -DFFGRAPH_XPM=ON -DFFGRAPH_INITIAL_TESTS_ONLY=ON
+      - name: Build asset and graph compatibility test
+        run: cmake --build build/xpm-compat --target test_image_assets --parallel 2
+      - name: Verify PNG assets and external Xpm loading
+        run: ctest --test-dir build/xpm-compat -R '^test_image_assets$' --output-on-failure
 
   ubuntu-24-04-asan:
     name: Ubuntu 24.04 / ASan + UBSan
@@ -57,7 +81,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
             build-essential cmake ninja-build pkg-config bison flex \
-            tcl-dev tk-dev libx11-dev libxpm-dev \
+            tcl-dev tk-dev libx11-dev \
             xvfb xauth
 
       - name: Configure (ASan/UBSan)
