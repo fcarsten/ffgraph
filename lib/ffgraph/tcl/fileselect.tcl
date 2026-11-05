@@ -131,22 +131,15 @@ proc FileSelectorBox_PopUpMenuButton {name text menu} {
     #              (shit happens)
     ##############
     global fileselect
-    set tmpnum 0
-    foreach j [FileSelectorBox_GetMenuEntries $menu] {
-      if {[FileSelectorBox_IsEqual [set j] $fileselect(currentmenu)]} {
-	set result [set tmpnum]
-      } {
-	incr tmpnum
-      }
-    }
-    $menu post [expr $X -[winfo width $menu]/2] [expr $Y - $y - [$menu yposition [set result]]]
-    after 50 "catch [grab $menu] tmp"
-    focus $menu
-    
+    set entry [lsearch -exact [FileSelectorBox_GetMenuEntries $menu] $fileselect(currentmenu)]
+    if {$entry < 0} {set entry 0}
+    # Tk manages popup selection, pointer grabs, focus and dismissal together.
+    # Center the current entry without depending on an earlier dummy posting.
+    tk_popup $menu $X [expr {$Y - $y}] $entry
   }
   foreach i [list $name $name.l $name.knopf] {
-    bind $i <1> "FileSelectorBox_PostMenu $menu %X %Y %y"
-    bind $i <ButtonRelease-1> "$menu unpost"
+    # Open after release so the click that opens the popup cannot dismiss it.
+    bind $i <ButtonRelease-1> "FileSelectorBox_PostMenu $menu %X %Y %y"
   }
 }
 
@@ -457,8 +450,8 @@ proc FileSelectorBox_MakeItems {} {
     -command {FileSelectorBox_GetDirStruct $fileselect(start_dir) $fileselect(pattern); \
 		FileSelectorBox_SetMenuText Current} \
     -underline -1 -label "Current"
-  .fileselect.menu_begin_dir post 0 0
-  .fileselect.menu_begin_dir unpost
+  # Post this menu only from its button binding, after the dialog is ready.
+  # Posting here flashes on X11 and enters a native modal menu on Windows.
 
   frame .fileselect.misc
   frame .fileselect.misc.left 
@@ -817,6 +810,7 @@ proc FileSelectorBox {title pattern given_start_dir args} {
   if {[winfo exists .fileselect] == "0"} {
     set fileselect(previous_settings) "0"
     toplevel .fileselect
+    wm withdraw .fileselect
     wm minsize .fileselect 300 400
     wm geometry .fileselect 300x400+200+200
     FileSelectorBox_MakeItems
@@ -824,11 +818,7 @@ proc FileSelectorBox {title pattern given_start_dir args} {
     FileSelectorBox_SetColorsForWin .fileselect
     bind .fileselect.choose.current.e <Return> {set fileselect(state) ok;break}
   } {
-    switch [wm state .fileselect] {
-      iconic -
-      withdrawn {catch "wm deiconify .fileselect"}
-      default {}
-    }
+    wm withdraw .fileselect
   }
   if {$fileselect(previous_settings) == "0"} {
     wm title .fileselect $title
@@ -876,7 +866,12 @@ proc FileSelectorBox {title pattern given_start_dir args} {
     }
   }
 
+  # Directory scans process events. Keep both new and reused selectors hidden
+  # until their title, contents and pending layout work are ready to present.
+  update idletasks
   set fileselect(state) wait
+  wm deiconify .fileselect
+  raise .fileselect
   
 #   while {$fileselect(state) == "wait"} {
 #     update
