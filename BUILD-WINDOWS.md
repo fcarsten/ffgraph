@@ -6,6 +6,10 @@ DLLs and does not require MSYS2, WSL, an X server, X11, or Xpm at runtime.
 MSVC is not yet supported. Windows 11 desktop validation is still required;
 see [the verification report](docs/FFGRAPH-WINDOWS-NATIVE-PORT.md).
 
+The controls use ttk's native Windows theme (`vista`, with available native
+fallbacks). ttk is included with Tk 8.6; no separate theme package is needed.
+See [the widget port report](docs/FFGRAPH-TTK-WIDGET-PORT.md).
+
 Install [MSYS2](https://www.msys2.org/) and open its **UCRT64** terminal. Update
 it following the MSYS2 installation instructions, then install:
 

@@ -11,7 +11,7 @@ proc addUserUsage {fenster} {
   wm title $fenster {Graph Usage: }
 
   # build widget $fenster.button4
-  button $fenster.button4 -command "destroy $fenster"  -text {OK}
+  ttk::button $fenster.button4 -command "destroy $fenster"  -text {OK}
 
   # build widget $fenster.message3
   message $fenster.message3 -aspect {1331} -borderwidth {4} -justify {left}\

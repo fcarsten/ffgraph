@@ -121,50 +121,13 @@ void FFOrthoInsp::inspect()
                 (const char *)dec((int)ORTHO->getzoff()), NULL) != TCL_OK)
   ffError(CF_TCL, Tcl_GetStringResult(interp));
 
- if(ORTHO->get3D())
-  {
-   if(Tcl_VarEval(interp, ".checkBox.3d select ", NULL) != TCL_OK)
-    ffError(CF_TCL, Tcl_GetStringResult(interp));
-  }
- else
-  if(Tcl_VarEval(interp, ".checkBox.3d deselect ", NULL) != TCL_OK)
-   ffError(CF_TCL, Tcl_GetStringResult(interp));
-
- if(ORTHO->getAnim())
-  {
-   if(Tcl_VarEval(interp, ".checkBox.anim select ", NULL) != TCL_OK)
-    ffError(CF_TCL, Tcl_GetStringResult(interp));
-  }
- else
-  if(Tcl_VarEval(interp, ".checkBox.anim deselect ", NULL) != TCL_OK)
-   ffError(CF_TCL, Tcl_GetStringResult(interp));
-
- if(ORTHO->getSwapping())
-  {
-   if(Tcl_VarEval(interp, ".stepBox.swapping select ", NULL) != TCL_OK)
-    ffError(CF_TCL, Tcl_GetStringResult(interp));
-  }
- else
-  if(Tcl_VarEval(interp, ".stepBox.swapping deselect ", NULL) != TCL_OK)
-   ffError(CF_TCL, Tcl_GetStringResult(interp));
-
- if(ORTHO->getSwapBadies())
-  {
-   if(Tcl_VarEval(interp, ".stepBox.swapbad select ", NULL) != TCL_OK)
-    ffError(CF_TCL, Tcl_GetStringResult(interp));
-  }
- else
-  if(Tcl_VarEval(interp, ".stepBox.swapbad deselect ", NULL) != TCL_OK)
-   ffError(CF_TCL, Tcl_GetStringResult(interp));
-
- if(ORTHO->getEdgeAdjust())
-  {
-   if(Tcl_VarEval(interp, ".stepBox.edgeadjust select ", NULL) != TCL_OK)
-    ffError(CF_TCL, Tcl_GetStringResult(interp));
-  }
- else
-  if(Tcl_VarEval(interp, ".stepBox.edgeadjust deselect ", NULL) != TCL_OK)
-   ffError(CF_TCL, Tcl_GetStringResult(interp));
+ // ttk checkbuttons follow their variables; the classic select/deselect
+ // widget subcommands are not part of their API.
+ Tcl_SetVar(interp, "ortho3D", ORTHO->get3D() ? "1" : "0", TCL_GLOBAL_ONLY);
+ Tcl_SetVar(interp, "orthoAnimate", ORTHO->getAnim() ? "1" : "0", TCL_GLOBAL_ONLY);
+ Tcl_SetVar(interp, "orthoSwapping", ORTHO->getSwapping() ? "1" : "0", TCL_GLOBAL_ONLY);
+ Tcl_SetVar(interp, "orthoSwapBad", ORTHO->getSwapBadies() ? "1" : "0", TCL_GLOBAL_ONLY);
+ Tcl_SetVar(interp, "orthoEdgeAdjust", ORTHO->getEdgeAdjust() ? "1" : "0", TCL_GLOBAL_ONLY);
 
  if(Tcl_VarEval(interp, "global initPlacement; set initPlacement ", 
                 (const char *)ORTHO->getInitPlacement(),  NULL) != TCL_OK)

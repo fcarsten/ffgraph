@@ -9,9 +9,7 @@ source $FF_LIBDIR/tcl/povexp.tcl
 
 proc createButtonRow { frame text befehl {gr 50} {r 10} {l -10} {gl -50}} {
   # build widget .frame2.frame7.frame14.label4
-  label $frame.label \
-    -background {gainsboro} \
-    -padx {2} \
+  ttk::label $frame.label \
     -text $text
 
   # build widget .frame2.frame7.frame14.button1
@@ -38,30 +36,24 @@ proc createButtonRow { frame text befehl {gr 50} {r 10} {l -10} {gl -50}} {
 proc buildToolBar {} {
   global workingMode
   
-  frame .toolFrame
+  ttk::frame .toolFrame
    set name .toolFrame
    set workingMode Create
  
-   button $name.b1 \
+   ttk::button $name.b1 \
      -text "Create" \
      -command "setWorkingMode Create $name.e1"
    
-   button $name.b2 \
+   ttk::button $name.b2 \
      -text "Navigate" \
      -command "setWorkingMode Navigate $name.e1"
 
 
-   button $name.b3 \
+   ttk::button $name.b3 \
      -text "Zoom" \
      -command "setWorkingMode Zoom $name.e1"
 
-   entry $name.e1 \
-     -relief sunken \
-     -background {gainsboro} \
-     -foreground {black} \
-     -insertbackground {black} \
-     -selectbackground {black} \
-     -selectforeground {gainsboro}
+   ttk::entry $name.e1
 
    $name.e1 insert 0 "Create" 
 
@@ -76,51 +68,35 @@ proc buildToolBar {} {
 
 proc buildButtonFrame {} {
   # build widget .frame2
-  frame .frame2 \
-    -background {gainsboro} \
-    -borderwidth {2} \
-    -relief {raised}
+  ttk::frame .frame2
 
   # build widget .frame2.frame7
-  frame .frame2.frame7 \
-    -background {gainsboro} \
-    -borderwidth {2} \
-    -relief {ridge}
+  ttk::frame .frame2.frame7
     
-  frame .frame2.frame7.row1 \
-      -relief flat \
-      -borderwidth 0
+  ttk::frame .frame2.frame7.row1
 
   # build widget .frame2.frame7.row1.frame11
-  frame .frame2.frame7.row1.frame11 \
-    -background {gainsboro} \
-    -relief {raised}
+  ttk::frame .frame2.frame7.row1.frame11
 
   createButtonRow .frame2.frame7.row1.frame11 "Move Y:" "setY"
 
   # build widget .frame2.frame7.row1.frame12
-  frame .frame2.frame7.row1.frame12 \
-    -background {gainsboro} \
-    -relief {raised}
+  ttk::frame .frame2.frame7.row1.frame12
 
   createButtonRow .frame2.frame7.row1.frame12 "Zoom:" "zoom" 0.7 0.95 1.05 1.5
 
   # build widget .frame2.frame7.row1.frame13
-  frame .frame2.frame7.row1.frame13 \
-    -background {gainsboro} \
-    -relief {raised}
+  ttk::frame .frame2.frame7.row1.frame13
 
   createButtonRow .frame2.frame7.row1.frame13 "Move X:" "setX"
 
   # build widget .frame2.frame7.row1.frame14
-  frame .frame2.frame7.row1.frame14 \
-    -background {gainsboro} \
-    -relief {raised}
+  ttk::frame .frame2.frame7.row1.frame14
 
   createButtonRow .frame2.frame7.row1.frame14 "Move Z:" "setZ"
 
 #  button .frame2.frame7.row1.pov -text "Export POV2" -command ShowPovWindow
-  button .frame2.frame7.row1.pov -text "Export POV2" -command {recall exportPOV}
+  ttk::button .frame2.frame7.row1.pov -text "Export POV2" -command {recall exportPOV}
 #     {if {![string match "*.pov*" [info commands]]}\
 #        {showPovWindow} }
     
@@ -133,14 +109,10 @@ proc buildButtonFrame {} {
     .frame2.frame7.row1.frame12 {left frame center fill}
 
 
-  frame .frame2.frame7.row2 \
-      -relief flat \
-      -borderwidth 0
+  ttk::frame .frame2.frame7.row2
 
   # build widget .frame2.frame7.row1.frame11
-  frame .frame2.frame7.row2.frame11 \
-    -background {gainsboro} \
-    -relief {raised}
+  ttk::frame .frame2.frame7.row2.frame11
 
   pack append .frame2.frame7.row2 \
   .frame2.frame7.row2.frame11 {left frame center fill} 
@@ -150,13 +122,10 @@ proc buildButtonFrame {} {
       .frame2.frame7.row2 {top frame center fill}
 
   # build widget .frame2.frame8
-  frame .frame2.frame8 \
-    -background {gainsboro} \
-    -borderwidth {2}
+  ttk::frame .frame2.frame8
 
   # build widget .frame2.frame8.scale14
-  scale .frame2.frame8.scale14 \
-    -width 10 \
+  ::ffgraph_ui::scale .frame2.frame8.scale14 \
     -command {global aktuCommand; $aktuCommand setXWinkel } \
     -orient {horizontal} \
     -from {-360} \
@@ -166,12 +135,9 @@ proc buildButtonFrame {} {
   .frame2.frame8.scale14 set {0}
 
   # build widget .frame2.frame8.scale15
-  scale .frame2.frame8.scale15 \
-    -width 10 \
-    -background {gainsboro} \
+  ::ffgraph_ui::scale .frame2.frame8.scale15 \
     -command {global aktuCommand; $aktuCommand setYWinkel} \
     -orient {horizontal} \
-    -relief {raised} \
     -showvalue {0} \
     -from {-360} \
     -to {360}
@@ -179,12 +145,9 @@ proc buildButtonFrame {} {
   .frame2.frame8.scale15 set {0}
 
   # build widget .frame2.frame8.scale16
-  scale .frame2.frame8.scale16 \
-    -width 10 \
-    -background {gainsboro} \
+  ::ffgraph_ui::scale .frame2.frame8.scale16 \
     -command {global aktuCommand; $aktuCommand setZWinkel} \
     -orient {horizontal} \
-    -relief {raised} \
     -showvalue {0} \
     -from {-360} \
     -to {360}
@@ -193,7 +156,7 @@ proc buildButtonFrame {} {
 
 #   # build widget .frame2.frame8.scale17
 
-  scale .frame2.frame8.scale17 
+  ::ffgraph_ui::scale .frame2.frame8.scale17
    
 #      -width 10 \
 #      -background {gainsboro} \
@@ -206,12 +169,9 @@ proc buildButtonFrame {} {
 
 #   .frame2.frame8.scale17 set {-1000}
 
-  scale .frame2.frame8.scale18 \
-    -width 10 \
-    -background {gainsboro} \
+  ::ffgraph_ui::scale .frame2.frame8.scale18 \
     -command {global aktuCommand; $aktuCommand viewDist} \
     -orient {horizontal} \
-    -relief {raised} \
     -showvalue {0} \
     -from {100} \
     -to {2000}

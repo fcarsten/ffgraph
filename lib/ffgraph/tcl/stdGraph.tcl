@@ -1,3 +1,4 @@
+source [file join [file dirname [info script]] ttk.tcl]
 #!/usr/bin/env wish
 # Program: sugi
 # Tcl version: 7.3 (Tcl/Tk/XF)
@@ -27,7 +28,7 @@ proc setWorkingMode {mode theEntry} {
 }
 
 proc buildToolBar {} {
-  frame .toolFrame
+  ttk::frame .toolFrame
 }
 
 # proc createButton
@@ -37,11 +38,11 @@ proc createButton {b name args} {
   
   set nase "$body1 $args"
   
-  button $b -text $name -command $nase -padx 0 -pady 0
+  ttk::button $b -text $name -command $nase
   
   global mousepressed
   bind $b <1> {
-    %W configure -relief sunken
+    %W state pressed
     set mousepressed 1
     while {$mousepressed != "0"} {
       %W invoke
@@ -51,7 +52,7 @@ proc createButton {b name args} {
     break;
   }
   bind $b <ButtonRelease-1> {
-    %W configure -relief raised 
+    %W state !pressed
     if {$mousepressed == "1"} {
       set mousepressed 0
     }
@@ -768,24 +769,18 @@ proc buildEdgeMenu {} {
 
 proc buildMainCanvas {} {
   # build widget .frame0
-  frame .frame0 \
-    -background {gainsboro} \
-    -relief {raised}
+  ttk::frame .frame0
 
   global aktuCanvas
 
   # build widget .frame0.scrollbar1
-  scrollbar .frame0.scrollbar1 \
-      -command {global aktuCanvas; $aktuCanvas yview} \
-      -bg {gold} \
-      -relief {raised}
+  ttk::scrollbar .frame0.scrollbar1 \
+      -command {global aktuCanvas; $aktuCanvas yview}
 
   # build widget .frame0.scrollbar3
-  scrollbar .frame0.scrollbar3 \
+  ttk::scrollbar .frame0.scrollbar3 \
       -command {global aktuCanvas; $aktuCanvas xview} \
-      -bg {gold} \
-      -orient {horizontal} \
-      -relief {raised}
+      -orient {horizontal}
 
 
   # build widget .frame0.canvas2
@@ -829,32 +824,24 @@ proc buildMainCanvas {} {
 
 proc buildButtonFrame {} {
   # build widget .frame2
-  frame .frame2 \
-    -background {gainsboro} \
-    -borderwidth {2} \
-    -relief {raised}
+  ttk::frame .frame2
     
   # build widget .frame2.frame8
-  frame .frame2.frame8 \
-    -background {gainsboro} \
-    -borderwidth {2}
+  ttk::frame .frame2.frame8
 
-  frame .frame2.frame9
+  ttk::frame .frame2.frame9
   
-  label .frame2.frame9.l1 -text "Zoom: "
-  label .frame2.frame9.l2 -text "Rotate: "
+  ttk::label .frame2.frame9.l1 -text "Zoom: "
+  ttk::label .frame2.frame9.l2 -text "Rotate: "
   
   pack append .frame2.frame9 \
     .frame2.frame9.l1 {top} \
     .frame2.frame9.l2 {top}
     
   # build widget .frame2.frame8.scale16
-  scale .frame2.frame8.scale16 \
-    -width 10 \
-    -background {gainsboro} \
+  ::ffgraph_ui::scale .frame2.frame8.scale16 \
     -command {global aktuCommand; $aktuCommand setZWinkel} \
     -orient {horizontal} \
-    -relief {raised} \
     -showvalue {0} \
     -from {-360} \
     -to {360}
@@ -862,12 +849,9 @@ proc buildButtonFrame {} {
   .frame2.frame8.scale16 set {0}
 
   # build widget .frame2.frame8.scale17
-  scale .frame2.frame8.scale17 \
-    -width 10 \
-    -background {gainsboro} \
+  ::ffgraph_ui::scale .frame2.frame8.scale17 \
     -command {global aktuCommand; $aktuCommand zoomScale} \
     -orient {horizontal} \
-    -relief {raised} \
     -showvalue {0} \
     -from {4} \
     -to {220}
@@ -914,7 +898,7 @@ proc addUserUsage {canv} {
   wm title $canv {Graph Usage: }
 
   # build widget $canv.button4
-  button $canv.button4 -command "destroy $canv"  -text {OK}
+  ttk::button $canv.button4 -command "destroy $canv"  -text {OK}
   message $canv.message3 -aspect {1331} -borderwidth {2} -justify {left}\
     -padx {3} -pady {1} -relief {flat} -text {No Help Today ...}
 
@@ -1011,14 +995,10 @@ proc showUsageBox {} {
 
 proc buildMainMenu {} {
   # build widget .frame1
-  frame .frame1 \
-    -background {gainsboro} \
-    -borderwidth {2} \
-    -relief {raised}
+  ttk::frame .frame1
 
   # build widget .frame1.menubutton0
-  menubutton .frame1.menubutton0 \
-    -background {gainsboro} \
+  ttk::menubutton .frame1.menubutton0 \
     -menu {.frame1.menubutton0.m} \
     -text {Layout} 
 
@@ -1027,8 +1007,7 @@ proc buildMainMenu {} {
     -background {gainsboro} 
 
   # build widget .frame1.menubutton1
-  menubutton .frame1.menubutton1 \
-    -background {gainsboro} \
+  ttk::menubutton .frame1.menubutton1 \
     -menu {.frame1.menubutton1.m} \
     -text {File} 
     
@@ -1062,8 +1041,7 @@ proc buildMainMenu {} {
     -label {Quit (M-q)} 
 
   # build widget .frame1.menubutton4
-  menubutton .frame1.menubutton4 \
-    -background {gainsboro} \
+  ttk::menubutton .frame1.menubutton4 \
     -menu {.frame1.menubutton4.m} \
     -text {Window} 
 
@@ -1089,8 +1067,7 @@ proc buildMainMenu {} {
     #    -underline {0}
 
   # build widget .frame1.menubutton2
-  menubutton .frame1.menubutton2 \
-    -background {gainsboro} \
+  ttk::menubutton .frame1.menubutton2 \
     -menu {.frame1.menubutton2.m} \
     -text {Help} 
 
@@ -1104,8 +1081,7 @@ proc buildMainMenu {} {
     -state {active} 
 
   # build widget .frame1.menubutton3
-  menubutton .frame1.menubutton3 \
-    -background {gainsboro} \
+  ttk::menubutton .frame1.menubutton3 \
     -menu {.frame1.menubutton3.m} \
     -text {Options} 
 
@@ -1151,8 +1127,7 @@ proc buildMainMenu {} {
     -label {Show Edges} 
 
   # build widget .frame1.menubutton5
-  menubutton .frame1.menubutton5 \
-    -background {gainsboro} \
+  ttk::menubutton .frame1.menubutton5 \
     -menu {.frame1.menubutton5.m} \
     -text {Edit} 
 
@@ -1533,12 +1508,10 @@ proc setBoring { c {bild "-1"}} {
 proc makeIconCanvas { frame {name ""} } {
 
 
-  frame $frame \
-    -background {gainsboro} \
-    -relief {raised}
+  ttk::frame $frame
   
   if {$name != ""} {
-    entry $frame.l -relief flat -bd 0
+    ttk::entry $frame.l
     $frame.l insert 0 $name
     $frame.l configure -state disabled
     pack append $frame $frame.l {top frame nw}
@@ -1550,14 +1523,12 @@ proc makeIconCanvas { frame {name ""} } {
     -width 0
   
   # build widget .frame0.scrollbar1
-  scrollbar $frame.scrollbar1 \
-    -command "$frame.canvas yview" \
-    -bg {gold} 
+  ttk::scrollbar $frame.scrollbar1 \
+    -command "$frame.canvas yview"
   
   # build widget .frame0.scrollbar3
-  scrollbar $frame.scrollbar3 \
+  ttk::scrollbar $frame.scrollbar3 \
     -command "$frame.canvas xview" \
-    -bg {gold} \
     -orient {horizontal} 
   
   
@@ -1641,8 +1612,8 @@ proc showIconBox {} {
   wm title .topIcon {Icons: }
   wm geometry .topIcon 350x360
   
-  frame .topIcon.frameLeft
-  frame .topIcon.frameRight
+  ttk::frame .topIcon.frameLeft
+  ttk::frame .topIcon.frameRight
 
   makeIconCanvas .topIcon.frameLeft.frame0 "Icons"
   makeIconCanvas .topIcon.frameRight.frame1 "Select Icon"

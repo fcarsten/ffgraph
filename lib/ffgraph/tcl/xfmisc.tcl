@@ -1,3 +1,4 @@
+source [file join [file dirname [info script]] ttk.tcl]
 #!/usr/bin/env wish
 # Program: sugi
 # Tcl version: 7.3 (Tcl/Tk/XF)
@@ -94,59 +95,7 @@ proc ffMin { a b } {
 
 # Internal procedures
 
-proc ffSetColorsForWin {w} {
-  ##############
-  # Procedure  : setColorsForWin
-  # Description: sets the colors for the window "w" and all its child-windows
-  # Arguments  : w: window
-  # Returns    : none
-  # Sideeffects: the author is not familiar to any strange sideeffects 
-  #              (shit happens)
-  # Author     : Achim Dannecker
-  ##############
-  
-  $w configure -bg #dddddd
-  set tmplist [winfo children $w]
-  while {[llength $tmplist] != 0} {
-    switch [winfo class [lindex $tmplist 0]] {
-      Listbox {[lindex $tmplist 0] configure -bg #ebebeb\
-		 -highlightthickness 0 \
-		 -borderwidth 2 -relief ridge -selectmode browse
-      }
-      Scrollbar {[lindex $tmplist 0] configure -bg gold \
-		   -activebackground #c6c6c6 \
-		   -highlightthickness 0 \
-		   -borderwidth 1 -relief ridge
-      }
-      Entry {[lindex $tmplist 0] configure -bg #ebebeb \
-	       -highlightthickness 0 -bd 1
-      }
-      Checkbutton {[lindex $tmplist 0] configure -bg #ebebeb \
-		     -activebackground #c6c6c6 \
-		     -highlightthickness 0 \
-		     -relief raised -bd 3 \
-		     -padx 5 -pady 1
-	bind [lindex $tmplist 0] <1> {
-	  %W configure -relief sunken
-	}
-	bind [lindex $tmplist 0] <ButtonRelease> {
-	  %W configure -relief raised
-	}
-      }
-      Button {[lindex $tmplist 0] configure -bg #ebebeb \
-		-activebackground #c6c6c6 \
-		-highlightthickness 0 -relief raised -bd 2
-      }
-      Scale {[lindex $tmplist 0] configure -borderwidth 1 -relief ridge \
-        -bg #ebebeb -fg #c6c6c6 -activebackground #c6c6c6 -relief raised -bd 1
-      }
-      default {[lindex $tmplist 0] configure -bg #ebebeb
-      }
-    }
-    set tmplist [concat $tmplist [winfo children [lindex $tmplist 0]]]
-    set tmplist [lreplace $tmplist 0 0]
-  }
-}
+proc ffSetColorsForWin {w} {::ffgraph_ui::surface $w}
 
 
 # Procedure: Alias
@@ -573,7 +522,7 @@ proc InputOneBox { {boxMessage "Please enter"} {boxTitle "Input"} } {
   message $inputOneBox(toplevelName).message1 -relief ridge \
     -aspect 10000 -padx 0 -pady 0 -text "$boxMessage"
 
-  entry $inputOneBox(toplevelName).entry1 -relief ridge 
+  ttk::entry $inputOneBox(toplevelName).entry1
   bind $inputOneBox(toplevelName).entry1 <Return> {
     global inputOneBox
     set inputOneBox(entry) [$inputOneBox(toplevelName).entry1 get]
@@ -816,14 +765,14 @@ proc AlertBoxInternal { alertBoxMessage alertBoxCommand alertBoxGeometry alertBo
     $alertBox(toplevelName).message1 configure       -aspect 1500
   }
 
-  frame $alertBox(toplevelName).frame1     -borderwidth 0     -relief raised
+  ttk::frame $alertBox(toplevelName).frame1
   catch "$alertBox(toplevelName).frame1 config $tmpFrameOpt"
 
   set alertBoxCounter 0
   set buttonNum [llength $args]
   if {$buttonNum > 0} {
     while {$alertBoxCounter < $buttonNum} {
-      button $alertBox(toplevelName).frame1.button$alertBoxCounter         -text "[lindex $args $alertBoxCounter]"         -command "
+      ttk::button $alertBox(toplevelName).frame1.button$alertBoxCounter         -text "[lindex $args $alertBoxCounter]"         -command "
           global alertBox
           set alertBox(button) $alertBoxCounter
           if {\"\[info commands XFDestroy\]\" != \"\"} {
@@ -838,7 +787,7 @@ proc AlertBoxInternal { alertBoxMessage alertBoxCommand alertBoxGeometry alertBo
       incr alertBoxCounter
     }
   } {
-    button $alertBox(toplevelName).frame1.button0       -text "OK"       -command "
+    ttk::button $alertBox(toplevelName).frame1.button0       -text "OK"       -command "
         global alertBox
         set alertBox(button) 0
         if {\"\[info commands XFDestroy\]\" != \"\"} {
@@ -1785,76 +1734,76 @@ proc ColorBox { {colorBoxFileColor "/usr/local/lib/xf/lib/Colors"} {colorBoxMess
 
     set colorBox(oldWidget) $colorBoxEntryW
 
-    frame .colorBox.frame1  -borderwidth 0  -relief raised
+    ttk::frame .colorBox.frame1
     catch ".colorBox.frame1 config $tmpFrameOpt"
  
-    button .colorBox.frame1.ok  -text "OK"
+    ttk::button .colorBox.frame1.ok  -text "OK"
     catch ".colorBox.frame1.ok config $tmpButtonOpt"
 
-    button .colorBox.frame1.cancel  -text "Cancel"
+    ttk::button .colorBox.frame1.cancel  -text "Cancel"
     catch ".colorBox.frame1.cancel config $tmpButtonOpt"
 
-    frame .colorBox.frame2  -borderwidth 0  -relief raised
+    ttk::frame .colorBox.frame2
     catch ".colorBox.frame2 config $tmpFrameOpt"
  
-    radiobutton .colorBox.frame2.rgb  -command "ColorBoxShowSlides $colorBoxMessage \"$colorBoxTargetW\""  -text "RGB"  -variable colorBox(type)
+    ttk::radiobutton .colorBox.frame2.rgb  -command "ColorBoxShowSlides $colorBoxMessage \"$colorBoxTargetW\""  -text "RGB"  -variable colorBox(type)
     catch ".colorBox.frame2.rgb config $tmpButtonOpt"
 
-    radiobutton .colorBox.frame2.hsv  -command "ColorBoxShowSlides $colorBoxMessage \"$colorBoxTargetW\""  -text "HSV"  -variable colorBox(type)
+    ttk::radiobutton .colorBox.frame2.hsv  -command "ColorBoxShowSlides $colorBoxMessage \"$colorBoxTargetW\""  -text "HSV"  -variable colorBox(type)
     catch ".colorBox.frame2.hsv config $tmpButtonOpt"
 
-    radiobutton .colorBox.frame2.list  -command "ColorBoxShowSlides $colorBoxMessage \"$colorBoxTargetW\""  -text "List"  -variable colorBox(type)
+    ttk::radiobutton .colorBox.frame2.list  -command "ColorBoxShowSlides $colorBoxMessage \"$colorBoxTargetW\""  -text "List"  -variable colorBox(type)
     catch ".colorBox.frame2.list config $tmpButtonOpt"
 
-    frame .colorBox.palette  -borderwidth 0  -relief raised
+    ttk::frame .colorBox.palette
     catch ".colorBox.palette config $tmpFrameOpt"
  
     set counter 0
     foreach element $colorBox(palette) {
-      button .colorBox.palette.palette$counter  -command "ColorBoxSetPalette $colorBoxMessage \"$colorBoxTargetW\" $counter"  -width 3
+      ::ffgraph_ui::swatch button .colorBox.palette.palette$counter  -command "ColorBoxSetPalette $colorBoxMessage \"$colorBoxTargetW\" $counter"  -width 3
       catch ".colorBox.palette.palette$counter config  -activebackground \"$element\"  -background \"$element\""
 
       pack append .colorBox.palette .colorBox.palette.palette$counter {left fill expand}
       incr counter
     }
 
-    scale .colorBox.red  -background "red"  -from 0  -label "Red"  -orient horizontal  -relief raised  -sliderlength 15  -to 255  -width 8
+    ::ffgraph_ui::scale .colorBox.red    -from 0  -label "Red"  -orient horizontal      -to 255
     catch ".colorBox.red config $tmpScaleOpt"
 
-    scale .colorBox.green  -background "green"  -from 0  -label "Green"  -orient horizontal  -relief raised  -sliderlength 15  -to 255  -width 8
+    ::ffgraph_ui::scale .colorBox.green    -from 0  -label "Green"  -orient horizontal      -to 255
     catch ".colorBox.green config $tmpScaleOpt"
 
-    scale .colorBox.blue  -background "blue"  -from 0  -label "Blue"  -orient horizontal  -relief raised  -sliderlength 15  -to 255  -width 8
+    ::ffgraph_ui::scale .colorBox.blue    -from 0  -label "Blue"  -orient horizontal      -to 255
     catch ".colorBox.blue config $tmpScaleOpt"
 
-    scale .colorBox.h  -from 0  -label "Hue"  -orient horizontal  -relief raised  -sliderlength 15  -to 1000  -width 8
+    ::ffgraph_ui::scale .colorBox.h  -from 0  -label "Hue"  -orient horizontal      -to 1000
     catch ".colorBox.h config $tmpScaleOpt"
 
-   scale .colorBox.s  -from 0  -label "Saturation * 100"  -orient horizontal  -relief raised  -sliderlength 15  -to 1000  -width 8
+   ::ffgraph_ui::scale .colorBox.s  -from 0  -label "Saturation * 100"  -orient horizontal      -to 1000
     catch ".colorBox.s config $tmpScaleOpt"
 
-    scale .colorBox.v  -from 0  -label "Value"  -orient horizontal  -relief raised  -sliderlength 15  -to 1000  -width 8
+    ::ffgraph_ui::scale .colorBox.v  -from 0  -label "Value"  -orient horizontal      -to 1000
     catch ".colorBox.v config $tmpScaleOpt"
 
-    label .colorBox.demo  -relief raised  -text "This text shows the results :-)"
+    ::ffgraph_ui::swatch label .colorBox.demo    -text "This text shows the results :-)"
     catch ".colorBox.demo config $tmpMessageOpt"
 
-    frame .colorBox.current  -borderwidth 0  -relief raised
+    ttk::frame .colorBox.current
     catch ".colorBox.current config $tmpFrameOpt"
 
-    label .colorBox.current.labelcurrent  -relief raised
+    ttk::label .colorBox.current.labelcurrent
     catch ".colorBox.current.labelcurrent config $tmpMessageOpt"
 
-    entry .colorBox.current.current  -relief raised
+    ttk::entry .colorBox.current.current
     catch ".colorBox.current.current config $tmpMessageOpt"
 
-    frame .colorBox.colors  -borderwidth 0  -relief raised
+    ttk::frame .colorBox.colors
     catch ".colorBox.colors config $tmpFrameOpt"
 
-    scrollbar .colorBox.colors.vscroll  -relief raised  -command ".colorBox.colors.colors yview"
+    ttk::scrollbar .colorBox.colors.vscroll    -command ".colorBox.colors.colors yview"
     catch ".colorBox.colors.vscroll config $tmpScrollOpt"
 
-    scrollbar .colorBox.colors.hscroll  -orient horiz  -relief raised  -command ".colorBox.colors.colors xview"
+    ttk::scrollbar .colorBox.colors.hscroll  -orient horiz    -command ".colorBox.colors.colors xview"
     catch ".colorBox.colors.hscroll config $tmpScrollOpt"
 
     listbox .colorBox.colors.colors  -exportselection false  -relief raised  -xscrollcommand ".colorBox.colors.hscroll set"  -yscrollcommand ".colorBox.colors.vscroll set"

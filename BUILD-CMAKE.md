@@ -27,6 +27,10 @@ Legacy graph names for bundled images (such as `redball.xpm`) work in either
 build through PNG aliases, without changing serialized graph metadata.
 See [the PNG migration report](docs/FFGRAPH-PNG-ASSET-MIGRATION.md).
 
+Controls use ttk, included with Tk 8.6. Linux uses the `clam` theme; canvas,
+text and list displays retain Tk widgets. No additional theme package is
+required. See [the ttk port report](docs/FFGRAPH-TTK-WIDGET-PORT.md).
+
 Build and test:
 
 ```sh

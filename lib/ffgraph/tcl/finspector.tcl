@@ -25,35 +25,22 @@ proc ShowWindow. {args} {
 
 
   # build widget .insp_graph
-  frame .insp_graph \
-    -background {gainsboro} \
-    -relief {raised}
+  ttk::frame .insp_graph
   
   # build widget .insp_graph.number
-  frame .insp_graph.number \
-    -background {gainsboro} \
-    -borderwidth {1} \
-    -relief {raised}
+  ttk::frame .insp_graph.number
   
   # build widget .insp_graph.number.nodes
-  frame .insp_graph.number.nodes \
-    -background {gainsboro}
+  ttk::frame .insp_graph.number.nodes
   
   # build widget .insp_graph.number.nodes.label
-  label .insp_graph.number.nodes.label \
+  ttk::label .insp_graph.number.nodes.label \
     -anchor {w} \
-    -background {gainsboro} \
-    -foreground {black} \
     -text {Number of Nodes:} \
     -width {16}
   
   # build widget .insp_graph.number.nodes.entry
-  entry .insp_graph.number.nodes.entry \
-    -background {gainsboro} \
-    -foreground {black} \
-    -insertbackground {black} \
-    -selectbackground {black} \
-    -selectforeground {gainsboro}
+  ttk::entry .insp_graph.number.nodes.entry
   
   # pack widget .insp_graph.number.nodes
   pack append .insp_graph.number.nodes \
@@ -62,24 +49,16 @@ proc ShowWindow. {args} {
   
   
   # build widget .insp_graph.number.edges
-  frame .insp_graph.number.edges \
-    -background {gainsboro}
+  ttk::frame .insp_graph.number.edges
   
   # build widget .insp_graph.number.edges.label
-  label .insp_graph.number.edges.label \
+  ttk::label .insp_graph.number.edges.label \
     -anchor {w} \
-    -background {gainsboro} \
-    -foreground {black} \
     -text {Number of Edges:} \
     -width {16}
   
   # build widget .insp_graph.number.edges.entry
-  entry .insp_graph.number.edges.entry \
-    -background {gainsboro} \
-    -foreground {black} \
-    -insertbackground {black} \
-    -selectbackground {black} \
-    -selectforeground {gainsboro}
+  ttk::entry .insp_graph.number.edges.entry
   
   # pack widget .insp_graph.number.edges
   pack append .insp_graph.number.edges \
@@ -94,36 +73,23 @@ proc ShowWindow. {args} {
   
 
   # build widget .insp_graph.type
-  frame .insp_graph.type \
-    -background {gainsboro} \
-    -borderwidth {1} \
-    -relief {raised}
+  ttk::frame .insp_graph.type
   
   
   # build widget .insp_graph.type.graph
-  frame .insp_graph.type.graph \
-    -background {gainsboro} \
-    -borderwidth {2}
+  ttk::frame .insp_graph.type.graph
   
   # build widget .insp_graph.type.graph.label1
-  label .insp_graph.type.graph.label1 \
-    -background {gainsboro} \
-    -borderwidth {0} \
-    -foreground {black} \
+  ttk::label .insp_graph.type.graph.label1 \
     -text {Graph Label:}
   
   # build widget .insp_graph.type.graph.value
-  label .insp_graph.type.graph.value \
+  ttk::label .insp_graph.type.graph.value \
     -anchor {w} \
-    -background {gainsboro} \
-    -foreground {black} \
-    -relief {sunken} \
     -text {NONE}
   
   # build widget .insp_graph.type.graph.menubutton2
-  menubutton .insp_graph.type.graph.menubutton2 \
-    -background {gainsboro} \
-    -foreground {black} \
+  ttk::menubutton .insp_graph.type.graph.menubutton2 \
     -menu {.insp_graph.type.graph.menubutton2.m} \
     -text {v}
   
@@ -140,29 +106,19 @@ proc ShowWindow. {args} {
   
   
   # build widget .insp_graph.type.nodes
-  frame .insp_graph.type.nodes \
-    -background {gainsboro} \
-    -borderwidth {2}
+  ttk::frame .insp_graph.type.nodes
   
   # build widget .insp_graph.type.nodes.label1
-  label .insp_graph.type.nodes.label1 \
-    -background {gainsboro} \
-    -borderwidth {0} \
-    -foreground {black} \
+  ttk::label .insp_graph.type.nodes.label1 \
     -text {Node Label: }
   
   # build widget .insp_graph.type.nodes.value
-  label .insp_graph.type.nodes.value \
+  ttk::label .insp_graph.type.nodes.value \
     -anchor {w} \
-    -background {gainsboro} \
-    -foreground {black} \
-    -relief {sunken} \
     -text {NONE}
   
   # build widget .insp_graph.type.nodes.menubutton2
-  menubutton .insp_graph.type.nodes.menubutton2 \
-    -background {gainsboro} \
-    -foreground {black} \
+  ttk::menubutton .insp_graph.type.nodes.menubutton2 \
     -menu {.insp_graph.type.nodes.menubutton2.m} \
     -text {v}
   
@@ -179,29 +135,19 @@ proc ShowWindow. {args} {
   
   
   # build widget .insp_graph.type.edges
-    frame .insp_graph.type.edges \
-    -background {gainsboro} \
-    -borderwidth {2}
+    ttk::frame .insp_graph.type.edges
   
   # build widget .insp_graph.type.edges.label1
-  label .insp_graph.type.edges.label1 \
-    -background {gainsboro} \
-    -borderwidth {0} \
-    -foreground {black} \
+  ttk::label .insp_graph.type.edges.label1 \
     -text {Edge Label: }
   
   # build widget .insp_graph.type.edges.value
-  label .insp_graph.type.edges.value \
+  ttk::label .insp_graph.type.edges.value \
     -anchor {w} \
-    -background {gainsboro} \
-    -foreground {black} \
-    -relief {sunken} \
     -text {NONE}
   
   # build widget .insp_graph.type.edges.menubutton2
-  menubutton .insp_graph.type.edges.menubutton2 \
-    -background {gainsboro} \
-    -foreground {black} \
+  ttk::menubutton .insp_graph.type.edges.menubutton2 \
     -menu {.insp_graph.type.edges.menubutton2.m} \
     -text {v}
   
@@ -227,23 +173,20 @@ proc ShowWindow. {args} {
     .insp_graph.number {top frame center expand fill} \
     .insp_graph.type {top frame center expand fill}
   
-  frame .insp_element \
-    -borderwidth {1} \
-    -relief {raised} 
+  ttk::frame .insp_element
   
-  frame .insp_element.info \
-    -relief {raised}
+  ttk::frame .insp_element.info
   
-  frame .insp_element.info.labels 
+  ttk::frame .insp_element.info.labels
   
-  label .insp_element.info.current \
+  ttk::label .insp_element.info.current \
     -text {Currently selected}
   
-  label .insp_element.info.labels.name \
+  ttk::label .insp_element.info.labels.name \
     -anchor {w} \
     -width {12}
   
-  label .insp_element.info.labels.color \
+  ttk::label .insp_element.info.labels.color \
     -anchor {w} \
     -width {12}
   
@@ -251,13 +194,11 @@ proc ShowWindow. {args} {
     .insp_element.info.labels.name {top frame center fillx} \
     .insp_element.info.labels.color {top frame center fillx}
   
-  frame .insp_element.info.entries
+  ttk::frame .insp_element.info.entries
   
-  entry .insp_element.info.entries.name \
-    -relief {ridge}
+  ttk::entry .insp_element.info.entries.name
   
-  entry .insp_element.info.entries.color \
-    -relief {ridge}
+  ttk::entry .insp_element.info.entries.color
   
   pack append .insp_element.info.entries \
     .insp_element.info.entries.name {top frame center expand fillx} \
@@ -274,19 +215,14 @@ proc ShowWindow. {args} {
   showSyntax 
   
   # build widget .buttons
-  frame .buttons \
-    -background {gainsboro} \
-    -borderwidth {1}
+  ttk::frame .buttons
   
   # build widget .buttons.special
-  frame .buttons.special \
-    -background {gainsboro}
+  ttk::frame .buttons.special
   
   # build widget .buttons.special.dismiss
-  button .buttons.special.dismiss \
-    -background {gainsboro} \
+  ttk::button .buttons.special.dismiss \
     -command {recall deleteWindow} \
-    -foreground {black} \
     -text {Dismiss}
   
   # pack widget .buttons.special
@@ -331,10 +267,10 @@ proc HideElement {} {
 
 # Procedure: OptionButtonGet
 proc OptionButtonGet { widget} {
-  if {"[winfo class $widget.value]" == "Label"} {
+  if {"[winfo class $widget.value]" in {Label TLabel}} {
     return [lindex [$widget.value config -text] 4]
   } {
-    if {"[winfo class $widget.value]" == "Entry"} {
+    if {"[winfo class $widget.value]" in {Entry TEntry}} {
       return [$widget.value get]
     }
   }
@@ -346,10 +282,10 @@ proc OptionButtonSet { widget valueWidget} {
   set derText [lindex [$widget entryconfig \
                          [$widget index active] -label] 4]
   
-  if {"[winfo class $valueWidget.value]" == "Label"} {
+  if {"[winfo class $valueWidget.value]" in {Label TLabel}} {
     $valueWidget.value config -text $derText
   } {
-    if {"[winfo class $widget.value]" == "Entry"} {
+    if {"[winfo class $widget.value]" in {Entry TEntry}} {
       $valueWidget.value delete 0 end
       $valueWidget.value insert 0 $derText
     }
@@ -473,20 +409,18 @@ proc showSyntax { } {
     # Returns: none
     # Sideeffects: none
     ###########
-    frame .insp_element.syntax
+    ttk::frame .insp_element.syntax
 
 
-    label .insp_element.syntax.label \
+    ttk::label .insp_element.syntax.label \
             -anchor {w} \
             -text {Syntax:} \
             -width {12}
 
-    frame .insp_element.syntax.frame \
-            -relief {raised}
+    ttk::frame .insp_element.syntax.frame
 
-    scrollbar .insp_element.syntax.frame.scrollbar1 \
-            -command {.insp_element.syntax.frame.text yview} \
-            -relief  {ridge}
+    ttk::scrollbar .insp_element.syntax.frame.scrollbar1 \
+            -command {.insp_element.syntax.frame.text yview}
 
     text .insp_element.syntax.frame.text \
             -borderwidth {2} \
@@ -502,13 +436,13 @@ proc showSyntax { } {
             .insp_element.syntax.frame.scrollbar1 {right frame center filly} \
             .insp_element.syntax.frame.text {top frame center expand fill}
 
-    frame .insp_element.syntax.buttons 
+    ttk::frame .insp_element.syntax.buttons
 
-    button .insp_element.syntax.buttons.cancel \
+    ttk::button .insp_element.syntax.buttons.cancel \
             -command {recall "cancel"} \
             -text {Cancel syntax}
     
-    button .insp_element.syntax.buttons.apply \
+    ttk::button .insp_element.syntax.buttons.apply \
             -command {} \
             -text {Apply syntax}
 

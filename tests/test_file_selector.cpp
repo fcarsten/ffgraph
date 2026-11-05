@@ -50,24 +50,30 @@ void exercise(bool threeD) {
     set selectorFailure ""
     set selectorRealMenu 0
     proc bgerror {message} {set ::selectorFailure $message; puts stderr $::errorInfo}
+    proc checkNativeSelector {} {
+      selectorCheck {[winfo class .fileselect.misc.left.begin_dir] eq "TMenubutton"} {Navigation control is not native ttk}
+      selectorCheck {[winfo class .fileselect.action.ok] eq "TButton"} {Selector buttons are not themed}
+    }
     proc selectorNavigate {} {
       set ::selectorAllowPost 1
       set ::selectorRealMenu 1
       set menu .fileselect.menu_begin_dir
       set button .fileselect.misc.left.begin_dir
-      # Give the legacy layout enough width to display its arrow subwidget.
-      wm geometry .fileselect 600x500
+      # Exercise the native control's left, center and arrow regions.
       update
-      # Exercise the frame, label and arrow, not a direct menu-command invoke.
-      foreach suffix {{} .l .knopf} choice {Home Root Current} expected [list ~ / $::fileselect(start_dir)] {
-        set control $button$suffix
+      checkNativeSelector
+      foreach region {left center right} choice {Home Root Current} expected [list ~ / $::fileselect(start_dir)] {
+        set control $button
+        set x 5
+        if {$region eq "center"} {set x [expr {[winfo width $button]/2}]}
+        if {$region eq "right"} {set x [expr {[winfo width $button]-5}]}
         focus -force .fileselect.choose.current.e
         grab set .fileselect
-        event generate $control <Motion> -warp 1 -x 3 -y 3
+        event generate $control <Motion> -warp 1 -x $x -y 5
         update
         selectorCheck {[winfo viewable $control]} {Navigation control is not visible}
-        event generate $control <ButtonPress-1> -x 5 -y 5
-        event generate $control <ButtonRelease-1> -x 5 -y 5
+        event generate $control <ButtonPress-1> -x $x -y 5
+        event generate $control <ButtonRelease-1> -x $x -y 5
         update
         selectorCheck {[winfo ismapped $menu]} {Releasing the navigation button hid the menu}
         selectorCheck {[grab current] eq $menu && [grab status $menu] eq "global"} {Popup does not own the pointer grab}
@@ -123,6 +129,7 @@ void exercise(bool threeD) {
         foreach state $::selectorMapStates {
           selectorCheck {$state eq "wait"} {File selector was mapped before it was ready}
         }
+        checkNativeSelector
         selectorCheck {[winfo exists .fileselect.action.ok]} {Incomplete file selector}
         selectorCheck {![winfo ismapped .fileselect.menu_begin_dir]} {Navigation menu is visible at startup}
         selectorCheck {[FileSelectorBox_GetMenuEntries .fileselect.menu_begin_dir] eq {Home Root Current}} {Missing navigation entries}
@@ -154,8 +161,8 @@ void exercise(bool threeD) {
 
       # The original button binding must still request the navigation popup.
       set selectorAllowPost 1
-      set binding [bind .fileselect.misc.left.begin_dir <ButtonRelease-1>]
-      set outcome [catch {eval [string map {%X 400 %Y 300 %y 10} $binding]} message]
+      set binding [bind TMenubutton <space>]
+      set outcome [catch {eval [string map {%W .fileselect.misc.left.begin_dir} $binding]} message]
       selectorCheck {$outcome == 1 && $message eq "SELECTOR_TEST_POST"} {Navigation binding failed to post its menu}
       selectorCheck {[lrange $selectorPost 0 1] eq {.fileselect.menu_begin_dir post}} {Wrong navigation menu posted}
       set selectorAllowPost 0
