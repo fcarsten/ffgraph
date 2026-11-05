@@ -1752,7 +1752,7 @@ String FFTclBasicWindow::addNode(FFGraphicNode *n)
                              (const char *)xValue, (const char *)yValue,
                              (const char *)radius, (const char *)n->getColor(),
                              (const char *)n->getIcon(),
-                             (const char *)n->getSelIcon()}) != TCL_OK)
+                             (const char *)n->getSelIcon(), "1"}) != TCL_OK)
   {
    ffError(RUNTIME_ERROR, Tcl_GetStringResult(interp));
    return "";
@@ -2035,16 +2035,10 @@ String FFTclBasicWindow::changeToIcon(FFGraphicNode *n, const String& icon,
  const std::string y = std::to_string(ffgraph_canvas::integer(tmpCoord.v[1]));
 
  if(FF_TclEvalObjv(interp, {"changeToIcon", n->getId().c_str(), icon.c_str(),
-                           selIcon.c_str(), x.c_str(), y.c_str(), canvas.c_str()}) != TCL_OK)
+                           selIcon.c_str(), x.c_str(), y.c_str(), canvas.c_str(), "1"}) != TCL_OK)
   {
    ffError(CF_TCL, Tcl_GetStringResult(interp));
-   if(FF_TclEvalObjv(interp, {"changeToIcon", n->getId().c_str(), "xbm/default.png",
-                             "xbm/default.png", x.c_str(), y.c_str(), canvas.c_str()}) != TCL_OK)
-    {
-     ffError(CF_TCL, "Couldn't find default icon, please check installation");
-     ffError(CF_TCL, Tcl_GetStringResult(interp));
-     return String("");
-    }
+   return String("");
   }
  
  if(strlen(Tcl_GetStringResult(interp)) > 0) // War vorher kein Icon

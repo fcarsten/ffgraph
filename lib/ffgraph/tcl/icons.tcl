@@ -5,6 +5,8 @@ namespace eval ::ffgraph_icons {
   variable cache
   variable masks
   variable originals
+  variable placeholders
+  variable warnings
 }
 
 proc ::ffgraph_icons::resolve {name} {
@@ -112,12 +114,33 @@ proc ::ffgraph_icons::pair {normal selected} {
     [string trimleft [file extension $path] .] [string trimleft [file extension $selectedPath] .]]
 }
 
-proc ::ffgraph_icons::remember {canvas item pair} {
+# Only graph rendering opts into recovery; the chooser and direct Tcl callers
+# retain strict errors. Keep the original references in the C++ graph model.
+proc ::ffgraph_icons::nodePair {normal selected allowFallback} {
+  variable warnings
+  if {![catch {
+    set pair [pair $normal $selected]
+    if {$pair eq ""} {error "Cannot find icon: $normal"}
+  } message options]} {return [list $pair 0]}
+  if {!$allowFallback} {return -options $options $message}
+  set fallback [pair xbm/default.png xbm/default.png]
+  if {$fallback eq ""} {error "$message; cannot find default icon, please check installation"}
+  set key [list $normal $selected]
+  if {![info exists warnings($key)]} {
+    set warnings($key) 1
+    puts stderr "Warning: $message; using default icon without the original mask ($normal, $selected)"
+  }
+  return [list $fallback 1]
+}
+
+proc ::ffgraph_icons::remember {canvas item pair {placeholder 0}} {
   global unselectImage selectImage iconType iconSelType
   variable originals
+  variable placeholders
   lassign $pair unselectImage($canvas,$item) selectImage($canvas,$item) \
                 iconType($canvas,$item) iconSelType($canvas,$item)
   set originals($canvas,$item) $pair
+  set placeholders($canvas,$item) $placeholder
 }
 
 proc ::ffgraph_icons::maskImage {base mask} {
@@ -173,7 +196,11 @@ proc ::ffgraph_icons::maskImage {base mask} {
 proc ::ffgraph_icons::applyMask {canvas item normal selected} {
   global unselectImage selectImage
   variable originals
+  variable placeholders
   if {![info exists originals($canvas,$item)]} {return}
+  # A mask belongs to the absent artwork, not to the default image. Its
+  # dimensions and silhouette need not match the placeholder at all.
+  if {$placeholders($canvas,$item)} {return}
   lassign $originals($canvas,$item) base selectedBase
   set wasSelected [expr {$unselectImage($canvas,$item) ne $selectImage($canvas,$item) && [$canvas itemcget $item -image] eq $selectImage($canvas,$item)}]
   if {$selected eq "__NoMask__"} {set selected $normal}

@@ -6,6 +6,10 @@
 #include <ffgraph/FFGraphicEdge.h>
 #include <ffgraph/ffError.h>
 #include <string>
+#include <fstream>
+#include <sstream>
+#include <set>
+#include <tuple>
 
 extern charErrorHandler* userCharErrorHandler;
 namespace {
@@ -83,12 +87,97 @@ void exercise(bool threeD) {
   FF_CHECK(std::string(Tcl_GetStringResult(interp)) == "image");
   graph->removeGraphic();
 }
+
+// FF_I names from the A95 demographs refer to artwork absent from the corpus.
+// Exercise both loading into a live window and attaching an already loaded graph.
+void missingIcons(bool threeD, bool loadBefore, const std::string& source) {
+  const int errorsBefore = errors;
+  FFGraph graph(YES);
+  graph->setNodeIndex(graph->addNodeLabel(new FFGraphicNode));
+  graph->setEdgeIndex(graph->addEdgeLabel(new FFGraphicEdge));
+  if (loadBefore) graph->load(source.c_str(), NO);
+  auto* window = threeD ? static_cast<FFTclBasicWindow*>(new FFTcl3DWindow)
+                        : static_cast<FFTclBasicWindow*>(new FFTclWindow);
+  graph->createGraphic(window);
+  if (!loadBefore) graph->load(source.c_str(), NO);
+  FF_CHECK(graph->getNumNodes() > 0);
+  auto* interp = window->getInterpreter();
+  FFGraphicNode* missing = nullptr;
+  std::set<std::pair<std::string, std::string>> missingNames;
+  for (Pix p = graph->allNodes().first(); p; graph->allNodes().next(p)) {
+    auto* graphic = graph->allNodes()(p)->getGraphicNode();
+    FF_CHECK(!graphic->getId().empty() && !graphic->getLabelId().empty());
+    FF_CHECK(FF_TclEvalObjv(interp, {".frame0.canvas2", "type", graphic->getLabelId().c_str()}) == TCL_OK);
+    FF_CHECK(std::string(Tcl_GetStringResult(interp)) == "text");
+    if (graphic->getIcon() == "__NoIcon__") continue;
+    missing = graphic;
+    missingNames.emplace(graphic->getIcon().c_str(), graphic->getSelIcon().c_str());
+    FF_CHECK(FF_TclEvalObjv(interp, {".frame0.canvas2", "type", graphic->getId().c_str()}) == TCL_OK);
+    FF_CHECK(std::string(Tcl_GetStringResult(interp)) == "image");
+    const std::string flag = "::ffgraph_icons::placeholders(.frame0.canvas2," + std::string(graphic->getId().c_str()) + ")";
+    FF_CHECK(FF_TclEvalObjv(interp, {"set", flag.c_str()}) == TCL_OK);
+    FF_CHECK(std::string(Tcl_GetStringResult(interp)) == "1");
+    FF_CHECK(FF_TclEvalObjv(interp, {".frame0.canvas2", "itemcget", graphic->getId().c_str(), "-image"}) == TCL_OK);
+    const std::string picture = Tcl_GetStringResult(interp);
+    FF_CHECK(FF_TclEvalObjv(interp, {"image", "width", picture.c_str()}) == TCL_OK);
+    FF_CHECK(std::string(Tcl_GetStringResult(interp)) == "30");
+  }
+  FF_CHECK(missing != nullptr);
+  // Rendering placeholders must not rewrite any stored graph references.
+  String serialized; graph->saveToString(serialized);
+  FFGraph copy(YES);
+  copy->setNodeIndex(copy->addNodeLabel(new FFGraphicNode));
+  copy->setEdgeIndex(copy->addEdgeLabel(new FFGraphicEdge));
+  copy->load(serialized, NO);
+  FF_CHECK(copy->getNumNodes() == graph->getNumNodes());
+  FF_CHECK(copy->getNumEdges() == graph->getNumEdges());
+  using References = std::multiset<std::tuple<std::string, std::string, std::string, std::string>>;
+  auto references = [](FFGraph& g) {
+    References result;
+    for (Pix p = g->allNodes().first(); p; g->allNodes().next(p)) {
+      auto* n = g->allNodes()(p)->getGraphicNode();
+      result.emplace(n->getIcon().c_str(), n->getSelIcon().c_str(), n->getMask().c_str(), n->getSelMask().c_str());
+    }
+    return result;
+  };
+  FF_CHECK(references(graph) == references(copy));
+  window->updateGraph();
+  FF_CHECK(errors == errorsBefore);
+  FF_CHECK(FF_TclEvalObjv(interp, {"array", "size", "::ffgraph_icons::warnings"}) == TCL_OK);
+  FF_CHECK(std::stoul(Tcl_GetStringResult(interp)) == missingNames.size());
+  // Replacing a placeholder with real artwork must re-enable its actual mask.
+  missing->changeToIcon("redball.png", "blueball.png");
+  missing->setMask("ballmask.xbm", "diamondmask.xbm");
+  FF_CHECK(errors == errorsBefore);
+  const std::string flag = "::ffgraph_icons::placeholders(.frame0.canvas2," + std::string(missing->getId().c_str()) + ")";
+  FF_CHECK(FF_TclEvalObjv(interp, {"set", flag.c_str()}) == TCL_OK);
+  FF_CHECK(std::string(Tcl_GetStringResult(interp)) == "0");
+  FF_CHECK(FF_TclEvalObjv(interp, {".frame0.canvas2", "itemcget", missing->getId().c_str(), "-image"}) == TCL_OK);
+  const std::string picture = Tcl_GetStringResult(interp);
+  FF_CHECK(FF_TclEvalObjv(interp, {"image", "width", picture.c_str()}) == TCL_OK);
+  FF_CHECK(std::string(Tcl_GetStringResult(interp)) == "14");
+  graph->removeGraphic();
+}
 }
 int main(int argc, char** argv) {
   Tcl_FindExecutable(argc ? argv[0] : "test_image_assets");
   userCharErrorHandler = unexpectedError;
   exercise(false); FFWindow::collectPendingInterpreters();
   exercise(true); FFWindow::collectPendingInterpreters();
+  std::string source =
+      "GRAPH \"missing A95 icons\" = DIRECTED\n"
+      "1 {$ FF_I \"INSTRUCTION_BUS_INTERFACE\" \"diamondmask\" NP 40 40 $} \"MUX\"\n"
+      " 2 \"\";\n"
+      "2 {$ FF_I \"INSTRUCTION_CONTROL_UNIT\" \"ballmask\" NP 100 100 $} \"B STAGE\";\n"
+      "3 {$ FF_I \"INSTRUCTION_CONTROL_UNIT\" \"ballmask\" NP 160 160 $} \"J REG\";\nEND";
+  if (argc == 2) {
+    std::ifstream input(argv[1]); FF_CHECK(input.good());
+    std::ostringstream contents; contents << input.rdbuf(); source = contents.str();
+  }
+  for (bool threeD : {false, true}) for (bool loadBefore : {false, true}) {
+    missingIcons(threeD, loadBefore, source);
+    FFWindow::collectPendingInterpreters();
+  }
   FF_CHECK(errors == 0);
   std::cout << "PNG pixels, legacy aliases, masks, graph metadata and 2D/3D icons verified\n";
 }

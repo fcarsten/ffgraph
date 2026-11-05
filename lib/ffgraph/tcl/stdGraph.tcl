@@ -277,12 +277,11 @@ proc addDefFigure {canv x y x2 y2} {
 }
 
 # Procedure: addNode
-proc addNode {canv x y r col {iconFile "__NoIcon__"} {selIconFile "__NoIcon__"}} {
+proc addNode {canv x y r col {iconFile "__NoIcon__"} {selIconFile "__NoIcon__"} {allowFallback 0}} {
   if {$iconFile ne "__NoIcon__"} {
-    set pair [createIcon $iconFile $selIconFile]
-    if {$pair eq ""} {error "Cannot find icon: $iconFile"}
+    lassign [::ffgraph_icons::nodePair $iconFile $selIconFile $allowFallback] pair placeholder
     set item [$canv create image $x $y -image [lindex $pair 0]]
-    ::ffgraph_icons::remember $canv $item $pair
+    ::ffgraph_icons::remember $canv $item $pair $placeholder
     $canv addtag iconNode withtag $item
   } else {
     set item [addDefFigure $canv $x $y $r $r]
@@ -445,20 +444,19 @@ proc changeEdgeColor { edge col {canv "."}} {
 
 
 # Procedure: changeToIcon
-proc changeToIcon {item icon selIcon {x 0} {y 0} {canv "."}} {
+proc changeToIcon {item icon selIcon {x 0} {y 0} {canv "."} {allowFallback 0}} {
   global symbolicName
   if {$canv eq "."} {set canv $symbolicName(graphView)}
   # Load first: a missing/unsupported image must not delete the existing item.
-  set pair [createIcon $icon $selIcon]
-  if {$pair eq ""} {error "Cannot find icon: $icon"}
+  lassign [::ffgraph_icons::nodePair $icon $selIcon $allowFallback] pair placeholder
   focus $canv
   if {$item ne "" && [lsearch -exact [$canv gettags $item] iconNode] >= 0} {
-    ::ffgraph_icons::remember $canv $item $pair
+    ::ffgraph_icons::remember $canv $item $pair $placeholder
     $canv itemconfigure $item -image [lindex $pair 0]
     return ""
   }
   if {$item ne ""} {removeItem $canv $item}
-  return [addNode $canv $x $y 10 black $icon $selIcon]
+  return [addNode $canv $x $y 10 black $icon $selIcon $allowFallback]
 }
 
 proc clearLayoutMenu {} {
