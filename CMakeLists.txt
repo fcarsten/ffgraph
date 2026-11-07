@@ -912,13 +912,21 @@ if(BUILD_TESTING)
     add_test(NAME test_ttk_widgets COMMAND ${image_test_command} "$<TARGET_FILE:test_ttk_widgets>")
     set_tests_properties(test_ttk_widgets PROPERTIES TIMEOUT 90
       ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    add_executable(test_canvas_zoom tests/test_canvas_zoom.cpp)
+    target_compile_features(test_canvas_zoom PRIVATE cxx_std_17)
+    target_link_libraries(test_canvas_zoom PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
+    add_test(NAME test_canvas_zoom COMMAND ${image_test_command} "$<TARGET_FILE:test_canvas_zoom>")
+    set_tests_properties(test_canvas_zoom PROPERTIES TIMEOUT 90
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
   endif()
   # Parser subdirectories label their own tests, also in standalone builds.
   get_property(headless_tests DIRECTORY PROPERTY TESTS)
   set_tests_properties(${headless_tests} PROPERTIES LABELS headless)
   # All tests requiring Xvfb belong to the GUI partition, including stress tests.
   foreach(gui_test IN ITEMS
-      test_image_assets test_file_selector test_ttk_widgets test_native_gui_smoke test_ffwindow_tk_teardown test_load_window_lifetime_pass11
+      test_image_assets test_file_selector test_ttk_widgets test_canvas_zoom test_native_gui_smoke test_ffwindow_tk_teardown test_load_window_lifetime_pass11
       test_ff_window_oracle_pass12 test_gui_file_workflow_pass11
       test_ff_gui_file_workflow_pass12 test_gui_large_file_workflow_pass11
       test_rome_window_oracle_pass12 test_rome_gui_file_workflow_2d_pass12

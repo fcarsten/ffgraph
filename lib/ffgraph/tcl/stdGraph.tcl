@@ -571,40 +571,21 @@ proc button1Release {befehl W x y} {
       set dBreite [expr abs($canvX - $dragBoxX)]
       set dHoehe [expr abs($canvY - $dragBoxY)]
       
-      set scaleFak [ffMin [expr ($breite/$dBreite)] [expr ($hoehe/$dHoehe)]]
-        
-#       puts ""
-#       set centX [expr $centX * $scaleFak]
-#       set centY [expr $centY * $scaleFak]
-#       puts "Zentrum : $centX x $centY"
-#       puts " Unproj : [unproj $centX $centY]"
-
-#       set tmpItem [$W create oval $centX $centY [expr $centX+10] \
-#                      [expr $centY+10]]
-
-#       puts "Item    : [$W coords $tmpItem]"
-
-      scan [unproj $centX $centY] {%f %f %f} centX centY dummy
-      
-      $befehl  boxscale $scaleFak $scaleFak
-
-      scan [proj $centX $centY] {%f %f %f} centX centY dummy
-
-#       puts "   Proj : [proj $centX $centY]"
-#       puts "ZentrumN: $centX x $centY"
-
-#       puts "Item    : [$W coords $tmpItem]"
-
-#       scan [$W coords $tmpItem] {%f %f %f %f} tix1 tiy1 tix2 tiy2
-      centerCanvas $W $centX $centY
-
-#       puts "Breite  : $breite"
-#       puts "Höhe    : $hoehe"
-#       puts ""
-#       puts "Dragbox : $dragBoxX $dragBoxY $canvX $canvY"
-#       puts "Breite  : $dBreite"
-#       puts "Hoehe   : $dHoehe"
-#       puts "ScaleFak: $scaleFak"
+      # Ignore a click with no extent. Preserve one-axis zoom gestures using
+      # their finite dimension rather than computing an infinite intermediate.
+      if {$dBreite > 0 || $dHoehe > 0} {
+        if {$dBreite == 0} {
+          set scaleFak [expr {$hoehe/$dHoehe}]
+        } elseif {$dHoehe == 0} {
+          set scaleFak [expr {$breite/$dBreite}]
+        } else {
+          set scaleFak [ffMin [expr {$breite/$dBreite}] [expr {$hoehe/$dHoehe}]]
+        }
+        scan [unproj $centX $centY] {%f %f %f} centX centY dummy
+        $befehl boxscale $scaleFak $scaleFak
+        scan [proj $centX $centY] {%f %f %f} centX centY dummy
+        centerCanvas $W $centX $centY
+      }
 
     } {Navigate} {
     }
@@ -1386,22 +1367,23 @@ proc drawDragBox {canv x2 y2} {
 }
 
 proc centerCanvas {dasCanvas x y} {
-  scan "[$dasCanvas cget -scrollregion]" {%d %d %d %d} sx1 sy1 sx2 sy2
-  
-  scan "[$dasCanvas xview]" {%f %f} fraqX1 fraqX2
-  scan "[$dasCanvas yview]" {%f %f} fraqY1 fraqY2
-  set fraqX [expr $fraqX2-$fraqX1]
-  set fraqY [expr $fraqY2-$fraqY1]
-  
-  #     set breite [expr ($sx2 - $sx1)*$fraqX]
-  #     set hoehe [expr ($sy2 - $sy1)*$fraqY]
-  set breite [winfo width $dasCanvas]
-  set hoehe [winfo height $dasCanvas]
-  
-  
-  $dasCanvas xview moveto [expr ($x- $breite/2.0-$sx1)/($sx2 - $sx1)];
-  $dasCanvas yview moveto [expr ($y- $hoehe/2.0-$sy1)/($sy2 - $sy1)];
+  set region [$dasCanvas cget -scrollregion]
+  # An empty graph need not have a scroll region yet. There is no bounded
+  # content to center in that case; do not invent bounds from the drag box.
+  if {[llength $region] != 4} {return}
+  lassign $region sx1 sy1 sx2 sy2
+  foreach coordinate {sx1 sy1 sx2 sy2} {
+    set $coordinate [winfo fpixels $dasCanvas [set $coordinate]]
+  }
+  # Treat each axis independently so a zero-width/height region is harmless.
+  if {$sx2 > $sx1} {
+    $dasCanvas xview moveto [expr {($x - [winfo width $dasCanvas]/2.0 - $sx1)/($sx2 - $sx1)}]
+  }
+  if {$sy2 > $sy1} {
+    $dasCanvas yview moveto [expr {($y - [winfo height $dasCanvas]/2.0 - $sy1)/($sy2 - $sy1)}]
+  }
 }
+
 
 # Procedure: findGraph
 proc findGraph {} {
