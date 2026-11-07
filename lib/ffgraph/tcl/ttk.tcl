@@ -154,7 +154,7 @@ proc ::ffgraph_ui::swatchCommand {path operation args} {
           -activebackground {}
           -background - -bg {
             dict set colors($path) -background $value
-            [dict get $colors($path) photo] put $value -to 0 0 36 18
+            [dict get $colors($path) photo] put [list [list $value]] -to 0 0 36 18
           }
           -foreground - -fg {dict set colors($path) -foreground $value; $native configure -foreground $value}
           -relief {

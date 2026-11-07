@@ -2041,11 +2041,11 @@ proc ColorBoxSelectColor { colorW colorBoxMessage colorBoxTargetW colorY} {
 
   set colorNearest [$colorW nearest $colorY]
   if {$colorNearest >= 0} {
-    $colorW select from $colorNearest
-    $colorW select to $colorNearest
+    $colorW selection clear 0 end
+    $colorW selection set $colorNearest
     set colorTmpValue [$colorW get $colorNearest]
     set colorCurrentColor [lrange $colorTmpValue 0  [expr [llength $colorTmpValue]-2]]
-    set colorCurrentValue [lrange $colorTmpValue  [expr [llength $colorTmpValue]-1] end]
+    set colorCurrentValue [lindex $colorTmpValue end]
 
     scan [string range $colorCurrentValue 1 2] "%x" colorBoxValue
     .colorBox.red set $colorBoxValue
@@ -2081,12 +2081,12 @@ proc ColorBoxSetColor { colorBoxMessage colorBoxTargetW colorBoxType colorBoxVal
       .colorBox.current.current insert 0 $colorBoxValue
     }
     if {[string match "*oreground*" $colorBoxMessage]} {
-      catch ".colorBox.demo config -foreground $colorBoxValue"
+      catch {.colorBox.demo config -foreground $colorBoxValue}
     } {
-      catch ".colorBox.demo config -background $colorBoxValue"
+      catch {.colorBox.demo config -background $colorBoxValue}
     }
     if {"$colorBoxTargetW" != ""} {
-      catch "$colorBoxTargetW config -[string tolower $colorBoxMessage]  $colorBoxValue"
+      catch {$colorBoxTargetW config -[string tolower $colorBoxMessage] $colorBoxValue}
     }
   }
   case $colorBoxType in {
@@ -2149,8 +2149,8 @@ proc ColorBoxSetPaletteList { colorBoxValue} {
 # xf ignore me 6
   global colorBox
 
-  catch ".colorBox.palette.palette$colorBox(paletteNr) config  -activebackground $colorBoxValue"
-  catch ".colorBox.palette.palette$colorBox(paletteNr) config  -background $colorBoxValue"
+  catch {.colorBox.palette.palette$colorBox(paletteNr) config -activebackground $colorBoxValue}
+  catch {.colorBox.palette.palette$colorBox(paletteNr) config -background $colorBoxValue}
   set colorBox(palette)  [lreplace $colorBox(palette) $colorBox(paletteNr) $colorBox(paletteNr)  $colorBoxValue]
 }
 

@@ -372,12 +372,14 @@ proc ColorBoxSelectColor { colorW colorY} {
 
   set colorNearest [$colorW nearest $colorY]
   if {$colorNearest >= 0} {
-    $colorW select set $colorNearest
+    $colorW selection clear 0 end
+    $colorW selection set $colorNearest
     set colorTmpValue [$colorW get $colorNearest]
     set colorCurrentColor [lrange $colorTmpValue 0 \
                              [expr [llength $colorTmpValue]-2]]
-    set colorCurrentValue [lrange $colorTmpValue\
-                             [expr [llength $colorTmpValue]-1] end]
+    # Read the hex token itself, not a one-element list whose string form may
+    # brace-quote its leading # and make the following numeric scans fail.
+    set colorCurrentValue [lindex $colorTmpValue end]
 
     scan [string range $colorCurrentValue 1 2] "%x" colorBoxValue
     .colorBox.red set $colorBoxValue

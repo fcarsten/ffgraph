@@ -18,6 +18,60 @@ void eval(Tcl_Interp* interp, const char* script) {
   if (status != TCL_OK) std::cerr << Tcl_GetVar(interp, "errorInfo", TCL_GLOBAL_ONLY) << '\n';
   FF_CHECK(status == TCL_OK);
 }
+void colorList(Tcl_Interp* interp, bool legacy) {
+  Tcl_SetVar(interp, "colorListLegacy", legacy ? "1" : "0", TCL_GLOBAL_ONLY);
+  eval(interp, R"tcl(
+    set colorListFailure {}
+    proc chooseListColor {} {
+      if {![winfo exists .colorBox.colors.colors]} {after 10 chooseListColor; return}
+      if {[catch {
+        wm geometry .colorBox 600x500
+        .colorBox.frame2.list invoke
+        set list .colorBox.colors.colors
+        # Use deterministic rows on Windows too, without an X11 rgb.txt file.
+        $list delete 0 end
+        $list insert end {red #ff0000} {ghost white #f8f8ff} {black #000000}
+        foreach index {1 2 0} name {{ghost white} black red} rgb {{248 248 255} {0 0 0} {255 0 0}} {
+          $list see $index
+          update idletasks
+          set box [$list bbox $index]
+          check {[llength $box] == 4} {Colour-list row is not visible}
+          set y [expr {[lindex $box 1]+[lindex $box 3]/2}]
+          # Execute the actual click binding; propagate callback errors instead
+          # of letting Tk send them to an asynchronous background-error popup.
+          uplevel #0 [string map [list %W $list %y $y] [bind $list <ButtonPress-1>]]
+          check {[$list curselection] eq "$index"} {Colour-list selection is stale}
+          check {[.colorBox.current.current get] eq $name} {Colour name was not preserved}
+          check {[.colorBox.demo cget -background] eq $name} {Colour preview was not updated}
+          check {[list [.colorBox.red get] [.colorBox.green get] [.colorBox.blue get]] eq $rgb} {Colour-list RGB channels differ}
+          set sample [.colorBox.palette.palette$::colorBox(paletteNr) cget -image]
+          check {[$sample get 0 0] eq $rgb} {Colour list did not update the palette sample}
+        }
+        if {$::colorListLegacy} {
+          .colorBox.frame1.ok invoke
+        } else {
+          uplevel #0 [string map [list %W $list %y $y] [bind $list <Double-1>]]
+        }
+      } message]} {
+        set ::colorListFailure $::errorInfo
+        set ::colorBox(colorName) {}
+        if {$::colorListLegacy} {destroy .colorBox}
+      }
+    }
+    set colorListWatchdog [after 10000 {puts stderr {colour-list regression timed out}; exit 1}]
+    try {
+      after 0 chooseListColor
+      if {$colorListLegacy} {set result [ColorBox {} Color]} else {set result [ColorBox blue]}
+      check {$colorListFailure eq ""} $colorListFailure
+      check {$result eq "red"} {Colour-list acceptance returned the wrong colour}
+      check {$backgroundErrors eq ""} $backgroundErrors
+    } finally {
+      after cancel $colorListWatchdog
+      catch {destroy .colorBox}
+    }
+    check {[array size ::ffgraph_ui::colors] == 0} {Colour list left sample images behind}
+  )tcl");
+}
 void exercise(bool threeD) {
   FFGraph graph(YES);
   auto* window = threeD ? static_cast<FFTclBasicWindow*>(new FFTcl3DWindow)
@@ -116,7 +170,9 @@ void exercise(bool threeD) {
       check {[array size ::ffgraph_ui::colors] == 0} {Color chooser left image owners behind}
       after cancel $watchdog
     )tcl");
+    colorList(interp, false);
   }
+  colorList(window->getInterpreter(), true);
   graph->removeGraphic();
 }
 void otherLayouts() {
