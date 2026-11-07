@@ -278,10 +278,9 @@ proc OptionButtonGet { widget} {
 
 
 # Procedure: OptionButtonSet
-proc OptionButtonSet { widget valueWidget} {
-  set derText [lindex [$widget entryconfig \
-                         [$widget index active] -label] 4]
-  
+proc OptionButtonSet {widget valueWidget derText} {
+  # The native menu may have cleared its active highlight before this callback.
+  # Use the label captured when the command was created instead.
   if {"[winfo class $valueWidget.value]" in {Label TLabel}} {
     $valueWidget.value config -text $derText
   } {
@@ -302,7 +301,7 @@ proc addMenu { widget valueWidget text inspFlag} {
   }
   
   $widget add command \
-    -command "OptionButtonSet $widget $valueWidget" \
+    -command [list OptionButtonSet $widget $valueWidget $text] \
     -label $text \
     -state $inspFlag
 }
