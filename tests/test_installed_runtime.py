@@ -8,6 +8,15 @@ import subprocess
 import tempfile
 
 
+def isolate_windows_environment(env, prefix):
+    """Keep bundled DLLs and Windows system DLLs on the child's search path."""
+    # os.environ.copy() contains uppercase keys on Windows; unlike os.environ,
+    # the copied dict does not provide case-insensitive lookups.
+    env["PATH"] = str(prefix / "bin") + os.pathsep + str(Path(env["SYSTEMROOT"]) / "System32")
+    env.pop("TCL_LIBRARY", None)
+    env.pop("TK_LIBRARY", None)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--build", type=Path, required=True)
@@ -74,9 +83,7 @@ after idle {
             if os.name == "nt":
                 # Prove the staged app uses its bundled native DLLs, without
                 # finding development dependencies or MSYS2 on PATH.
-                env["PATH"] = str(prefix / "bin") + os.pathsep + str(Path(env["SystemRoot"]) / "System32")
-                env.pop("TCL_LIBRARY", None)
-                env.pop("TK_LIBRARY", None)
+                isolate_windows_environment(env, prefix)
             env.pop("FF_LIBDIR", None)
             env.pop("FF_ICONDIR", None)
             chosen = custom if override else resources

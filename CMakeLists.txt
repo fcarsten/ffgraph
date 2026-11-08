@@ -880,6 +880,11 @@ if(BUILD_TESTING AND NOT FFGRAPH_INITIAL_TESTS_ONLY)
 endif()
 
 if(BUILD_TESTING)
+  if(Python3_Interpreter_FOUND)
+    add_test(NAME test_installed_runtime_env
+      COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_installed_runtime_env.py")
+    set_tests_properties(test_installed_runtime_env PROPERTIES TIMEOUT 30 LABELS headless)
+  endif()
   # These GUI regressions run in both the full and initial suites.
   find_program(XVFB_RUN_EXECUTABLE NAMES xvfb-run)
   if(WIN32 OR XVFB_RUN_EXECUTABLE)
