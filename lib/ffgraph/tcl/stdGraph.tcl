@@ -8,6 +8,9 @@ source [file join [file dirname [info script]] ttk.tcl]
 
 source [file join [file dirname [info script]] icons.tcl]
 
+# Bind the Alt key by name: Windows Tk maps Mod1/M1 to Num Lock, so raw
+# Mod1 bindings intercept ordinary mouse and key events when Num Lock is on.
+
 # proc setBusy
 proc setBusy { } {
   .frame0.canvas2 configure -cursor watch
@@ -155,7 +158,7 @@ proc addLineBindings {canv cfTmpTag} {
     $befehl removeEdge \[%W find withtag current]
   "
 
-  $canv bind $cfTmpTag <M1-Button-1> "
+  $canv bind $cfTmpTag <Alt-Button-1> "
     $befehl setCurrentEdge \[%W find withtag current] %x %y;
     $befehl modPress i"
     
@@ -239,9 +242,9 @@ proc addNodeBindings {canv cfTmpTag} {
 #  set body2 {modPress i}
   set body2 [concat " $cfTmpTag " {%x %y}]
 
-  $canv bind $cfTmpTag <M1-Button-1> "$befehl $body1" 
-  $canv bind $cfTmpTag <M1-B1-Motion> "$befehl changeSize $body2"
-#  $canv bind $cfTmpTag <M1-Button-1> "$befehl $body1; $befehl $body2"
+  $canv bind $cfTmpTag <Alt-Button-1> "$befehl $body1"
+  $canv bind $cfTmpTag <Alt-B1-Motion> "$befehl changeSize $body2"
+#  $canv bind $cfTmpTag <Alt-Button-1> "$befehl $body1; $befehl $body2"
   addUserNodeBinding $canv $cfTmpTag $befehl 
 }
 
@@ -634,7 +637,7 @@ proc addCanvasBindings {canv } {
   }
   
   bind $canv <Button-1> "button1 %W %x %y"
-  bind $canv <Mod1-Button-1> "Mod1Button1 %W %x %y"
+  bind $canv <Alt-Button-1> "Mod1Button1 %W %x %y"
 
   bind $canv <ButtonRelease-1> "button1Release $befehl %W %x %y"
 
@@ -668,7 +671,7 @@ proc addCanvasBindings {canv } {
       focus %W
     }
   }
-  bind $canv <Mod1-Key> "$befehl modPress %A"
+  bind $canv <Alt-Key> "$befehl modPress %A"
   bind $canv <KeyPress> "$befehl keyPress %K %A"
 
   set body [concat "
@@ -942,14 +945,14 @@ proc addSubWindow { canv x y } {
   set body2 [concat " $cfTmpTag " {$x $y}]
 
 #   bind $canv.$cfTmpTag.canvas2 <Enter> "focus $canv.$cfTmpTag.canvas2"
-#   bind $canv.$cfTmpTag.canvas2 <Mod1-Key> [concat \
+#   bind $canv.$cfTmpTag.canvas2 <Alt-Key> [concat \
 #  "SubRecall.$canv.$cfTmpTag.canvas2 modPress " {%A}]    
 
   bind $canv.$cfTmpTag.canvas2 <Leave> "focus $canv"
   bind $canv.$cfTmpTag <1> "$body1 setCurrentNode $body2"    
   bind $canv.$cfTmpTag <B1-Motion> "$body1 moveCurrent $body2"    
-  bind $canv.$cfTmpTag <M1-Button-1> "$body1 changeSizeInit $body2"    
-  bind $canv.$cfTmpTag <M1-B1-Motion> "$body1 changeSize $body2"
+  bind $canv.$cfTmpTag <Alt-Button-1> "$body1 changeSizeInit $body2"
+  bind $canv.$cfTmpTag <Alt-B1-Motion> "$body1 changeSize $body2"
 
   global dragItem
   set dragItem($canv.$cfTmpTag.canvas2) [$canv.$cfTmpTag.canvas2 create \
