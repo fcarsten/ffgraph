@@ -21,6 +21,7 @@ extern "C" {
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+// Windows Tk supplies these compatibility constants; no X11 library is used.
 #include <X11/Xatom.h>
 }
 
@@ -45,6 +46,7 @@ extern "C" {
 #include <ffgraph/FFTclGraphInsp.h> 
 #include <ffgraph/FFLayoutLabel.h>
 #include <ffgraph/ffError.h>
+#include "FFCanvasCoordinates.h"
 
 #include <container/VOHSet.h>
 #include <container/AVLSet.h>
@@ -54,6 +56,50 @@ static String currentIcon("__NoIcon__");
 static String currentSelIcon("__NoIcon__");
 static String currentMask("__NoMask__");
 static String currentSelMask("__NoMask__");
+
+namespace {
+// Canvas tags keep this state with the Tk item, including shape replacement
+// and item deletion. Never unhide items hidden by an unrelated caller.
+void projectedVisibility(Tcl_Interp* interp,const String& canvas,const String& item,bool visible)
+{
+ if(!item.length()) return;
+ struct Result {
+   Tcl_Interp* interp;Tcl_SavedResult saved;
+   explicit Result(Tcl_Interp* i):interp(i){Tcl_SaveResult(i,&saved);}
+   ~Result(){Tcl_RestoreResult(interp,&saved);}
+ } result(interp);
+ auto eval=[&](std::initializer_list<const char*> args) {
+   const int code=FF_TclEvalObjv(interp,args);
+   if(code!=TCL_OK) ffError(CF_TCL,Tcl_GetStringResult(interp));
+   return code==TCL_OK;
+ };
+ constexpr const char* hidden="_ffgraphProjectionHidden";
+ constexpr const char* disabled="_ffgraphProjectionDisabled";
+ if(!eval({canvas.c_str(),"gettags",item.c_str()})) return;
+ int count=0;Tcl_Obj** tags=nullptr;
+ if(Tcl_ListObjGetElements(interp,Tcl_GetObjResult(interp),&count,&tags)!=TCL_OK) return;
+ bool ours=false,wasDisabled=false;
+ for(int i=0;i<count;++i) {
+   ours|=std::strcmp(Tcl_GetString(tags[i]),hidden)==0;
+   wasDisabled|=std::strcmp(Tcl_GetString(tags[i]),disabled)==0;
+ }
+ if(visible) {
+   if(!ours) return;
+   if(!eval({canvas.c_str(),"itemconfigure",item.c_str(),"-state",wasDisabled?"disabled":"normal"})) return;
+   eval({canvas.c_str(),"dtag",item.c_str(),hidden});
+   eval({canvas.c_str(),"dtag",item.c_str(),disabled});
+ } else {
+   if(!ours) {
+     if(!eval({canvas.c_str(),"itemcget",item.c_str(),"-state"})) return;
+     const std::string state=Tcl_GetStringResult(interp);
+     if(state=="hidden") return;
+     if(state=="disabled" && !eval({canvas.c_str(),"addtag",disabled,"withtag",item.c_str()})) return;
+     if(!eval({canvas.c_str(),"addtag",hidden,"withtag",item.c_str()})) return;
+   }
+   eval({canvas.c_str(),"itemconfigure",item.c_str(),"-state","hidden"});
+ }
+}
+}
 
 void fgraphBasicWindowTimer(ClientData)
 {
@@ -95,6 +141,13 @@ void FFTclBasicWindow::_buildExportString()
   }
  
  graph->saveToString(exportString, tmpSet);
+#ifdef _WIN32
+ // PRIMARY is local to a Tk interpreter on Windows. Use the native clipboard
+ // so graph copy/paste also works between independently owned graph windows.
+ if (Tk_ClipboardClear(interp, w) != TCL_OK ||
+     Tk_ClipboardAppend(interp, w, XA_STRING, XA_STRING, exportString.c_str()) != TCL_OK)
+   ffError(CF_TCL, Tcl_GetStringResult(interp));
+#endif
  return;
 }
 
@@ -473,7 +526,11 @@ int FFTclBasicWindow::recall(Tcl_Interp *, int , const char **c)
      {
       importString = String("");
       
-#if(TK_MAJOR_VERSION < 4)
+#ifdef _WIN32
+      if (FF_TclEvalObjv(interp, {"clipboard", "get", "-displayof", Tk_PathName(w)}) != TCL_OK)
+       return TCL_ERROR;
+      importString = Tcl_GetStringResult(interp);
+#elif(TK_MAJOR_VERSION < 4)
       Tk_GetSelection(interp, w, XA_STRING, fgraphWindowGetSel, 
                       (ClientData) this);
 #else
@@ -1019,9 +1076,10 @@ void FFTclBasicWindow::scaleXYZ(FFCoord sx, FFCoord sy, FFCoord sz)
  invCtm *= FFMatrix(FFPoint(1/sx,0,0,0), FFPoint(0,1/sy,0,0),
                     FFPoint(0,0,1/sz,0), FFPoint(0,0,0,1));
  
- if(updateScale)
+ int control;
+ if(updateScale && ffgraph_canvas::toInt(sqrt(sz * 10000 * scale),control))
   {
-   String tmpVal(dec((int)(sqrt(sz * 10000 * scale))));
+   String tmpVal(dec(control));
    
    if(FF_TclEvalObjv(interp, {"updateScalation", (const char *)tmpVal})!= 
       TCL_OK)
@@ -1044,9 +1102,10 @@ void FFTclBasicWindow::rotateX(FFCoord w)
  invCtm *= FFMatrix(FFPoint(1,0,0,0), FFPoint(0,cos(rad(-w)),sin(rad(-w)),0),
                     FFPoint(0,-sin(rad(-w)),cos(rad(-w)),0),FFPoint(0,0,0,1));
  
- if(updateScale)
+ int control;
+ if(updateScale && ffgraph_canvas::toInt(w+alpha,control))
   {
-   String tmpVal(dec((int)(w+alpha)));
+   String tmpVal(dec(control));
    
    if(FF_TclEvalObjv(interp, {"updateRotationX", (const char *)tmpVal})!= 
       TCL_OK)
@@ -1073,9 +1132,10 @@ void FFTclBasicWindow::rotateY(FFCoord w)
                     FFPoint(sin(rad(-w)),0,cos(rad(-w)),0),
                     FFPoint(0,0,0,1));
  
- if(updateScale)
+ int control;
+ if(updateScale && ffgraph_canvas::toInt(w+beta,control))
   {
-   String tmpVal(dec((int)(w+beta)));
+   String tmpVal(dec(control));
    
    if(FF_TclEvalObjv(interp, {"updateRotationY", (const char *)tmpVal})!= 
       TCL_OK)
@@ -1150,9 +1210,10 @@ void FFTclBasicWindow::rotateZ(FFCoord w)
                     FFPoint(-sin(rad(-w)),cos(rad(-w)),0,0),
                     FFPoint(0,0,1,0), FFPoint(0,0,0,1));
  
- if(updateScale)
+ int control;
+ if(updateScale && ffgraph_canvas::toInt(w+gamma,control))
   {
-   String tmpVal(dec((int)(w+gamma)));
+   String tmpVal(dec(control));
    
    if(FF_TclEvalObjv(interp, {"updateRotationZ", (const char *)tmpVal})!= 
       TCL_OK)
@@ -1551,11 +1612,20 @@ void FFTclBasicWindow::sizeTo(int x, int y)
 
 FFPoint FFTclBasicWindow::getRange(const FFGraphicNode *n)
 {
-  if(FF_TclEvalObjv(interp, {(const char *)canvas, "bbox",
-                             (const char *)n->getId()}) != TCL_OK)
-          ffError(CF_TCL, Tcl_GetStringResult(interp));
+  // Tk excludes hidden items from bbox. Measure their safe canvas geometry
+  // without processing events, then restore visibility before returning.
+  const String id=n->getId();
+  if(FF_TclEvalObjv(interp,{canvas.c_str(),"itemcget",id.c_str(),"-state"})!=TCL_OK)
+    ffError(CF_TCL,Tcl_GetStringResult(interp));
+  const bool hidden=std::strcmp(Tcl_GetStringResult(interp),"hidden")==0;
+  if(hidden) FF_TclEvalObjv(interp,{canvas.c_str(),"itemconfigure",id.c_str(),"-state","normal"});
+  const int status=FF_TclEvalObjv(interp, {canvas.c_str(), "bbox",id.c_str()});
+  const String bounds(Tcl_GetStringResult(interp));
+  if(hidden) FF_TclEvalObjv(interp,{canvas.c_str(),"itemconfigure",id.c_str(),"-state","hidden"});
+  if(status != TCL_OK)
+          ffError(CF_TCL,bounds.c_str());
   
-  std::istringstream result(Tcl_GetStringResult(interp));
+  std::istringstream result(bounds.c_str());
   FFCoord x1 = 0, y1 = 0, x2 = 0, y2 = 0;
   if (!(result >> x1 >> y1 >> x2 >> y2))
    {
@@ -1672,21 +1742,24 @@ FFPoint FFTclBasicWindow::_adjust(FFGraphicNode *knoten,  FFPoint B,
 String FFTclBasicWindow::addNode(FFGraphicNode *n)
 {
  FFPoint tmpCoord = proj(n->getCoords(), n->getRange());
- String xValue(dec((int)tmpCoord.v[0]));
- String yValue(dec((int)tmpCoord.v[1]));
- String radius(dec((int)tmpCoord.v[2]));
+ const bool visible=ffgraph_canvas::supported(tmpCoord,true);
+ if(!visible) tmpCoord=FFPoint(0,0,RADIUS);
+ String xValue(dec(ffgraph_canvas::integer(tmpCoord.v[0])));
+ String yValue(dec(ffgraph_canvas::integer(tmpCoord.v[1])));
+ String radius(dec(ffgraph_canvas::integer(tmpCoord.v[2])));
  
  if (FF_TclEvalObjv(interp, {"addNode", (const char *)canvas,
                              (const char *)xValue, (const char *)yValue,
                              (const char *)radius, (const char *)n->getColor(),
                              (const char *)n->getIcon(),
-                             (const char *)n->getSelIcon()}) != TCL_OK)
+                             (const char *)n->getSelIcon(), "1"}) != TCL_OK)
   {
    ffError(RUNTIME_ERROR, Tcl_GetStringResult(interp));
    return "";
   }
  
  String tmpRes(Tcl_GetStringResult(interp));
+ projectedVisibility(interp,canvas,tmpRes,visible);
  
  if(FF_TclEvalObjv(interp, {"changeMask", (const char *)tmpRes,
                              (const char *)n->getMask(),
@@ -1706,6 +1779,7 @@ String FFTclBasicWindow::addLabel(FFGraphicNode *n)
   const char *anker = "center";
   
   FFPoint tmpCoord = proj(n->getCoords(), n->getRange());
+  bool visible=ffgraph_canvas::supported(tmpCoord,true);
   
   if(n->getShape() < FF_SCALABLE)
   {
@@ -1730,8 +1804,10 @@ String FFTclBasicWindow::addLabel(FFGraphicNode *n)
      anker = "e";
    }
   
-  String xValue(dec((int)tmpCoord.v[0]));
-  String yValue(dec((int)tmpCoord.v[1]));
+  visible=visible && ffgraph_canvas::supported(tmpCoord);
+  if(!visible) tmpCoord=FFPoint();
+  String xValue(dec(ffgraph_canvas::integer(tmpCoord.v[0])));
+  String yValue(dec(ffgraph_canvas::integer(tmpCoord.v[1])));
     
   if (FF_TclEvalObjv(interp, {"addText", (const char *)canvas,
                               (const char *)xValue, (const char *)yValue,
@@ -1741,9 +1817,11 @@ String FFTclBasicWindow::addLabel(FFGraphicNode *n)
       return "";
     }
 
+  const String result(Tcl_GetStringResult(interp));
+  projectedVisibility(interp,canvas,result,visible);
   updateInspector();
 //  n->tkLabel = Tcl_GetStringResult(interp); !!! Achtung, evtl. noetig
-  return Tcl_GetStringResult(interp);
+  return result;
 }
 
 void FFTclBasicWindow::changeLabel(FFGraphicNode *n, const String& label)
@@ -1826,10 +1904,16 @@ void FFTclBasicWindow::updateGraph(FFGraphicNode *n)
   return;
   
  FFPoint tmpCoord = proj(n->getCoords(), n->getRange());
+ if(!ffgraph_canvas::supported(tmpCoord,true)) {
+   projectedVisibility(interp,canvas,n->getId(),false);
+   projectedVisibility(interp,canvas,n->getLabelId(),false);
+   return;
+ }
  std::ostringstream tmpS;
+ tmpS.exceptions(std::ios::badbit | std::ios::failbit);
  
- tmpS << " " << (int)tmpCoord.v[0] << " " << (int)tmpCoord.v[1]
-      << " " << (int)tmpCoord.v[2];
+ tmpS << " " << ffgraph_canvas::integer(tmpCoord.v[0]) << " " << ffgraph_canvas::integer(tmpCoord.v[1])
+      << " " << ffgraph_canvas::integer(tmpCoord.v[2]);
  
  if(Tcl_VarEval(interp, "moveNode ", (const char *)canvas,
                 " ", (const char *)n->getId(), tmpS.str().c_str(),
@@ -1838,6 +1922,7 @@ void FFTclBasicWindow::updateGraph(FFGraphicNode *n)
    ffError(CF_TCL, Tcl_GetStringResult(interp));
   }
 
+ projectedVisibility(interp,canvas,n->getId(),true);
  if(n->getLabelId().length() == 0)
   return;
  
@@ -1858,10 +1943,14 @@ void FFTclBasicWindow::updateGraph(FFGraphicNode *n)
    tmpCoord.v[1] += (tmpCoord.v[2]) *labelYoff;
   }
  
+ if(!ffgraph_canvas::supported(tmpCoord)) {
+   projectedVisibility(interp,canvas,n->getLabelId(),false);
+   return;
+ }
  tmpS.str(std::string());
  tmpS.clear();
  
- tmpS << " " << (int)(tmpCoord.v[0]) << " " << (int)(tmpCoord.v[1]);
+ tmpS << " " << ffgraph_canvas::integer(tmpCoord.v[0]) << " " << ffgraph_canvas::integer(tmpCoord.v[1]);
  
  if(Tcl_VarEval(interp, "moveLabel ", (const char *)canvas,
                 " ", (const char *)n->getLabelId(),
@@ -1869,6 +1958,7 @@ void FFTclBasicWindow::updateGraph(FFGraphicNode *n)
   {
    ffError(CF_TCL, Tcl_GetStringResult(interp));
   }
+ projectedVisibility(interp,canvas,n->getLabelId(),true);
 
 }
 
@@ -1885,8 +1975,10 @@ String FFTclBasicWindow::addEdge(FFGraphicEdge *e)
 String FFTclBasicWindow::addLabel(FFGraphicEdge *e)
 {
   FFPoint tmpCoord = proj((e->getPointAt(0) + e->getPointAt(1))/2);
-  String xValue(dec(static_cast<int>(tmpCoord.v[0])));
-  String yValue(dec(static_cast<int>(tmpCoord.v[1])));
+  const bool visible=ffgraph_canvas::supported(tmpCoord);
+  if(!visible) tmpCoord=FFPoint();
+  String xValue(dec(ffgraph_canvas::integer(tmpCoord.v[0])));
+  String yValue(dec(ffgraph_canvas::integer(tmpCoord.v[1])));
   const String edgeName = (*e)->getName();
   const String edgeId = e->getId();
 
@@ -1897,8 +1989,10 @@ String FFTclBasicWindow::addLabel(FFGraphicEdge *e)
     ffError(CF_TCL, Tcl_GetStringResult(interp));
     return "";
    }
+  const String result(Tcl_GetStringResult(interp));
+  projectedVisibility(interp,canvas,result,visible);
   updateInspector();
-  return Tcl_GetStringResult(interp);
+  return result;
 }
 
 void FFTclBasicWindow::changeColor(FFGraphicNode *n, String& color)
@@ -1935,25 +2029,16 @@ String FFTclBasicWindow::changeToIcon(FFGraphicNode *n, const String& icon,
                                       const String& selIcon)
 {
  FFPoint tmpCoord = proj(n->getCoords(), n->getRange());
- std::ostringstream tmpScti;
- 
- tmpScti << (int)tmpCoord.v[0] << " " << (int)tmpCoord.v[1];
+ const bool visible=ffgraph_canvas::supported(tmpCoord,true);
+ if(!visible) tmpCoord=FFPoint(0,0,RADIUS);
+ const std::string x = std::to_string(ffgraph_canvas::integer(tmpCoord.v[0]));
+ const std::string y = std::to_string(ffgraph_canvas::integer(tmpCoord.v[1]));
 
- if(Tcl_VarEval(interp, "changeToIcon {", (const char *)n->getId(), "} {",
-                (const char *)icon, "} {", (const char *)selIcon, "} ", 
-                tmpScti.str().c_str(), " ", (const char *)canvas, NULL) 
-    != TCL_OK)
-  { 
+ if(FF_TclEvalObjv(interp, {"changeToIcon", n->getId().c_str(), icon.c_str(),
+                           selIcon.c_str(), x.c_str(), y.c_str(), canvas.c_str(), "1"}) != TCL_OK)
+  {
    ffError(CF_TCL, Tcl_GetStringResult(interp));
-   if(Tcl_VarEval(interp, "changeToIcon {", (const char *)n->getId(), 
-                  "} ", "default.xbm",  " default.xbm ", 
-                tmpScti.str().c_str(), " ", (const char *)canvas, NULL) 
-      != TCL_OK)
-    { 
-     ffError(CF_TCL, "Couldn't find default icon, please check installation");
-     ffError(CF_TCL, Tcl_GetStringResult(interp));
-     return String("");
-    }
+   return String("");
   }
  
  if(strlen(Tcl_GetStringResult(interp)) > 0) // War vorher kein Icon
@@ -1966,16 +2051,21 @@ String FFTclBasicWindow::changeToIcon(FFGraphicNode *n, const String& icon,
    // cerr << "Error while changing Icon: new ID is empty" << endl;
   }
  
- return String(Tcl_GetStringResult(interp));	
+ const String result(Tcl_GetStringResult(interp));
+ projectedVisibility(interp,canvas,result.length()?result:n->getId(),visible);
+ return result;
 }
 
 String FFTclBasicWindow::changeToFigure(FFGraphicNode *n, ffShape shape)
 {
  FFPoint tmpCoord = proj(n->getCoords(), n->getRange());
+ const bool visible=ffgraph_canvas::supported(tmpCoord,true);
+ if(!visible) tmpCoord=FFPoint(0,0,RADIUS);
  std::ostringstream tmpSctf;
+ tmpSctf.exceptions(std::ios::badbit | std::ios::failbit);
  
- tmpSctf << (int)tmpCoord.v[0] << " " << (int)tmpCoord.v[1]
-         << " " <<  (int)tmpCoord.v[2];
+ tmpSctf << ffgraph_canvas::integer(tmpCoord.v[0]) << " " << ffgraph_canvas::integer(tmpCoord.v[1])
+         << " " <<  ffgraph_canvas::integer(tmpCoord.v[2]);
  if(Tcl_VarEval(interp, "changeToFigure {", (const char *)n->getId(), "} {", 
                 (const char *)n->getColor(), "} ", 
                 (const char *)shape2Str(shape), " ",
@@ -1991,16 +2081,16 @@ String FFTclBasicWindow::changeToFigure(FFGraphicNode *n, ffShape shape)
    nodeMap.del(n->getId());
    nodeMap[String(Tcl_GetStringResult(interp))] = n;
   }
- return String(Tcl_GetStringResult(interp));	
+ const String result(Tcl_GetStringResult(interp));
+ projectedVisibility(interp,canvas,result.length()?result:n->getId(),visible);
+ return result;
 }
 
 void FFTclBasicWindow::changeMask(FFGraphicNode *n, const String& mask, 
                                   const String& selMask)
 {
-  if(Tcl_VarEval(interp, "changeMask ", (const char *)n->getId(), " {",
-		 (const char *)mask, "} {", (const char *)selMask,
-                 "} ", (const char *)canvas, NULL) 
-     != TCL_OK)
+  if(FF_TclEvalObjv(interp, {"changeMask", n->getId().c_str(), mask.c_str(),
+                            selMask.c_str(), canvas.c_str()}) != TCL_OK)
     ffError(CF_TCL, Tcl_GetStringResult(interp));
 }
 
@@ -2115,12 +2205,14 @@ void FFTclBasicWindow::updateGraph(FFGraphicEdge *e)
 String FFTclBasicWindow::modifyEdge(FFGraphicEdge *e, String command)
 {
  std::ostringstream tmpArg;
+ tmpArg.exceptions(std::ios::badbit | std::ios::failbit);
 
  int numPoints = e->anzPoints();
  
   tmpArg << command;
   
   int validPoints=0;
+  bool visible=true;
 
   FFPoint tmpCoord;
 //   BOOL circleS = YES;
@@ -2134,18 +2226,20 @@ String FFTclBasicWindow::modifyEdge(FFGraphicEdge *e, String command)
   else
    tmpCoord = proj(e->getPointAt(0));
 
-  if(tmpCoord.v[2] != -1)
+  if(!ffgraph_canvas::supported(tmpCoord)) visible=false;
+  else if(tmpCoord.v[2] != -1)
    {
-    tmpArg << " " << (int)tmpCoord.v[0] << " " << (int)tmpCoord.v[1];
+    tmpArg << " " << ffgraph_canvas::integer(tmpCoord.v[0]) << " " << ffgraph_canvas::integer(tmpCoord.v[1]);
     validPoints++;
    }
   
   for(int k=1; k< numPoints-1; k++)
    {
     tmpCoord = proj(e->getPointAt(k));
-    if(tmpCoord.v[2] != -1)
+    if(!ffgraph_canvas::supported(tmpCoord)) visible=false;
+    else if(tmpCoord.v[2] != -1)
      {
-      tmpArg << " " << (int)tmpCoord.v[0] << " " << (int)tmpCoord.v[1];
+      tmpArg << " " << ffgraph_canvas::integer(tmpCoord.v[0]) << " " << ffgraph_canvas::integer(tmpCoord.v[1]);
       validPoints++;
      }
    }
@@ -2157,13 +2251,14 @@ String FFTclBasicWindow::modifyEdge(FFGraphicEdge *e, String command)
   else
    tmpCoord  = proj(e->getPointAt(numPoints-1));
   
-  if(tmpCoord.v[2] != -1)
+  if(!ffgraph_canvas::supported(tmpCoord)) visible=false;
+  else if(tmpCoord.v[2] != -1)
    {
-    tmpArg << " " << (int)tmpCoord.v[0] << " " << (int)tmpCoord.v[1];
+    tmpArg << " " << ffgraph_canvas::integer(tmpCoord.v[0]) << " " << ffgraph_canvas::integer(tmpCoord.v[1]);
     validPoints++;
    }
 
-  if(validPoints < 2)
+  if(!visible || validPoints < 2)
    {
     if(Tcl_VarEval(interp, (const char *)command , " -1000 -1000 -1000 -1000 ", 
                    NULL) != TCL_OK)
@@ -2181,13 +2276,21 @@ String FFTclBasicWindow::modifyEdge(FFGraphicEdge *e, String command)
    }
   
   String  tmp = Tcl_GetStringResult(interp);
+  projectedVisibility(interp,canvas,tmp,visible);
+  // moveLine returns an empty result; addLine returns the newly created ID.
+  if(!tmp.length()) projectedVisibility(interp,canvas,e->getId(),visible);
   
   if(e->getLabelId().length())
    {
     tmpCoord = proj((e->getPointAt(0) + e->getPointAt(1))/2);
+    if(!visible || !ffgraph_canvas::supported(tmpCoord)) {
+      projectedVisibility(interp,canvas,e->getLabelId(),false);
+      return tmp;
+    }
     std::ostringstream tmpS;
+    tmpS.exceptions(std::ios::badbit | std::ios::failbit);
     
-    tmpS << " " << (int)tmpCoord.v[0] << " " << (int)tmpCoord.v[1];
+    tmpS << " " << ffgraph_canvas::integer(tmpCoord.v[0]) << " " << ffgraph_canvas::integer(tmpCoord.v[1]);
     
     if(Tcl_VarEval(interp, "moveLabel ", (const char *)canvas,
                    " ", (const char *)e->getLabelId(),
@@ -2195,6 +2298,7 @@ String FFTclBasicWindow::modifyEdge(FFGraphicEdge *e, String command)
      {
       ffError(CF_TCL, Tcl_GetStringResult(interp));
      }
+    projectedVisibility(interp,canvas,e->getLabelId(),true);
 
    }
   

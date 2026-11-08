@@ -8,7 +8,7 @@
 
 #include <stream.h>
 #include <string.h>
-#include <String.h>
+#include <FFString.h>
 extern "C"
 {
 #include <stdlib.h>
@@ -165,6 +165,7 @@ int FFSugiInsp::recall (Tcl_Interp *, int k, const char **c)
 
 void FFSugiInsp::inspect ()
 {
+  Tcl_SetVar(interp,"reduce",SUGI->getCrossingAlg() == 0 ? "adjazenzmatrix" : "noneRed",TCL_GLOBAL_ONLY);
   if (Tcl_VarEval (interp, "set toggleDecycle ", 
 		   (const char *) dec (SUGI->getUseStartNode ()), NULL) 
       != TCL_OK)

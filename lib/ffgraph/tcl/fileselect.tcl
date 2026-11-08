@@ -1,3 +1,4 @@
+source [file join [file dirname [info script]] ttk.tcl]
 #**************************************************************************/
 #                                                                         
 #  FILE       : fileselect.tcl
@@ -28,9 +29,9 @@ proc FileSelectorBox_SetMenuText {text} {
   ##############
   global fileselect
   if {[string length $text] > $fileselect(label_width)} {
-    .fileselect.misc.left.begin_dir.l configure -text "[string range $text 0 [expr $fileselect(label_width)-3]]..."
+    .fileselect.misc.left.begin_dir configure -text "[string range $text 0 [expr $fileselect(label_width)-3]]..."
   } else {
-    .fileselect.misc.left.begin_dir.l configure -text $text
+    .fileselect.misc.left.begin_dir configure -text $text
   }
   set fileselect(currentmenu) $text
 }
@@ -57,17 +58,15 @@ proc FileSelectorBox_MessageBox {message title ok_but {cancel_but ""}} {
   message .htmessagebox.m -text $message \
     -aspect 10000 -relief ridge -bd 3 \
     -justify center -padx 40 -pady 20
-  button .htmessagebox.ok \
-    -text $ok_but -command "set htmessagebox 1" \
-    -highlightthickness 0
+  ttk::button .htmessagebox.ok \
+    -text $ok_but -command "set htmessagebox 1"
   pack append .htmessagebox \
     .htmessagebox.m {top fillx} \
     .htmessagebox.ok {left expand fillx} 
 
   if {$cancel_but != ""} {
-    button .htmessagebox.cancel \
-      -text $cancel_but -command "set htmessagebox 0" \
-      -highlightthickness 0
+    ttk::button .htmessagebox.cancel \
+      -text $cancel_but -command "set htmessagebox 0"
     pack append .htmessagebox \
       .htmessagebox.cancel {left expand fillx}
   }
@@ -87,67 +86,18 @@ proc FileSelectorBox_MessageBox {message title ok_but {cancel_but ""}} {
 }
 
 proc FileSelectorBox_PopUpMenuButton {name text menu} {
-  ##############
-  # Procedure  : 
-  # Description: 
-  # Arguments  : 
-  # Returns    : 
-  # Sideeffects: the author is not familiar to any strange sideeffects 
-  #              (shit happens)
-  ##############
   global fileselect
   set fileselect(label_width) 15
-  frame $name -relief raised -bd 3
-  label $name.l -relief flat -width $fileselect(label_width) -anchor nw
+  ttk::menubutton $name -width $fileselect(label_width) -menu $menu -direction below
   FileSelectorBox_SetMenuText $text
-  set fileselect(currentmenu) $text
-  frame $name.knopf  -width 14 -height 6 -relief raised -bd 2
-  pack append $name \
-    $name.l {left frame nw} \
-    $name.knopf {right frame center padx 4}
-  proc FileSelectorBox_GetMenuEntries {menu} {
-    ##############
-    # Procedure  : 
-    # Description: 
-    # Arguments  : 
-    # Returns    : 
-    # Sideeffects: the author is not familiar to any strange sideeffects 
-    #              (shit happens)
-    ##############
-    set result ""
-    for {set i 0} {$i <= [$menu index end]} {incr i} {
-      lappend result [$menu entrycget $i -label]
-    }
-    return $result
+}
+
+proc FileSelectorBox_GetMenuEntries {menu} {
+  set entries {}
+  for {set i 0} {$i <= [$menu index end]} {incr i} {
+    lappend entries [$menu entrycget $i -label]
   }
-  proc FileSelectorBox_IsEqual {a b} {if {$a == $b} {return 1} {return 0}}
-  proc FileSelectorBox_PostMenu {menu X Y y} {
-    ##############
-    # Procedure  : 
-    # Description: 
-    # Arguments  : 
-    # Returns    : 
-    # Sideeffects: the author is not familiar to any strange sideeffects 
-    #              (shit happens)
-    ##############
-    global fileselect
-    set tmpnum 0
-    foreach j [FileSelectorBox_GetMenuEntries $menu] {
-      if {[FileSelectorBox_IsEqual [set j] $fileselect(currentmenu)]} {
-	set result [set tmpnum]
-      } {
-	incr tmpnum
-      }
-    }
-    $menu post [expr $X -[winfo width $menu]/2] [expr $Y - $y - [$menu yposition [set result]]]
-    after 50 "catch [grab $menu] tmp"
-    focus $menu
-    
-  }
-  foreach i [list $name $name.l $name.knopf] {
-    bind $i <1> "FileSelectorBox_PostMenu $menu %X %Y %y"
-    bind $i <ButtonRelease-1> "$menu unpost"
-  }
+  return $entries
 }
 
 proc FileSelectorBox_GetDirContens_Dir {dir pattern} {
@@ -244,54 +194,7 @@ proc FileSelectorBox_FillEntry {entry text} {
   $entry xview moveto $tmp
 }
 
-proc FileSelectorBox_SetColorsForWin {w} {
-  ##############
-  # Procedure  : setColorsForWin
-  # Description: sets the colors for the window "w" and all its child-windows
-  # Arguments  : w: window
-  # Returns    : none
-  # Sideeffects: the author is not familiar to any strange sideeffects 
-  #              (shit happens)
-  ##############
-  $w configure -bg #dddddd
-  set tmplist [winfo children $w]
-  while {[llength $tmplist] != 0} {
-    switch [winfo class [lindex $tmplist 0]] {
-      Listbox {[lindex $tmplist 0] configure -bg #ebebeb\
-		 -highlightthickness 0 \
-		 -borderwidth 2 -relief ridge -selectmode browse
-      }
-      Scrollbar {[lindex $tmplist 0] configure -bg #9f9f9f \
-		   -activebackground #c6c6c6 \
-		   -highlightthickness 0 \
-		   -borderwidth 1 -relief ridge
-      }
-      Entry {[lindex $tmplist 0] configure -bg #ebebeb \
-	       -highlightthickness 0 -bd 1
-      }
-      Checkbutton {[lindex $tmplist 0] configure -bg #ebebeb \
-		     -activebackground #c6c6c6 \
-		     -highlightthickness 0 \
-		     -relief raised -bd 2 \
-		     -padx 5 -pady 1
-	bind [lindex $tmplist 0] <1> {
-	  %W configure -relief sunken
-	}
-	bind [lindex $tmplist 0] <ButtonRelease> {
-	  %W configure -relief raised
-	}
-      }
-      Button {[lindex $tmplist 0] configure -bg #ebebeb \
-		-activebackground #c6c6c6 \
-		-highlightthickness 0 -relief raised -bd 2
-      }
-      default {[lindex $tmplist 0] configure -bg #ebebeb
-      }
-    }
-    set tmplist [concat $tmplist [winfo children [lindex $tmplist 0]]]
-    set tmplist [lreplace $tmplist 0 0]
-  }
-}
+proc FileSelectorBox_SetColorsForWin {w} {::ffgraph_ui::surface $w}
 
 proc FileSelectorBox_MakeListboxAll {name {title ""}} {
   ##############
@@ -304,20 +207,19 @@ proc FileSelectorBox_MakeListboxAll {name {title ""}} {
   # Sideeffects: the author is not familiar to any strange sideeffects 
   #              (shit happens)
   ##############
-  frame $name
+  ttk::frame $name
 
   if {$title != ""} {
-    label $name.l -text $title -anchor nw
+    ttk::label $name.l -text $title -anchor nw
     pack append $name $name.l {top frame nw}
   }
   
-  scrollbar $name.vert_scroll \
+  ttk::scrollbar $name.vert_scroll \
     -command "$name.li yview"
   
-  scrollbar $name.horz_scroll \
+  ttk::scrollbar $name.horz_scroll \
     -command "$name.li xview" \
-    -orient horizontal \
-    -width 10
+    -orient horizontal
   listbox $name.li \
     -width 1 \
     -height 1 \
@@ -341,25 +243,39 @@ proc FileSelectorBox_MakeEntryAll {name {title ""}} {
   # Sideeffects: the author is not familiar to any strange sideeffects 
   #              (shit happens)
   ##############
-  frame $name -relief ridge -borderwidth 2
+  ttk::frame $name
   
   if {$title != ""} {
-    label $name.l -text $title -anchor nw -pady 0
+    ttk::label $name.l -text $title -anchor nw
     pack append $name $name.l {top frame nw}
   }
-  scrollbar $name.horz_scrollbar \
+  ttk::scrollbar $name.horz_scrollbar \
     -command "$name.e xview" \
-    -orient {horizontal} \
-    -relief  {sunken}
+    -orient {horizontal}
   
-  entry $name.e \
-    -relief {sunken} \
+  ttk::entry $name.e \
     -xscrollcommand "$name.horz_scrollbar set"
   pack append $name \
     $name.e {top frame center expand fillx} \
     $name.horz_scrollbar {bottom frame center expand fillx} 
 }
 
+
+# ttk scrollbars exchange fractions/moveto/scroll instead of Tk's old unit API.
+proc FileSelectorBox_SetScrollbar {first} {
+  global fileselect
+  set count [expr {max(1,$fileselect(maxlayers))}]
+  .fileselect.choose.horz_scrollbar set [expr {$first/double($count)}] [expr {min(1.0,($first+1.0)/$count)}]
+}
+proc FileSelectorBox_Scroll {operation value {units units}} {
+  global fileselect
+  if {$operation eq "moveto"} {
+    set first [expr {int($value*$fileselect(maxlayers))}]
+  } else {
+    set first [expr {$fileselect(cur_num)+$value*($units eq "pages" ? 2 : 1)}]
+  }
+  FileSelectorBox_SetListboxes [expr {max(0,min($first,$fileselect(maxlayers)-1))}]
+}
 
 proc FileSelectorBox_SetListboxes {num} {
   ##############
@@ -373,7 +289,7 @@ proc FileSelectorBox_SetListboxes {num} {
   global fileselect
   if {($num >= 0) && ($num < $fileselect(maxlayers))} {
     set fileselect(cur_num) $num
-    .fileselect.choose.horz_scrollbar set $fileselect(maxlayers) 2 $num $num
+    FileSelectorBox_SetScrollbar $num
     FileSelectorBox_FillListbox .fileselect.choose.l1.li $fileselect(layer_$num)
     FileSelectorBox_FillListbox .fileselect.choose.l2.li $fileselect(layer_[expr $num +1])
     FileSelectorBox_FillEntry .fileselect.choose.current.e  $fileselect(dir_[expr $num + 1])
@@ -418,17 +334,16 @@ proc FileSelectorBox_MakeItems {} {
   #              (shit happens)
   ##############
   global fileselect
-  frame .fileselect.choose -bd 3 -relief ridge
+  ttk::frame .fileselect.choose
   FileSelectorBox_MakeEntryAll .fileselect.choose.current "Current File:"
   
-  .fileselect.choose.current.horz_scrollbar configure -width 10
   FileSelectorBox_MakeListboxAll .fileselect.choose.l1 
   FileSelectorBox_MakeListboxAll .fileselect.choose.l2 
-  label .fileselect.choose.l -text "Status: normal..." -anchor w
+  ttk::label .fileselect.choose.l -text "Status: normal..." -anchor w
 
 
-  scrollbar .fileselect.choose.horz_scrollbar -orient horizontal \
-    -command {FileSelectorBox_SetListboxes}
+  ttk::scrollbar .fileselect.choose.horz_scrollbar -orient horizontal \
+    -command {FileSelectorBox_Scroll}
   pack append .fileselect.choose \
     .fileselect.choose.current {top fillx pady 4} \
     .fileselect.choose.l {top fillx} \
@@ -436,9 +351,9 @@ proc FileSelectorBox_MakeItems {} {
     .fileselect.choose.l1 {left expand fill} \
     .fileselect.choose.l2 {left expand fill} 
   
-  frame .fileselect.action 
-  button .fileselect.action.ok -text "Ok" -command {set fileselect(state) ok} -pady 0
-  button .fileselect.action.dismiss -text "Dismiss" -command "set fileselect(state) dismiss"  -pady 0
+  ttk::frame .fileselect.action
+  ttk::button .fileselect.action.ok -text "Ok" -command {set fileselect(state) ok}
+  ttk::button .fileselect.action.dismiss -text "Dismiss" -command "set fileselect(state) dismiss"
 
   pack append .fileselect.action \
     .fileselect.action.ok {left frame center expand fillx padx 5} \
@@ -457,20 +372,21 @@ proc FileSelectorBox_MakeItems {} {
     -command {FileSelectorBox_GetDirStruct $fileselect(start_dir) $fileselect(pattern); \
 		FileSelectorBox_SetMenuText Current} \
     -underline -1 -label "Current"
-  .fileselect.menu_begin_dir post 0 0
-  .fileselect.menu_begin_dir unpost
+  # Post this menu only from its button binding, after the dialog is ready.
+  # Posting here flashes on X11 and enters a native modal menu on Windows.
 
-  frame .fileselect.misc
-  frame .fileselect.misc.left 
+  ttk::frame .fileselect.misc
+  ttk::frame .fileselect.misc.left
   
-  checkbutton .fileselect.misc.left.dots_dir \
-    -variable fileselect(show_all_dirs) -text "Show all Directories" -pady 0 -state normal \
-    -command FileSelectorBox_Rescan -anchor nw
+  ttk::checkbutton .fileselect.misc.left.dots_dir \
+    -variable fileselect(show_all_dirs) -text "Show all Directories"  -state normal \
+    -command FileSelectorBox_Rescan
   set fileselect(show_all_dirs) 1
-  checkbutton .fileselect.misc.left.dots \
-    -variable fileselect(show_all_files) -text "Show all Files" -pady 0 -state normal \
-    -command FileSelectorBox_Rescan -anchor nw
-   button .fileselect.misc.left.expand -text "Expand"  -pady 0 -command {
+  set fileselect(show_all_files) 0
+  ttk::checkbutton .fileselect.misc.left.dots \
+    -variable fileselect(show_all_files) -text "Show all Files"  -state normal \
+    -command FileSelectorBox_Rescan
+   ttk::button .fileselect.misc.left.expand -text "Expand"   -command {
      global fileselect
      set tmp [pwd]
      cd $fileselect(cur_dir)
@@ -485,10 +401,9 @@ proc FileSelectorBox_MakeItems {} {
     .fileselect.misc.left.begin_dir {top frame w expand filly fillx pady 0} \
     .fileselect.misc.left.expand  {top frame nw expand filly fillx pady 0} 
 
-  frame .fileselect.misc.right
+  ttk::frame .fileselect.misc.right
   FileSelectorBox_MakeEntryAll .fileselect.misc.right.pattern "Pattern:"
-  .fileselect.misc.right.pattern.horz_scrollbar configure -width 10
-  button .fileselect.misc.right.rescan -text "Rescan" -command FileSelectorBox_Rescan  -pady 0 
+  ttk::button .fileselect.misc.right.rescan -text "Rescan" -command FileSelectorBox_Rescan
 
   pack append .fileselect.misc.right \
       .fileselect.misc.right.pattern {top expand fill} \
@@ -553,8 +468,7 @@ proc FileSelectorBox_GetDirStruct {dir_name pattern} {
   foreach j $tmp_list {
     lappend fileselect(layer_$fileselect(maxlayers)) "$j"
   }
-  .fileselect.choose.horz_scrollbar set $fileselect(maxlayers) 2 \
-    [expr $fileselect(maxlayers) - 1] [expr $fileselect(maxlayers) - 1]
+  FileSelectorBox_SetScrollbar [expr {$fileselect(maxlayers) - 1}]
   .fileselect.choose.l1.li delete 0 end
   .fileselect.choose.l2.li delete 0 end
   FileSelectorBox_FillListbox .fileselect.choose.l1.li $fileselect(layer_[expr $fileselect(maxlayers) -1])
@@ -742,8 +656,7 @@ proc FileSelectorBox_MakeBindings {} {
     foreach j $tmp_list {
       lappend fileselect(layer_$fileselect(maxlayers)) "$j"
     }
-    .fileselect.choose.horz_scrollbar set $fileselect(maxlayers) 2 \
-      $fileselect(cur_num) $fileselect(cur_num)
+    FileSelectorBox_SetScrollbar $fileselect(cur_num)
     FileSelectorBox_FillListbox .fileselect.choose.l2.li $fileselect(layer_$fileselect(maxlayers))
     FileSelectorBox_FillEntry .fileselect.choose.current.e  $tmpdir
     set fileselect(dir_[expr $fileselect(cur_num) + 1]) $tmpdir
@@ -817,18 +730,15 @@ proc FileSelectorBox {title pattern given_start_dir args} {
   if {[winfo exists .fileselect] == "0"} {
     set fileselect(previous_settings) "0"
     toplevel .fileselect
+    wm withdraw .fileselect
     wm minsize .fileselect 300 400
-    wm geometry .fileselect 300x400+200+200
+    wm geometry .fileselect +200+200
     FileSelectorBox_MakeItems
     FileSelectorBox_MakeBindings
     FileSelectorBox_SetColorsForWin .fileselect
     bind .fileselect.choose.current.e <Return> {set fileselect(state) ok;break}
   } {
-    switch [wm state .fileselect] {
-      iconic -
-      withdrawn {catch "wm deiconify .fileselect"}
-      default {}
-    }
+    wm withdraw .fileselect
   }
   if {$fileselect(previous_settings) == "0"} {
     wm title .fileselect $title
@@ -876,7 +786,13 @@ proc FileSelectorBox {title pattern given_start_dir args} {
     }
   }
 
+  # Directory scans process events. Keep both new and reused selectors hidden
+  # until their title, contents and pending layout work are ready to present.
+  update idletasks
+  wm minsize .fileselect [winfo reqwidth .fileselect.misc] 400
   set fileselect(state) wait
+  wm deiconify .fileselect
+  raise .fileselect
   
 #   while {$fileselect(state) == "wait"} {
 #     update
@@ -887,7 +803,7 @@ proc FileSelectorBox {title pattern given_start_dir args} {
     if {[FileSelectorBox_MessageBox \
 	   "The Directory\n\n[file dirname $result]\n\ndoesn't exists!\nShall i create it?" \
 	   "Attention" "Do it" "Forget it"] =="1"} {
-      catch "exec sh -c \"mkdir -p [file dirname $result]\"" tmp
+      catch {file mkdir [file dirname $result]} tmp
       if {$tmp != ""} {
 	puts stderr  "FSBox: Start action-> $tmp"
       }

@@ -1,12 +1,12 @@
-#!/public/bin/pixmap-wish -f
+#!/usr/bin/env wish
 # Program: povexp
 #
 
 proc Povexp_MakeMyEntry {name text recall_text} {
-  frame $name
-  label $name.l -text $text -anchor w
-  entry $name.e1 -width 8 -relief sunken -bg white
-  entry $name.e2 -width 8 -relief sunken -bg white
+  ttk::frame $name
+  ttk::label $name.l -text $text -anchor w
+  ttk::entry $name.e1 -width 8
+  ttk::entry $name.e2 -width 8
   $name.e1 insert 1 ""
   $name.e2 insert 1 ""
 
@@ -39,9 +39,9 @@ proc Povexp_MakeMyEntry {name text recall_text} {
 
 proc Povexp_MakeParams {zeug} {
 
-  frame .pov.$zeug -bd 3 -relief ridge
-  label .pov.$zeug.l -text "$zeug:" -anchor nw 
-  frame .pov.$zeug.coords -relief ridge
+  ttk::frame .pov.$zeug
+  ttk::label .pov.$zeug.l -text "$zeug:" -anchor nw
+  ttk::frame .pov.$zeug.coords
   
   Povexp_MakeMyEntry .pov.$zeug.coords.x x zeug_x
   Povexp_MakeMyEntry .pov.$zeug.coords.y y zeug_y

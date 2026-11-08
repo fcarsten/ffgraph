@@ -20,7 +20,9 @@ extern "C" {
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#ifndef _WIN32
 #include <X11/Xatom.h>
+#endif
 }
 
 #include <stream.h>
@@ -29,6 +31,7 @@ extern "C" {
 #include <algorithm>
 #include <vector>
 #include <string>
+#include <cmath>
 
 #include <ffgraph/FFGraph.h>
 #include <ffgraph/FFGraphClass.h>
@@ -210,10 +213,12 @@ void FFTcl3DWindow::_hideLines()
   {
    if(nodeMap.contents(i))
     {
+     auto* node=nodeMap.contents(i);
+     tmpP = proj(node->getCoords(),node->getRange());
+     // A nonfinite projection must not enter std::sort's ordering relation.
+     if(!std::isfinite(tmpP.v[2])) continue;
      liste.emplace_back();
-     liste[k].n = nodeMap.contents(i);
-     tmpP = proj(liste[k].n->getCoords(),
-                 liste[k].n->getRange());
+     liste[k].n = node;
      liste[k].z = tmpP.v[2];
      liste[k].s = liste[k].n->getId().c_str();
      liste[k].l = liste[k].n->getLabelId().c_str();

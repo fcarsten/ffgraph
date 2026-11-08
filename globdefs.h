@@ -24,7 +24,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <unistd.h>
+#include <ffgraph/FFPlatform.h>
 using std::istream;
 using std::ostream;
 using std::iostream;

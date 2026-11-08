@@ -17,7 +17,7 @@
 #include <globdefs.h>
 #include <container/AVLSet.h>
 #include <container/VOHSet.h>
-#include <String.h>
+#include <FFString.h>
 #include <ffgraph/FFGraphClass.h>
 
 #include <ffgraph/FFGraphicNode.h>

@@ -7,7 +7,7 @@
 //
 
 #include <string.h>
-#include <String.h>
+#include <FFString.h>
 #include <DLList.h>
 #include <Pix.h>
 #include <assert.h>

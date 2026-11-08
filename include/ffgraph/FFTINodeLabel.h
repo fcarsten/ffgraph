@@ -7,7 +7,7 @@
 #endif
 
 #include <globdefs.h>
-#include <String.h>
+#include <FFString.h>
 #include <ffgraph/FFGraph.h>
 #include <ffgraph/FFNodeClass.h>
 #include <ffgraph/FFNodeLabel.h>

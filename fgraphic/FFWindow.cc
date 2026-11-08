@@ -142,10 +142,12 @@ void FFWindow::initFromFile(const String& file, int argc, char **argv)
   w=Tk_MainWindow(interp);
 #endif
 
-  if (synchronize) 
+#ifndef _WIN32
+  if (synchronize)
     {
       XSynchronize(Tk_Display(w), True);
     }
+#endif
 
   
   if(argv)
@@ -187,7 +189,9 @@ void FFWindow::initFromFile(const String& file, int argc, char **argv)
 
 void FFWindow::update()
 {     
- if(FF_TclEvalObjv(interp, {"catch", "update"}) != TCL_OK)
+ // A fixed script needs no C++ argument-vector allocation. This is also
+ // called by busy-state cleanup while unwinding an allocation failure.
+ if(Tcl_EvalEx(interp, "catch {update}", -1, TCL_EVAL_GLOBAL) != TCL_OK)
   {
    ffError(CF_TCL, Tcl_GetStringResult(interp));
   }    

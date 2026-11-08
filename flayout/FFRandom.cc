@@ -56,7 +56,7 @@ void FFRandom::doLayout()
   {
    FFNode tmpN= tmpS(i);
    if(tmpN->getGraphicNode())
-    tmpN->getGraphicNode()->moveTo(FFPoint(lrand48() % 400, lrand48() % 300));
+    tmpN->getGraphicNode()->moveTo(FFPoint(ffgraph_platform::randomLong() % 400, ffgraph_platform::randomLong() % 300));
   }
  
  if(graph->getWindow())

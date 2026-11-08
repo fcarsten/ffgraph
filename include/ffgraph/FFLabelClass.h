@@ -12,7 +12,7 @@
 #ifndef FF_LABEL_CLASS
 #define FF_LABEL_CLASS
 
-#include <String.h>
+#include <FFString.h>
 
 #include "globdefs.h"
 

@@ -1,5 +1,7 @@
 #include <ffgraph/FFSpring.h>
 #include <ffgraph/FFInspector.h>
+#include <algorithm>
+#include <cmath>
 
 int ffBreak()
 {
@@ -101,6 +103,31 @@ void FFSpring::init_forces (FFPoint *forces, int anzN)
 }
 
 
+// Private, inlinable equivalents of the legacy FFPoint expressions. Keep each
+// float intermediate and XYZ operation in its original order; W stays at one
+// for temporaries and is untouched by accumulation. No force law changes.
+namespace {
+inline void springDifference(FFPoint& out, const FFPoint& a, const FFPoint& b) {
+  for (int i = 0; i < 3; ++i) out.v[i] = a.v[i]-b.v[i];
+  out.v[3] = 1;
+}
+inline void springScale(FFPoint& out, const FFPoint& a, FFCoord factor) {
+  for (int i = 0; i < 3; ++i) out.v[i] = a.v[i]*factor;
+  out.v[3] = 1;
+}
+inline void springQuotient(FFPoint& out, const FFPoint& a, FFCoord factor) {
+  if (factor == 0) factor = 0.000000001;
+  for (int i = 0; i < 3; ++i) out.v[i] = a.v[i]/factor;
+  out.v[3] = 1;
+}
+inline void springAdd(FFPoint& out, const FFPoint& a) {
+  for (int i = 0; i < 3; ++i) out.v[i] += a.v[i];
+}
+inline void springSubtract(FFPoint& out, const FFPoint& a) {
+  for (int i = 0; i < 3; ++i) out.v[i] -= a.v[i];
+}
+}
+
 void FFSpring::compute_forces (FFCoord optimalDistance, 
                                FFPoint *forces, int anzN)
 ///////////////////////////////////////////////////////////////////
@@ -138,7 +165,7 @@ void FFSpring::compute_forces (FFCoord optimalDistance,
 	      if (nodeIndex1 < nodes[nodeIndex1].conNodes (p))
                 {  
                   nodeIndex2 = nodes[nodeIndex1].conNodes (p);
-                  delta = nodes[nodeIndex2].coord - nodes[nodeIndex1].coord;
+                  springDifference(delta,nodes[nodeIndex2].coord,nodes[nodeIndex1].coord);
 	     
                   if ((delta.v[0] == 0.0) && (delta.v[1] == 0.0))
 		    delta = point;
@@ -146,14 +173,14 @@ void FFSpring::compute_forces (FFCoord optimalDistance,
                   attractiveFactor = (sqrt (delta.v[0] * delta.v[0] +
                                             delta.v[1] * delta.v[1])) / 
 		    optimalDistance;
-                  attractiveForce  = delta * attractiveFactor;
+                  springScale(attractiveForce,delta,attractiveFactor);
                   repulsiveFactor  = sqrOptimalDistance / 
                     (delta.v[0] * delta.v[0] +
                      delta.v[1] * delta.v[1]);
-                  repulsiveForce   = delta *  repulsiveFactor;
-                  force            = attractiveForce - repulsiveForce;
-                  forces[nodeIndex1] += force;
-                  forces[nodeIndex2] -= force;
+                  springScale(repulsiveForce,delta,repulsiveFactor);
+                  springDifference(force,attractiveForce,repulsiveForce);
+                  springAdd(forces[nodeIndex1],force);
+                  springSubtract(forces[nodeIndex2],force);
                   nodes[nodeIndex2].attrib = nodeIndex1;
                 }
             }  
@@ -163,7 +190,7 @@ void FFSpring::compute_forces (FFCoord optimalDistance,
               if (nodes[k].attrib != nodeIndex1)
                 {
                   nodeIndex2 = k;
-                  delta = nodes[nodeIndex2].coord - nodes[nodeIndex1].coord;
+                  springDifference(delta,nodes[nodeIndex2].coord,nodes[nodeIndex1].coord);
 
                   if ((delta.v[0] == 0.0) && (delta.v[1] == 0.0)) 
 		    delta = point;
@@ -171,9 +198,9 @@ void FFSpring::compute_forces (FFCoord optimalDistance,
                   repulsiveFactor = sqrOptimalDistance / 
                     (delta.v[0] * delta.v[0] + 
                      delta.v[1] * delta.v[1]);
-                  repulsiveForce  = delta * repulsiveFactor;
-                  forces[nodeIndex1] -= repulsiveForce;
-                  forces[nodeIndex2] += repulsiveForce;
+                  springScale(repulsiveForce,delta,repulsiveFactor);
+                  springSubtract(forces[nodeIndex1],repulsiveForce);
+                  springAdd(forces[nodeIndex2],repulsiveForce);
                 }  
             }      
         }
@@ -196,7 +223,7 @@ void FFSpring::compute_forces (FFCoord optimalDistance,
               if (nodeIndex1 < nodes[nodeIndex1].conNodes (p))
                 {  
                   nodeIndex2 = nodes[nodeIndex1].conNodes (p);
-                  delta = nodes[nodeIndex2].coord - nodes[nodeIndex1].coord;
+                  springDifference(delta,nodes[nodeIndex2].coord,nodes[nodeIndex1].coord);
 
                   if ((delta.v[0] == 0.0) && 
                       (delta.v[1] == 0.0) && 
@@ -204,15 +231,15 @@ void FFSpring::compute_forces (FFCoord optimalDistance,
 		    delta = point;
 
                   attractiveFactor = delta.abs () / optimalDistance;
-                  attractiveForce  = delta * attractiveFactor;
+                  springScale(attractiveForce,delta,attractiveFactor);
                   repulsiveFactor  = sqrOptimalDistance / 
                     (delta.v[0] * delta.v[0] +
                      delta.v[1] * delta.v[1] + 
                      delta.v[2] * delta.v[2]);
-                  repulsiveForce   = delta * repulsiveFactor;
-                  force            = attractiveForce - repulsiveForce;
-                  forces[nodeIndex1] += force;
-                  forces[nodeIndex2] -= force;
+                  springScale(repulsiveForce,delta,repulsiveFactor);
+                  springDifference(force,attractiveForce,repulsiveForce);
+                  springAdd(forces[nodeIndex1],force);
+                  springSubtract(forces[nodeIndex2],force);
                   nodes[nodeIndex2].attrib = nodeIndex1;
                 }
             }  
@@ -222,7 +249,7 @@ void FFSpring::compute_forces (FFCoord optimalDistance,
               if (nodes[k].attrib != nodeIndex1)
                 {
                   nodeIndex2 = k;
-                  delta = nodes[nodeIndex2].coord - nodes[nodeIndex1].coord;
+                  springDifference(delta,nodes[nodeIndex2].coord,nodes[nodeIndex1].coord);
 
                   if ((delta.v[0] == 0.0) && 
                       (delta.v[1] == 0.0) && 
@@ -233,9 +260,9 @@ void FFSpring::compute_forces (FFCoord optimalDistance,
                     (delta.v[0] * delta.v[0] + 
                      delta.v[1] * delta.v[1] + 
                      delta.v[2] * delta.v[2]);
-                  repulsiveForce  = delta * repulsiveFactor;
-                  forces[nodeIndex1] -= repulsiveForce;
-                  forces[nodeIndex2] += repulsiveForce;
+                  springScale(repulsiveForce,delta,repulsiveFactor);
+                  springSubtract(forces[nodeIndex1],repulsiveForce);
+                  springAdd(forces[nodeIndex2],repulsiveForce);
                 }  
             }      
         }
@@ -283,7 +310,7 @@ void FFSpring::compute_forces_edges (FFCoord optimalDistance,
                   nodeIndex2 = 
 		    nodes[nodeIndex1].toSucc (p)->target ()->getValue ();
                   weight = nodes[nodeIndex1].toSucc (p)->getWeight ();
-		  delta  = nodes[nodeIndex2].coord - nodes[nodeIndex1].coord;
+		  springDifference(delta,nodes[nodeIndex2].coord,nodes[nodeIndex1].coord);
 		  
                   if ((delta.v[0] == 0.0) && (delta.v[1] == 0.0))
 		    delta = point;
@@ -291,18 +318,20 @@ void FFSpring::compute_forces_edges (FFCoord optimalDistance,
                   attractiveFactor = (sqrt (delta.v[0] * delta.v[0] +
                                             delta.v[1] * delta.v[1])) / 
 		    optimalDistance;
-                  attractiveForce = delta * attractiveFactor * weight;
+                  springScale(attractiveForce,delta,attractiveFactor);
+                  springScale(attractiveForce,attractiveForce,weight);
                   repulsiveFactor = (optimalDistance * optimalDistance ) /
                     (delta.v[0] * delta.v[0] + 
                      delta.v[1] * delta.v[1]);
-                  repulsiveForce = (delta * repulsiveFactor) / weight;
-                  force          = attractiveForce - repulsiveForce;
+                  springScale(repulsiveForce,delta,repulsiveFactor);
+                  springQuotient(repulsiveForce,repulsiveForce,weight);
+                  springDifference(force,attractiveForce,repulsiveForce);
 
                   if(! force.valid())
                    ffBreak();
                   
-                  forces[nodeIndex1] += force;
-                  forces[nodeIndex2] -= force;
+                  springAdd(forces[nodeIndex1],force);
+                  springSubtract(forces[nodeIndex2],force);
                   nodes[nodeIndex2].attrib = nodeIndex1;
                 }
             }  
@@ -319,7 +348,7 @@ void FFSpring::compute_forces_edges (FFCoord optimalDistance,
                   nodeIndex2 = 
 		    nodes[nodeIndex1].fromPred (p)->source ()->getValue ();
 		  weight = nodes[nodeIndex1].fromPred (p)->getWeight ();
-                  delta  = nodes[nodeIndex2].coord - nodes[nodeIndex1].coord;
+                  springDifference(delta,nodes[nodeIndex2].coord,nodes[nodeIndex1].coord);
 	     
                   if ((delta.v[0] == 0.0) && (delta.v[1] == 0.0))
 		    delta = point;
@@ -327,18 +356,20 @@ void FFSpring::compute_forces_edges (FFCoord optimalDistance,
                   attractiveFactor = (sqrt (delta.v[0] * delta.v[0] +
                                             delta.v[1] * delta.v[1])) / 
 		    optimalDistance;
-                  attractiveForce = delta * attractiveFactor * weight;
+                  springScale(attractiveForce,delta,attractiveFactor);
+                  springScale(attractiveForce,attractiveForce,weight);
                   repulsiveFactor = (optimalDistance * optimalDistance) / 
                     (delta.v[0] * delta.v[0] + 
                      delta.v[1] * delta.v[1]);
-                  repulsiveForce = (delta * repulsiveFactor) / weight;
-                  force          = attractiveForce - repulsiveForce;
+                  springScale(repulsiveForce,delta,repulsiveFactor);
+                  springQuotient(repulsiveForce,repulsiveForce,weight);
+                  springDifference(force,attractiveForce,repulsiveForce);
 
                   if(! force.valid())
                    ffBreak();
 
-                  forces[nodeIndex1] += force;
-                  forces[nodeIndex2] -= force;
+                  springAdd(forces[nodeIndex1],force);
+                  springSubtract(forces[nodeIndex2],force);
                   nodes[nodeIndex2].attrib = nodeIndex1;
                 }
             }  
@@ -348,7 +379,7 @@ void FFSpring::compute_forces_edges (FFCoord optimalDistance,
               if (nodes[k].attrib != nodeIndex1)
                 {
                   nodeIndex2 = k;
-                  delta      = nodes[nodeIndex2].coord - nodes[nodeIndex1].coord;
+                  springDifference(delta,nodes[nodeIndex2].coord,nodes[nodeIndex1].coord);
 
                   if ((delta.v[0] == 0.0) && 
                       (delta.v[1] == 0.0)) 
@@ -357,9 +388,9 @@ void FFSpring::compute_forces_edges (FFCoord optimalDistance,
                   repulsiveFactor = (optimalDistance * optimalDistance)  / 
                     (delta.v[0] * delta.v[0] + 
                      delta.v[1] * delta.v[1]);
-                  repulsiveForce = delta * repulsiveFactor;
-                  forces[nodeIndex1] -= repulsiveForce;
-                  forces[nodeIndex2] += repulsiveForce;
+                  springScale(repulsiveForce,delta,repulsiveFactor);
+                  springSubtract(forces[nodeIndex1],repulsiveForce);
+                  springAdd(forces[nodeIndex2],repulsiveForce);
                 }  
             }      
         }
@@ -386,7 +417,7 @@ void FFSpring::compute_forces_edges (FFCoord optimalDistance,
                   nodeIndex2 = 
 		    nodes[nodeIndex1].toSucc (p)->target ()->getValue ();
 		  weight = nodes[nodeIndex1].toSucc (p)->getWeight ();
-                  delta  = nodes[nodeIndex2].coord - nodes[nodeIndex1].coord;
+                  springDifference(delta,nodes[nodeIndex2].coord,nodes[nodeIndex1].coord);
 
                   if ((delta.v[0] == 0.0) && 
                       (delta.v[1] == 0.0) && 
@@ -394,16 +425,17 @@ void FFSpring::compute_forces_edges (FFCoord optimalDistance,
 		    delta = point;
 
                   attractiveFactor = delta.abs() / (optimalDistance / weight);
-                  attractiveForce  = delta * attractiveFactor;
+                  springScale(attractiveForce,delta,attractiveFactor);
                   repulsiveFactor  = ((optimalDistance / weight) * 
 				      (optimalDistance / weight)) / 
                     (delta.v[0] * delta.v[0] +
                      delta.v[1] * delta.v[1] + 
                      delta.v[2] * delta.v[2]);
-                  repulsiveForce = delta * repulsiveFactor;
-                  force          = (attractiveForce - repulsiveForce) * weight;
-                  forces[nodeIndex1] += force;
-                  forces[nodeIndex2] -= force;
+                  springScale(repulsiveForce,delta,repulsiveFactor);
+                  springDifference(force,attractiveForce,repulsiveForce);
+                  springScale(force,force,weight);
+                  springAdd(forces[nodeIndex1],force);
+                  springSubtract(forces[nodeIndex2],force);
                   nodes[nodeIndex2].attrib = nodeIndex1;
                 }
             }
@@ -420,7 +452,7 @@ void FFSpring::compute_forces_edges (FFCoord optimalDistance,
                   nodeIndex2 = 
 		    nodes[nodeIndex1].fromPred (p)->source ()->getValue ();
 		  weight = nodes[nodeIndex1].fromPred (p)->getWeight ();
-                  delta  = nodes[nodeIndex2].coord - nodes[nodeIndex1].coord;
+                  springDifference(delta,nodes[nodeIndex2].coord,nodes[nodeIndex1].coord);
 
                   if ((delta.v[0] == 0.0) && 
                       (delta.v[1] == 0.0) && 
@@ -428,16 +460,17 @@ void FFSpring::compute_forces_edges (FFCoord optimalDistance,
 		    delta = point;
                   
                   attractiveFactor = delta.abs() / (optimalDistance / weight);
-                  attractiveForce  = delta * attractiveFactor;
+                  springScale(attractiveForce,delta,attractiveFactor);
                   repulsiveFactor  = ((optimalDistance / weight) *
 				      (optimalDistance / weight)) / 
                     (delta.v[0] * delta.v[0] +
                      delta.v[1] * delta.v[1] + 
                      delta.v[2] * delta.v[2]);
-                  repulsiveForce = delta * repulsiveFactor;
-                  force          = (attractiveForce - repulsiveForce) * weight;
-                  forces[nodeIndex1] += force;
-                  forces[nodeIndex2] -= force;
+                  springScale(repulsiveForce,delta,repulsiveFactor);
+                  springDifference(force,attractiveForce,repulsiveForce);
+                  springScale(force,force,weight);
+                  springAdd(forces[nodeIndex1],force);
+                  springSubtract(forces[nodeIndex2],force);
                   nodes[nodeIndex2].attrib = nodeIndex1;
                 }
             }  
@@ -447,7 +480,7 @@ void FFSpring::compute_forces_edges (FFCoord optimalDistance,
               if (nodes[k].attrib != nodeIndex1)
                 {
                   nodeIndex2 = k;
-                  delta = nodes[nodeIndex2].coord - nodes[nodeIndex1].coord;
+                  springDifference(delta,nodes[nodeIndex2].coord,nodes[nodeIndex1].coord);
 
                   if ((delta.v[0] == 0.0) && 
                       (delta.v[1] == 0.0) && 
@@ -458,9 +491,9 @@ void FFSpring::compute_forces_edges (FFCoord optimalDistance,
                     (delta.v[0] * delta.v[0] + 
                      delta.v[1] * delta.v[1] + 
                      delta.v[2] * delta.v[2]);
-                  repulsiveForce = delta * repulsiveFactor;
-                  forces[nodeIndex1] -= repulsiveForce;
-                  forces[nodeIndex2] += repulsiveForce;
+                  springScale(repulsiveForce,delta,repulsiveFactor);
+                  springSubtract(forces[nodeIndex1],repulsiveForce);
+                  springAdd(forces[nodeIndex2],repulsiveForce);
                 }  
             }      
         }
@@ -480,7 +513,11 @@ FFCoord FFSpring::compute_maxForce (FFPoint *forces, int anzN,
       
  for (int i = 1 ; i <= anzN; i++)
   {  
-   absForces[i] = forces[i].abs ();
+   // FFPoint::abs() squares in FFCoord (float), which can overflow even
+   // when the length is representable. An infinite length then makes the
+   // cooling temperature infinite and the normalized displacement NaN.
+   // hypot also preserves small nonzero lengths whose squares underflow.
+   absForces[i] = std::hypot(forces[i].v[0], forces[i].v[1], forces[i].v[2]);
    
    if (absForces[i] > maxAbsForce)
     maxAbsForce = absForces[i];
@@ -510,7 +547,8 @@ void FFSpring::compute_nodePosition (FFPoint *forces,
       for (i = 1;  i <= anzN; i++)
         { 
 	  // Falls Knoten nicht festgehalten werden soll
-	  if (nodes[i].move)
+	  // Zero force means no displacement, even when temperature is zero.
+	  if (nodes[i].move && absForces[i] != 0.0)
 	    {
 	      if (absForces[i] < temperature)
 		{ 
@@ -535,7 +573,8 @@ void FFSpring::compute_nodePosition (FFPoint *forces,
       for (i = 1;  i <= anzN; i++)
         {
 	  // Falls Knoten nicht festgehalten werden soll
-	  if (nodes[i].move)
+	  // Do not normalize a zero force (0/0 at equilibrium).
+	  if (nodes[i].move && absForces[i] != 0.0)
 	    {
 	      if (absForces[i] < temperature)
 		{ 
@@ -609,7 +648,7 @@ void FFSpring::write_nodePosition (int anzN )
      // cerr << "Moving node to: " << nodes[i].coord() << endl;
      
      gn = (*nodes[i].node) ();
-     if (gn)
+     if (gn && nodes[i].move)
       gn->moveTo (nodes[i].coord);  
     }
 }
@@ -626,6 +665,9 @@ void FFSpring::change_optDist (FFCoord &optimalDistance)
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
+  // Disabling weights must also disable their ideal-distance normalization.
+  if (!useEdgeWeight)
+    return;
   FFCoord        maxWeight;
   FFSet <FFEdge> allEdges;
   Pix            p;
@@ -689,6 +731,7 @@ void FFSpring::springembedder_layout (const FFSet <FFNode> &locNodes)
       maxIter  = int ((5000 * quality) / anzN);  
       if (maxIter < 30)
 	maxIter = 30;
+      maxIter = std::min(maxIter,maxIteration);
     }
   else if(quality == 0)
     {
@@ -732,6 +775,10 @@ void FFSpring::springembedder_layout (const FFSet <FFNode> &locNodes)
       temperature = cool (actMaxForce, 0.3, coolMaxForce1, 
                           coolMaxForce2, coolMaxForce3, coolMaxForce4, 
                           coolPhase);
+      // High-degree graphs can make sqrt(maxForce) exceed the node
+      // separations, amplifying oscillations until even forces overflow.
+      // Move by at most one ideal edge length; retain smaller cooling steps.
+      temperature = std::min(temperature, optimalDistance);
       
       compute_nodePosition (forces, anzN,  temperature, absForces);
       iterationCount++;
@@ -789,9 +836,13 @@ void FFSpring::springembedder (const FFSet<FFNode>& locNodes)
         // Nur ein Knoten zu layouten, also diesen Knoten an den Offset-
         // Punkt setzen.
         const FFSet <FFNode>& allNodes= graph->allNodes();
-        FFGraphicNode  *gn= (*allNodes (allNodes.first ())) ();
-        if (gn)
-         gn->moveTo (offset);
+        FFNode node = allNodes(allNodes.first());
+        FFGraphicNode* gn = node->getGraphicNode();
+        if (gn && !locNodes.contains(node)) {
+          FFPoint position = offset;
+          if (dimension == 2) position.v[2] = 0;
+          gn->moveTo(position);
+        }
        }
     }
   

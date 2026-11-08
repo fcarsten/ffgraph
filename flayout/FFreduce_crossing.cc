@@ -4,6 +4,15 @@
 */
 
 #include <ffgraph/FFreduce_crossing.h>
+#include "FFcrossing_count.h"
+#include <algorithm>
+#include <limits>
+#include <vector>
+#include <memory>
+#include "FFsugi_sizes.h"
+#ifdef FFGRAPH_VERIFY_SUGIYAMA_COUNTS
+#include <stdexcept>
+#endif
 
 void make_matrix (SNode *nodes, int level, int *matrix, int maxS, 
 		  int newmaxS, int *nodeArray)
@@ -94,12 +103,15 @@ BOOL sorted (FFCoord *vector, int max)
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int i;
+  int previous = 0;
 
-  for (i = 1; i < max; i++)
-    if ((vector[i] > vector [i+1]) && 
-        (vector[i+1] != 0.0))	  
-      return (NO);
+  for (int i = 1; i <= max; i++)
+    if (vector[i] != 0.0)
+      {
+        if (previous != 0 && vector[previous] > vector[i])
+          return (NO);
+        previous = i;
+      }
     
   return (YES);
 }
@@ -128,13 +140,16 @@ BOOL equal_matrix (int *matrix1, int *matrix2, int r, int c,
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int i,
-    j;
-
-  for (i = 0; i <= r; i++)
-    for (j = 0; j <= c; j++)
-      if (matrix1[i*maxS + j] != matrix2[i*maxS + j])
-        return (NO);
+  if (r < 0 || c < 0) return YES;
+  const auto width = static_cast<std::size_t>(c) + 1;
+  // Include row/column-zero IDs, but never compare unused padding. Full-width
+  // rectangles are contiguous; otherwise compare only each active row span.
+  if (maxS > 0 && width == static_cast<std::size_t>(maxS))
+    return std::equal(matrix1,matrix1+(static_cast<std::size_t>(r)+1)*width,matrix2) ? YES : NO;
+  for (int row = 0; row <= r; ++row) {
+    const auto offset = static_cast<std::ptrdiff_t>(row)*maxS;
+    if (!std::equal(matrix1+offset,matrix1+offset+width,matrix2+offset)) return NO;
+  }
 
   return (YES);
 }
@@ -147,9 +162,8 @@ FFCoord row_barycenter (int *matrix, int i, int max, int maxS)
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int r1 = 0, 
-    r2 = 0,
-    j;
+  std::int64_t r1 = 0, r2 = 0;
+  int j;
 	
   for (j = 1; j <= max; j++)
     if (matrix[i*maxS + j] == 1)
@@ -172,9 +186,8 @@ FFCoord column_barycenter (int *matrix, int j, int max, int maxS)
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int r1 = 0, 
-    r2 = 0,
-    i;
+  std::int64_t r1 = 0, r2 = 0;
+  int i;
 	
   for (i = 1; i <= max; i++)
     if (matrix[i*maxS + j] == 1)
@@ -189,31 +202,54 @@ FFCoord column_barycenter (int *matrix, int j, int max, int maxS)
     return ((FFCoord) r1 / (FFCoord) r2);
 }
 
-int number_of_crossings (int *matrix, int r, int c, int maxS)
-///////////////////////////////////////////////////////////////////
-//                                                               //
-// Berechnet Anzahl der Ueberkreuzungen ("r" Anzahl der Zeilen,  //
-// "c" Anzahl der Spalten).                                      //
-// (Hier koennte man mit einem aufwendigeren Verfahren noch      //
-// Laufzeit rausholen ...)                                       //
-//                                                               //
-///////////////////////////////////////////////////////////////////
+namespace ffgraph_sugiyama {
+CrossingCount countCrossings(const int* matrix, int r, int c, int maxS)
 {
-  int j, 
-    k, 
-    alpha, 
-    beta, 
-    result = 0;
+  if (r < 2 || c < 2) return 0;
+  std::vector<CrossingCount> columns(static_cast<std::size_t>(c) + 1, 0);
+  CrossingCount previousEdges = 0, result = 0;
+  for (int row = 1; row <= r; ++row) {
+    const int* cells = matrix + static_cast<std::size_t>(row) * maxS;
+    auto right = previousEdges;
+    for (int col = 1; col <= c; ++col) {
+      right -= columns[col];
+      // Count earlier-row endpoints strictly to the right. Equal columns
+      // share a target and do not cross; only cells equal to 1 are edges.
+      if (cells[col] == 1) {
+        result += right;
+        // right started with earlier-row edges, and each column is consumed
+        // once. Updating this column now cannot affect later queries this row.
+        ++columns[col]; ++previousEdges;
+      }
+    }
+  }
+#ifdef FFGRAPH_VERIFY_SUGIYAMA_COUNTS
+  // Diagnostic builds compare every actual matrix state with the former
+  // pair enumeration. This code is absent from normal application builds.
+  CrossingCount reference = 0;
+  for (int upper = 1; upper < r; ++upper)
+    for (int lower = upper + 1; lower <= r; ++lower)
+      for (int left = 1; left < c; ++left)
+        if (matrix[lower * maxS + left] == 1)
+          for (int right = left + 1; right <= c; ++right)
+            if (matrix[upper * maxS + right] == 1) ++reference;
+  if (reference != result) throw std::logic_error("Sugiyama crossing counter disagrees with reference");
+#endif
+  return result;
+}
+}
 
-  for (j = 1; j <= r-1; j++)
-    for (k = j+1; k <= r; k++)
-      for (alpha = 1; alpha <= c-1; alpha++)
-        if (matrix[k*maxS + alpha] == 1) 
-          for (beta = alpha+1; beta <= c; beta++)
-            if (matrix[j*maxS + beta] == 1) 
-              result++;
+namespace {
+int narrowCrossings(ffgraph_sugiyama::CrossingCount count) {
+  // Preserve the legacy int helper signatures without signed overflow.
+  // Layout decisions use the full-width counts, not these saturated wrappers.
+  return static_cast<int>(std::min(count,
+    static_cast<ffgraph_sugiyama::CrossingCount>(std::numeric_limits<int>::max())));
+}
+}
 
-  return (result);
+int number_of_crossings(int* matrix, int r, int c, int maxS) {
+  return narrowCrossings(ffgraph_sugiyama::countCrossings(matrix, r, c, maxS));
 }
 
 void exch_double (FFCoord *x1, FFCoord *x2)
@@ -312,9 +348,8 @@ int r_r (int *matrix1, int *matrix2, int max_r, int max_c,
   int i,
     j;
 	
-  b = new FFCoord [maxS];
-  if (b == 0)
-    return (1);
+  std::unique_ptr<FFCoord[]> buffer(new FFCoord[ffgraph_sugiyama::arrayCount<FFCoord>(maxS)]);
+  b = buffer.get();
 
   //  Zeilenbarycenter berechnen 
   for (i = 1; i <= max_r; i++)
@@ -337,11 +372,11 @@ int r_r (int *matrix1, int *matrix2, int max_r, int max_c,
         } 
     }
 
-  delete[] b;
+
   return (0);
 }
 
-int r_c (int *matrix1, int *matrix2, int max_c, int maxS)
+int r_c (int *matrix1, int *matrix2, int max_r, int max_c, int maxS)
 ///////////////////////////////////////////////////////////////////
 //                                                               //
 // Die Reihenfolge der Spalten mit gleichem Barycenter wird      //
@@ -354,13 +389,12 @@ int r_c (int *matrix1, int *matrix2, int max_c, int maxS)
   int i,
     j;
 	
-  b = new FFCoord [maxS];
-  if (b == 0)
-    return (1);
+  std::unique_ptr<FFCoord[]> buffer(new FFCoord[ffgraph_sugiyama::arrayCount<FFCoord>(maxS)]);
+  b = buffer.get();
 
   //  Spaltenbarycenter berechnen 
   for (i = 1; i <= max_c; i++)
-    b[i] = column_barycenter (matrix1, i, max_c, maxS);
+    b[i] = column_barycenter (matrix1, i, max_r, maxS);
 
   //  Reihenfolge der Spalten mit gleichem Barycenter umkehren 
   for (i = 1; i < max_c; i++)
@@ -379,99 +413,88 @@ int r_c (int *matrix1, int *matrix2, int max_c, int maxS)
         } 
     }
 
-  delete[] b;
+
   return (0);
 }
 
-int b_r (int *matrix1, int *matrix2, int max_r, int max_c, 
-	 int maxS)
-///////////////////////////////////////////////////////////////////
-//                                                               //
-// Ordnet Zeilen anhand des Barycenter der Zeilen, Nullzeilen    //
-// bleiben stehen.                                               //
-// Rueckgabewert 1, falls Fehler.                                //
-//                                                               //
-///////////////////////////////////////////////////////////////////
-{
-  FFCoord *b;
-  int k, 
-    i, 
-    j;
- 
-  b = new FFCoord [maxS];
-  if (b == 0)
-    return (1);
-
-  for (i = 1; i <= max_r; i++)
-    b[i] = row_barycenter (matrix1, i, max_c, maxS);   
-
-  for (j = max_r; j > 1; j--)
-    if (b[j] != 0.0)						
-      for (i = 1; i < j; i++)
-        if (b[i] != 0.0)
-          {
-            k = i+1;
-            while (b[k] == 0.0)
-              k++;
-
-            if (b[i] > b[k])
-              {
-                exch_double (&b[i], &b[k]);
-                exch_rows (matrix1, i, k, maxS);
-
-                if (matrix2 != 0)
-                  exch_columns (matrix2, i, k, maxS);
-              }
+namespace {
+int barycenterPermutation(int* matrix, int* partner, int rows, int columns, int stride, bool byRows) {
+  std::vector<int> slots;
+  std::vector<std::pair<FFCoord,int>> order;
+  const int count = byRows ? rows : columns;
+  for (int i = 1; i <= count; ++i) {
+    const auto value = byRows ? row_barycenter(matrix,i,columns,stride) : column_barycenter(matrix,i,rows,stride);
+    if (value != 0) { slots.push_back(i); order.emplace_back(value,i); }
+  }
+  std::stable_sort(order.begin(),order.end(),[](const auto& a, const auto& b) { return a.first < b.first; });
+  bool changed = false;
+  for (std::size_t i = 0; i < slots.size(); ++i) changed |= slots[i] != order[i].second;
+  if (!changed) return 0;
+  // Decompose destination <- source into disjoint cycles. Fixed nonzero slots,
+  // like zero-barycenter slots, need no copying. Keep the same permutation for
+  // the neighboring matrix's opposite axis, including metadata and padding.
+  std::vector<int> sourceForSlot(count+1);
+  for (std::size_t i = 0; i < slots.size(); ++i) sourceForSlot[slots[i]] = order[i].second;
+  std::vector<unsigned char> visited(count+1,0);
+  std::vector<int> cycleStarts;
+  for (int start : slots) {
+    if (visited[start] || sourceForSlot[start] == start) continue;
+    cycleStarts.push_back(start);
+    int current = start;
+    do {
+      visited[current] = 1;
+      current = sourceForSlot[current];
+    } while (current != start);
+  }
+  // Rows are contiguous; columns are processed one physical row at a time.
+  // Only a single row of scratch is needed, rather than slots.size()*stride.
+  std::vector<int> savedRow(byRows || partner ? stride : 0);
+  auto apply = [&](int* cells, bool rowWise) {
+    if (rowWise) {
+      for (int start : cycleStarts) {
+        std::copy_n(cells+std::size_t(start)*stride,stride,savedRow.data());
+        int current = start;
+        while (sourceForSlot[current] != start) {
+          const int source = sourceForSlot[current];
+          std::copy_n(cells+std::size_t(source)*stride,stride,cells+std::size_t(current)*stride);
+          current = source;
+        }
+        std::copy_n(savedRow.data(),stride,cells+std::size_t(current)*stride);
+      }
+    } else {
+      for (int row = 0; row < stride; ++row) {
+        int* values = cells+std::size_t(row)*stride;
+        for (int start : cycleStarts) {
+          const int saved = values[start];
+          int current = start;
+          while (sourceForSlot[current] != start) {
+            values[current] = values[sourceForSlot[current]];
+            current = sourceForSlot[current];
           }
-  
-  delete[] b;
-  return (0);
-}					
-
-int b_c (int *matrix1, int *matrix2, int max_r, int max_c, 
-	 int maxS)
-///////////////////////////////////////////////////////////////////
-//                                                               //
-// Ordnet Spalten anhand des Barycenter der Spalten, Nullzeilen  //
-// bleiben stehen.                                               //
-// Rueckgabewert 1, falls Fehler.                                //
-//                                                               //
-///////////////////////////////////////////////////////////////////
-{
-  FFCoord *b;
-  int k, 
-    i, 
-    j;
-
-  b = new FFCoord [maxS];
-  if (b == 0)
-    return (1);
-  
-  for (i = 1; i <= max_c; i++)
-    b[i] = column_barycenter (matrix1, i, max_r, maxS);
-	
-  for (j = max_c; j > 1; j--)
-    if (b[j] != 0.0)						
-      for (i = 1; i < j; i++)
-        if (b[i] != 0.0)
-          {
-            k = i+1;
-            while (b[k] == 0.0)
-              k++;
-
-            if (b[i] > b[k])
-              {
-                exch_double (&b[i], &b[k]);
-                exch_columns (matrix1, i, k, maxS);
-		
-                if (matrix2 != 0)
-                  exch_rows (matrix2, i, k, maxS);
-              }
-          }
-  
-  delete[] b;
-  return (0);
-}	
+          values[current] = saved;
+        }
+      }
+    }
+  };
+  apply(matrix,byRows);
+  if (partner) apply(partner,!byRows);
+  return 0;
+}
+}
+int b_r(int* matrix, int* partner, int rows, int columns, int stride) {
+#ifdef FFGRAPH_VERIFY_SUGIYAMA_PERMUTATIONS
+  return ffgraph_test::checkedPermutation(matrix,partner,rows,columns,stride,true,barycenterPermutation);
+#else
+  return barycenterPermutation(matrix,partner,rows,columns,stride,true);
+#endif
+}
+int b_c(int* matrix, int* partner, int rows, int columns, int stride) {
+#ifdef FFGRAPH_VERIFY_SUGIYAMA_PERMUTATIONS
+  return ffgraph_test::checkedPermutation(matrix,partner,rows,columns,stride,false,barycenterPermutation);
+#else
+  return barycenterPermutation(matrix,partner,rows,columns,stride,false);
+#endif
+}
 
 int phase1_down (int *matrixarray, int matrixSize, int *nodeArray, 
 		 int maxL, int maxS, int newmaxS)
@@ -555,9 +578,8 @@ int phase2_down (int *matrixarray, int matrixSize, int *nodeArray,
     i,
     test = 0;
 
-  b = new FFCoord [maxS];
-  if (b == 0)
-    return (1);
+  std::unique_ptr<FFCoord[]> buffer(new FFCoord[ffgraph_sugiyama::arrayCount<FFCoord>(maxS)]);
+  b = buffer.get();
   
   for (level = 0; level < maxL-1; level++)
     {
@@ -569,13 +591,14 @@ int phase2_down (int *matrixarray, int matrixSize, int *nodeArray,
 	{
 	  test = r_c (matrixarray + level*matrixSize, 
 		      matrixarray + (level+1)*matrixSize,
+		      nodeArray[(newmaxS+1)*level],
 		      nodeArray[(newmaxS+1)*(level+1)], maxS);
 	  if (test != 0)
 	    return (1);
 	}
       else 
         {
-          delete[] b;
+
           return (0);
         }
     }
@@ -587,12 +610,13 @@ int phase2_down (int *matrixarray, int matrixSize, int *nodeArray,
   if (sorted (b, nodeArray[(newmaxS+1)*maxL]))
     {
       test = r_c (matrixarray + (maxL-1)*matrixSize, 0, 
+		  nodeArray[(newmaxS+1)*(maxL-1)],
 		  nodeArray[(newmaxS+1)*maxL], maxS);
       if (test != 0)
 	return (1);
     }
 
-  delete[] b;
+
   return (0);
 }	
 
@@ -613,9 +637,8 @@ int phase2_up (int *matrixarray, int matrixSize, int *nodeArray,
     i,
     test;
 
-  b = new FFCoord [maxS];
-  if (b == 0)
-    return (1);
+  std::unique_ptr<FFCoord[]> buffer(new FFCoord[ffgraph_sugiyama::arrayCount<FFCoord>(maxS)]);
+  b = buffer.get();
 
   for (level = maxL-1; level > 0; level--)
     {
@@ -634,7 +657,7 @@ int phase2_up (int *matrixarray, int matrixSize, int *nodeArray,
 	}
       else
         {
-          delete[] b;
+
           return (0);
         }
     }
@@ -649,7 +672,7 @@ int phase2_up (int *matrixarray, int matrixSize, int *nodeArray,
 	return (1);
     }
   
-  delete[] b;
+
   return (0);
 }
 
@@ -687,9 +710,8 @@ void copy_matrixarray (int *a1, int *a2, int maxS, int maxL,
     copy_matrix (a1 + i*matrixSize, a2 + i*matrixSize, maxS);
 }
 
-int number_of_crossings_matrixarray (int *a, int maxS, int newmaxS, 
-				     int matrixSize, int maxL, 
-				     int *nodeArray)
+ffgraph_sugiyama::CrossingCount ffgraph_sugiyama::countCrossingsArray(
+    const int* a, int maxS, int newmaxS, int matrixSize, int maxL, const int* nodeArray)
 ///////////////////////////////////////////////////////////////////
 //                                                               //
 // Berechnet Anzahl der Ueberkreuzungen (Summe ueber alle        //
@@ -697,14 +719,19 @@ int number_of_crossings_matrixarray (int *a, int maxS, int newmaxS,
 //                                                               //
 ///////////////////////////////////////////////////////////////////
 {
-  int result = 0,
-    i;
+  CrossingCount result = 0;
 	
-  for (i = 0; i < maxL; i++)
-    result += number_of_crossings (a + i*matrixSize, 
+  for (int i = 0; i < maxL; i++)
+    result += countCrossings (a + static_cast<std::size_t>(i)*matrixSize,
 				   nodeArray[(newmaxS+1)*i],
                                    nodeArray[(newmaxS+1)*(i+1)], maxS);  
   return (result);
+}
+
+int number_of_crossings_matrixarray(int* a, int maxS, int newmaxS,
+                                   int matrixSize, int maxL, int* nodeArray) {
+  return narrowCrossings(ffgraph_sugiyama::countCrossingsArray(
+    a, maxS, newmaxS, matrixSize, maxL, nodeArray));
 }
 
 int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL, 
@@ -731,44 +758,17 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
     *a1, 
     *a2, 
     *as;
-  int ks, 
-    k, 
-    n1, 
+  ffgraph_sugiyama::CrossingCount ks, k;
+  int n1,
     n2, 
     i,
     test; // Zur Ueberpruefung, ob Funktionen korrekt abgearbeitet wurden
-  int matrixSize = maxS * maxS; 
-  
-  a  = new int [(maxL+1) * matrixSize];
-  if (a == 0)
-    return (1);
+  const int matrixSize = ffgraph_sugiyama::matrixEntries(maxS);
+  const int entries = ffgraph_sugiyama::arrayCount<int>(ffgraph_sugiyama::matrixArrayEntries(maxL,maxS));
+  std::unique_ptr<int[]> aOwner(new int[entries]), a1Owner(new int[entries]);
+  std::unique_ptr<int[]> a2Owner(new int[entries]), asOwner(new int[entries]);
+  a = aOwner.get(); a1 = a1Owner.get(); a2 = a2Owner.get(); as = asOwner.get();
 
-  a1 = new int [(maxL+1) * matrixSize]; 
-  if (a1 == 0)
-    {
-      delete[] a;
-      return (1);
-    }
-
-  a2 = new int [(maxL+1) * matrixSize];  
-  if (a1 == 0)
-    {
-      delete[] a1;
-      delete[] a;
-      return (1);
-    }
-
-  // "a1" und "a2" dienen zum Vergleich, 
-  // um das Abbruchkriterium zu bestimmen. 
-  as = new int [(maxL+1) * matrixSize];
-  if (as == 0)
-    {
-      delete[] a2;
-      delete[] a1;
-      delete[] a;
-      return (1);
-    }
-  
   // Matrix erstellen
   for (i = 0; i < maxL; i++)
     make_matrix (nodes, i, a+i*matrixSize, maxS, newmaxS, nodeArray);
@@ -776,7 +776,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
   copy_matrixarray (a, as, maxS, maxL, matrixSize);
   
   // Zum Vergleich initiale Zahl der Ueberkreuzungen bestimmen.
-  ks = number_of_crossings_matrixarray (as, maxS, newmaxS, matrixSize, 
+  ks = ffgraph_sugiyama::countCrossingsArray (as, maxS, newmaxS, matrixSize,
 					maxL, nodeArray);
   
   n1 = 0;
@@ -787,7 +787,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
       if (test != 0)
 	return (1);
 
-      k = number_of_crossings_matrixarray (a, maxS, newmaxS, matrixSize, 
+      k = ffgraph_sugiyama::countCrossingsArray (a, maxS, newmaxS, matrixSize,
 					   maxL, nodeArray);
       
       if (k < ks)
@@ -799,7 +799,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
       if (test != 0)
 	return (1);
 
-      k = number_of_crossings_matrixarray (a, maxS, newmaxS, matrixSize, 
+      k = ffgraph_sugiyama::countCrossingsArray (a, maxS, newmaxS, matrixSize,
 					   maxL, nodeArray);
 
       if (k < ks)
@@ -834,7 +834,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
 	  if (test != 0)
 	    return (1);
 
-          k = number_of_crossings_matrixarray (a, maxS, newmaxS, matrixSize, 
+          k = ffgraph_sugiyama::countCrossingsArray (a, maxS, newmaxS, matrixSize,
 					       maxL, nodeArray);
 	  
           if (k < ks)
@@ -847,7 +847,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
 	  if (test != 0)
 	    return (1);
 
-          k = number_of_crossings_matrixarray (a, maxS, newmaxS, matrixSize, 
+          k = ffgraph_sugiyama::countCrossingsArray (a, maxS, newmaxS, matrixSize,
 					       maxL, nodeArray);
 
           if (k < ks)
@@ -873,7 +873,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
 	  if (test != 0)
 	    return (1);
 
-          k = number_of_crossings_matrixarray (a, maxS, newmaxS, matrixSize, 
+          k = ffgraph_sugiyama::countCrossingsArray (a, maxS, newmaxS, matrixSize,
 					       maxL, nodeArray);
 	  
           if (k < ks)
@@ -886,7 +886,7 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
 	  if (test != 0)
 	    return (1);
 
-          k = number_of_crossings_matrixarray (a, maxS, newmaxS, matrixSize, 
+          k = ffgraph_sugiyama::countCrossingsArray (a, maxS, newmaxS, matrixSize,
 					       maxL, nodeArray);
 
           if (k < ks)
@@ -912,10 +912,10 @@ int bc_n (SNode *nodes, int maxS, int newmaxS, int maxL,
     store_new_positions (nodes, as + (maxL-1)*matrixSize, maxL-1,
                          nodeArray, maxS, newmaxS);
   
-  delete[] as;
-  delete[] a2;
-  delete[] a1;
-  delete[] a;
+
+
+
+
 
   return (0);
 }
@@ -932,44 +932,20 @@ int bc_2 (SNode *nodes, int maxS, int newmaxS, int *nodeArray)
   int *m;
   int *m0, 
     *ms;
-  int k, 
-    ks, 
-    i,
+  ffgraph_sugiyama::CrossingCount k, ks;
+  int i,
     test;
 
-  m = new int [maxS * maxS];
-  if (m == 0)
-    return (1);
+  const int entries = ffgraph_sugiyama::arrayCount<int>(ffgraph_sugiyama::matrixEntries(maxS));
+  std::unique_ptr<int[]> mOwner(new int[entries]), m0Owner(new int[entries]), msOwner(new int[entries]);
+  std::unique_ptr<FFCoord[]> bOwner(new FFCoord[ffgraph_sugiyama::arrayCount<FFCoord>(maxS)]);
+  m = mOwner.get(); m0 = m0Owner.get(); ms = msOwner.get(); b = bOwner.get();
 
-  m0 = new int [maxS * maxS];
-  if (m0 == 0)
-    {
-      delete[] m;
-      return (1);
-    }
-
-  ms = new int [maxS * maxS];
-  if (ms == 0)
-    {
-      delete[] m0;
-      delete[] m;
-      return (1);
-    }
-
-  b = new FFCoord [maxS];
-  if (b == 0)
-    {
-      delete[] ms;
-      delete[] m0;
-      delete[] m;
-      return (1);
-    }
-      
   make_matrix (nodes, 0, m, maxS, newmaxS, nodeArray);
   copy_matrix (m, ms, maxS);
 
   // "ks" enthaelt die bisher kleinste Anzahl Ueberkreuzungen.
-  ks = number_of_crossings (m, nodeArray[0], nodeArray[(newmaxS+1)], maxS);
+  ks = ffgraph_sugiyama::countCrossings (m, nodeArray[0], nodeArray[(newmaxS+1)], maxS);
   
   while (YES)
     {
@@ -981,7 +957,7 @@ int bc_2 (SNode *nodes, int maxS, int newmaxS, int *nodeArray)
 	  if (test != 0)
 	    return (1);
 
-          k = number_of_crossings (m, nodeArray[0], nodeArray[(newmaxS+1)],
+          k = ffgraph_sugiyama::countCrossings (m, nodeArray[0], nodeArray[(newmaxS+1)],
 				   maxS);
 
           if (k < ks)
@@ -995,7 +971,7 @@ int bc_2 (SNode *nodes, int maxS, int newmaxS, int *nodeArray)
 	  if (test != 0)
 	    return (1);
 	  
-	  k = number_of_crossings (m, nodeArray[0], nodeArray[(newmaxS+1)], 
+	  k = ffgraph_sugiyama::countCrossings (m, nodeArray[0], nodeArray[(newmaxS+1)],
 				   maxS);
 	  
 	  if (k < ks)
@@ -1021,25 +997,24 @@ int bc_2 (SNode *nodes, int maxS, int newmaxS, int *nodeArray)
           continue;
         }
 
-      test = r_c (m, 0, nodeArray[(newmaxS+1)], maxS);
+      test = r_c (m, 0, nodeArray[0], nodeArray[(newmaxS+1)], maxS);
       if (test != 0)
 	return (1);
 	
       for (i = 1; i <= nodeArray[0]; i++)
         b[i] = row_barycenter (m, i, nodeArray[(newmaxS+1)], maxS);
       
-      if ((sorted (b, nodeArray[0])) ||
-	  (sorted (b, nodeArray[(newmaxS+1)])))
+      if (sorted (b, nodeArray[0]))
         break;
     }
 
   // neue Positionen merken (in "nodeArray" aktualisieren)
   store_new_positions (nodes, ms, 0, nodeArray, maxS, newmaxS);
 
-  delete[] b;
-  delete[] m;
-  delete[] m0;
-  delete[] ms;
+
+
+
+
 
   return (0);
 }
@@ -1064,7 +1039,13 @@ int reduce_crossings (SNode *nodes,
 {
   int test = 0;
 
-  maxS++;
+  if (cross_alg != 0 || maxL == 0) return 0;
+  try {
+    ffgraph_sugiyama::levelEntries(maxL,newmaxS);
+    maxS = ffgraph_sugiyama::checkedAdd(maxS,1);
+    ffgraph_sugiyama::arrayCount<int>(ffgraph_sugiyama::reductionEntries(maxL,maxS));
+  } catch (const ffgraph_sugiyama::SizeError&) { return 1; }
+
   
   if (cross_alg == 0)  //  Algorithmus mittels Adjazenzmatrizen
     {

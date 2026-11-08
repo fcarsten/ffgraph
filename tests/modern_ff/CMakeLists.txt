@@ -19,12 +19,12 @@ target_include_directories(ffgraph_modern_ff PUBLIC
   "${PROJECT_SOURCE_DIR}/fgraph/modern"
   "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_compile_options(ffgraph_modern_ff PRIVATE -Wall -Wextra)
-if(BUILD_TESTING)
+if(BUILD_TESTING AND NOT FFGRAPH_INITIAL_TESTS_ONLY)
   add_executable(test_ff_graph_regression_pass12
     test_ff_graph_regression_pass12.cpp)
   target_link_libraries(test_ff_graph_regression_pass12 PRIVATE ffgraph_modern_ff
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-    PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
   target_compile_definitions(test_ff_graph_regression_pass12 PRIVATE
     FFGRAPH_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
   add_test(NAME test_ff_graph_regression_pass12 COMMAND test_ff_graph_regression_pass12)

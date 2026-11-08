@@ -18,7 +18,7 @@
 #include <container/VOHSet.h>
 #include <container/VHSet.h>
 #include <container/MPlex.h>
-#include "String.h"
+#include "FFString.h"
 #include "FFGraphClass.h"
 #include "FFPoint.h"
 

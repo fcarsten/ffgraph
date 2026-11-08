@@ -36,13 +36,13 @@ if(BUILD_TESTING)
 endif()
 
 if(TARGET FFGraph)
-  if(BUILD_TESTING)
+  if(BUILD_TESTING AND NOT FFGRAPH_INITIAL_TESTS_ONLY)
     add_executable(test_rome_graph_regression_pass12 test_rome_graph_regression_pass12.cpp)
     target_compile_definitions(test_rome_graph_regression_pass12 PRIVATE
       FFGRAPH_TEST_SOURCE_DIR="${CMAKE_CURRENT_LIST_DIR}/../..")
     target_link_libraries(test_rome_graph_regression_pass12 PRIVATE ffgraph_modern_rome
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
     add_test(NAME test_rome_graph_regression_pass12 COMMAND test_rome_graph_regression_pass12)
     add_test(NAME test_rome_generated_oracle_pass12 COMMAND test_rome_graph_regression_pass12 --generated)
     add_test(NAME test_rome_modern_failures_pass12 COMMAND test_rome_graph_regression_pass12 --failures)

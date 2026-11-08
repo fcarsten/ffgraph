@@ -1,9 +1,12 @@
-#!/public/bin/pixmap-wish -f
+source [file join [file dirname [info script]] ttk.tcl]
+#!/usr/bin/env wish
 # Program: sugi
 # Tcl version: 7.3 (Tcl/Tk/XF)
 # Tk version: 3.6
 # XF version: 2.3
 #
+
+source [file join [file dirname [info script]] icons.tcl]
 
 # proc setBusy
 proc setBusy { } {
@@ -25,7 +28,7 @@ proc setWorkingMode {mode theEntry} {
 }
 
 proc buildToolBar {} {
-  frame .toolFrame
+  ttk::frame .toolFrame
 }
 
 # proc createButton
@@ -35,11 +38,11 @@ proc createButton {b name args} {
   
   set nase "$body1 $args"
   
-  button $b -text $name -command $nase -padx 0 -pady 0
+  ttk::button $b -text $name -command $nase
   
   global mousepressed
   bind $b <1> {
-    %W configure -relief sunken
+    %W state pressed
     set mousepressed 1
     while {$mousepressed != "0"} {
       %W invoke
@@ -49,7 +52,7 @@ proc createButton {b name args} {
     break;
   }
   bind $b <ButtonRelease-1> {
-    %W configure -relief raised 
+    %W state !pressed
     if {$mousepressed == "1"} {
       set mousepressed 0
     }
@@ -186,143 +189,8 @@ proc addLine { canv col args} {
   return $cfTmpTag
 }
 
-proc createIcon { iconFile {selIconFile "__NoIcon__"} } {
-  global ICON_LIB_DIS
-  global iconCache
-  global iconFileCache
-  set unselErg [_createIcon $iconFile]
-  
-  if {$selIconFile == "__NoIcon__"} {
-    set selErg $unselErg
-  } {
-    set selErg [_createIcon $selIconFile]
-  }
-}
-  
-proc createIcon { iconFile {selIconFile "__NoIcon__"} } {
-  global ICON_LIB_DIR
-#     puts "Create Icon"
-#     puts $iconFile
-#     puts $selIconFile
-  global iconCache
-  
-  set bild [file rootname $iconFile]
-  set typ [file extension $iconFile]	
-  if { $typ == "" } {
-    set typ xpm
-  } {
-    set typ [string trimleft $typ {.}]
-  }
-  
-  switch $typ {xbm} {
-    set createTyp bitmap
-  } {xpm} {
-    set createTyp pixmap
-  } {default} {
-    set createTyp photo
-  }       
-
-  if { $selIconFile != "__NoIcon__" } {
-    set selBild [file rootname $selIconFile]
-    set selTyp [file extension $selIconFile]	
-    if { $selTyp == "" } {
-      set selTyp xpm
-    } {
-      set selTyp [string trimleft $selTyp {.}]
-    }
-
-    switch $selTyp {xbm} {
-      set selCreateTyp bitmap
-    } {xpm} {
-      set selCreateTyp pixmap
-    } {default} {
-      set selCreateTyp photo
-    }       
-  } {
-    set selTyp $typ
-    set selBild $bild
-    set selCreateTyp $createTyp
-  }
-  
-
-# Wir haben das Bild und evlt. auch ein Select Bild
-# Wenn kein Select Bild => Bild := Select Bild
-
-  set tmpF 0
-  
-  if { [info exists iconCache($bild,$typ)] } {
-    # puts "Using Cache for icon"
-    set cfTmpImage $iconCache($bild,$typ)
-    set tmpF 1
-  } {
-    if { [file exists $ICON_LIB_DIR/$typ/[set bild].$typ] } {
-      set normalBild $ICON_LIB_DIR/$typ/[set bild].$typ
-      set tmpF 1
-    }
-  }
-  
-  if { $tmpF == 1 } {
-    if { $selBild != "" } {
-      if { [info exists selIconCache($selBild,$selTyp)] } {
-        # puts "Using Cache for selectIcon"
-        set cfTmpSelImage $iconCache($selBild,$selTyp)
-      } {
-        if {[file exists $ICON_LIB_DIR/$selTyp/[set selBild].$selTyp]} {
-          set selectBild $ICON_LIB_DIR/$selTyp/[set selBild].$selTyp
-        } {
-          set selectBild $normalBild
-        }
-      }
-    } {
-      set selBild $bild
-      set selTyp $typ
-    }
-  } { 
-# Wir haben kein Bild gefunden und suchen nach der alten *N *S 
-    if { [file exists $ICON_LIB_DIR/$typ/[set bild]N.$typ] } {
-      set normalBild $ICON_LIB_DIR/$typ/[set bild]N.$typ
-      if { [file exists $ICON_LIB_DIR/$typ/[set bild]S.$typ] } {
-        set selectBild $ICON_LIB_DIR/$typ/[set bild]S.$typ 
-      } {
-        set selectBild $normalBild
-      }
-      set selCreateTyp $createTyp
-    } {
-      puts stderr " Couldn't find icon \"$iconFile\" !!! "
-      return ""
-    }
-  }
-
-  if { [info exists cfTmpImage] } {
-    # puts "Bestätige Icon Cache"
-  } {
-    set cfTmpImage [image create $createTyp -file $normalBild ]
-    set iconCache($bild,$typ) $cfTmpImage
-    global iconFileCache
-    set iconFileCache($cfTmpImage,$typ) $normalBild
-    puts "Building Icon Cache"
-    puts "set iconFileCache($cfTmpImage,$typ) $normalBild"
-  }
-  
-  set tmpA $selBild.$selTyp
-  set tmpB $bild.$typ
-  if { $tmpA != $tmpB } {
-    if { [info exists cfTmpSelImage] } {
-      # puts "Bestätige selIcon Cache"
-    } {
-      set cfTmpSelImage [image create $selCreateTyp -file $selectBild]
-      set iconCache($selBild,$selTyp) $cfTmpSelImage
-      global iconFileCache
-      set iconFileCache($cfTmpImage,$typ) $normalBild
-      puts "Building Icon Cache"
-      puts "set iconFileCache($cfTmpImage,$typ) $normalBild"
-    }
-  } {
-    set cfTmpSelImage $cfTmpImage
-  }
-  
-#   puts "$cfTmpImage $cfTmpSelImage $typ $selTyp"
-  return "$cfTmpImage $cfTmpSelImage $typ $selTyp"
+proc createIcon {iconFile {selIconFile "__NoIcon__"}} {
+  return [::ffgraph_icons::pair $iconFile $selIconFile]
 }
 
 proc nodeButton3 {befehl W X Y x y} {
@@ -382,8 +250,12 @@ proc addUserNodeBinding {canv cfTmpTag befehl} {
 
 proc addDefFigure {canv x y x2 y2} {
   global DefShape
-#  puts "addDefFigure $DefShape $canv $x $y $x2 $y2"
-  case $DefShape {Circle} {
+  # Interactive creation first draws the plain node, then applies the chosen
+  # icon in C++. Keep a valid item ID during that interval without changing
+  # the user's selected creation mode.
+  set figure $DefShape
+  if {$figure eq "Icon"} {set figure Circle}
+  case $figure {Circle} {
     return [$canv create oval [expr ($x-$x2)] [expr ($y+$x2)] \
               [expr ($x+$x2)] [expr ($y-$x2)]] 
   } {Oval} {
@@ -406,62 +278,19 @@ proc addDefFigure {canv x y x2 y2} {
 }
 
 # Procedure: addNode
-proc addNode { canv x y r col {iconFile "__NoIcon__"} {selIconFile "__NoIcon__"}} {
-  global DefShape
-  set tmpShape $DefShape
-  
-#   if {$iconFile != "__NoIcon__"} {
-#     set tmpShape "Icon"
-#   } else {
-#     if {$DefShape == "Icon"} {
-#       set DefShape "Circle"
-#       set tmpR [addNode $canv $x $y 1 $col]
-#       set DefShape "Icon"
-#       return $tmpR
-#     }
-#   }
-
-#   case $tmpShape {Window} {
-#     set cfTmpTag [addSubWindow $canv $x $y]
-#   } {Icon} {
-#     global ICON_LIB_DIR
-#     global tk_version
-    
-#     global selectImage
-#     global unselectImage
-#     global iconType    
-#     global iconSelType    
-    
-#     set tmpCreate [createIcon $iconFile $selIconFile]
-    
-#     if {$tmpCreate == ""} {
-#       return [addNode $canv $x $y $r $col]
-#     }
-    
-#     set cfTmpTag [$canv create image $x $y]
-    
-#     scan  $tmpCreate "%s %s %s %s" \
-#       unselectImage($canv,$cfTmpTag) \
-#       selectImage($canv,$cfTmpTag) iconType($canv,$cfTmpTag) \
-#       iconSelType($canv,$cfTmpTag)
-    
-#     $canv itemconfigure $cfTmpTag -image $unselectImage($canv,$cfTmpTag)
-#     $canv addtag iconNode withtag $cfTmpTag
-#   } {default} {
-    set cfTmpTag [addDefFigure $canv $x $y $r $r]
-    $canv itemconfigure $cfTmpTag -fill "black" \
-      -outline $col -width {2}
-#  } 
-  
-  $canv addtag nodetag withtag $cfTmpTag
-
-  if {$tmpShape == "Window"} {
-    set cfTmpTag "$canv.$cfTmpTag.canvas2 $cfTmpTag"
+proc addNode {canv x y r col {iconFile "__NoIcon__"} {selIconFile "__NoIcon__"} {allowFallback 0}} {
+  if {$iconFile ne "__NoIcon__"} {
+    lassign [::ffgraph_icons::nodePair $iconFile $selIconFile $allowFallback] pair placeholder
+    set item [$canv create image $x $y -image [lindex $pair 0]]
+    ::ffgraph_icons::remember $canv $item $pair $placeholder
+    $canv addtag iconNode withtag $item
+  } else {
+    set item [addDefFigure $canv $x $y $r $r]
+    $canv itemconfigure $item -fill black -outline $col -width 2
   }
-  
-  addNodeBindings $canv $cfTmpTag
-
-  return $cfTmpTag
+  $canv addtag nodetag withtag $item
+  addNodeBindings $canv $item
+  return $item
 }
 
 # Procedure: addStdLine
@@ -616,51 +445,19 @@ proc changeEdgeColor { edge col {canv "."}} {
 
 
 # Procedure: changeToIcon
-proc changeToIcon {item icon selIcon {x 0} {y 0} {canv "."}} {
-  global ICON_LIB_DIR
-  if {$canv == "."} {
-    global symbolicName
-    set canv [set symbolicName(graphView)]
-  }
-  
- # puts "Change to Icon :$icon: :$selIcon: at ($x,$y)"
-
+proc changeToIcon {item icon selIcon {x 0} {y 0} {canv "."} {allowFallback 0}} {
+  global symbolicName
+  if {$canv eq "."} {set canv $symbolicName(graphView)}
+  # Load first: a missing/unsupported image must not delete the existing item.
+  lassign [::ffgraph_icons::nodePair $icon $selIcon $allowFallback] pair placeholder
   focus $canv
-  
-  if { ($item != {}) && ([lsearch [$canv gettags $item] iconNode] != -1)} {
-      global tk_version
-      if { $tk_version < 4 } {
-        global icons
-        $canv itemconfigure $item  -bitmap \
-          @$ICON_LIB_DIR/xpm/[set icon]N.xpm
-        set icons($canv,$item) $icon
-      } {
-        global selectImage
-        global unselectImage
-        global iconType    
-        global iconSelType    
-        
-        set tmpCreate [createIcon $icon $selIcon]
-        
-        if {$tmpCreate == ""} {
-          return ""
-        }
-      
-        scan $tmpCreate "%s %s %s %s" \
-          unselectImage($canv,$item) \
-          selectImage($canv,$item) iconType($canv,$item) \
-          iconSelType($canv,$item)
-      
-        $canv itemconfigure $item -image $unselectImage($canv,$item)
-      }
-      return "" 
-  } {
-#    scan [$canv coords $item] {%f %f} x y
-    if {$item != ""} {
-      removeItem $canv $item
-    }
-    return [addNode $canv $x $y 10 {black} $icon $selIcon]
+  if {$item ne "" && [lsearch -exact [$canv gettags $item] iconNode] >= 0} {
+    ::ffgraph_icons::remember $canv $item $pair $placeholder
+    $canv itemconfigure $item -image [lindex $pair 0]
+    return ""
   }
+  if {$item ne ""} {removeItem $canv $item}
+  return [addNode $canv $x $y 10 black $icon $selIcon $allowFallback]
 }
 
 proc clearLayoutMenu {} {
@@ -774,40 +571,21 @@ proc button1Release {befehl W x y} {
       set dBreite [expr abs($canvX - $dragBoxX)]
       set dHoehe [expr abs($canvY - $dragBoxY)]
       
-      set scaleFak [ffMin [expr ($breite/$dBreite)] [expr ($hoehe/$dHoehe)]]
-        
-#       puts ""
-#       set centX [expr $centX * $scaleFak]
-#       set centY [expr $centY * $scaleFak]
-#       puts "Zentrum : $centX x $centY"
-#       puts " Unproj : [unproj $centX $centY]"
-
-#       set tmpItem [$W create oval $centX $centY [expr $centX+10] \
-#                      [expr $centY+10]]
-
-#       puts "Item    : [$W coords $tmpItem]"
-
-      scan [unproj $centX $centY] {%f %f %f} centX centY dummy
-      
-      $befehl  boxscale $scaleFak $scaleFak
-
-      scan [proj $centX $centY] {%f %f %f} centX centY dummy
-
-#       puts "   Proj : [proj $centX $centY]"
-#       puts "ZentrumN: $centX x $centY"
-
-#       puts "Item    : [$W coords $tmpItem]"
-
-#       scan [$W coords $tmpItem] {%f %f %f %f} tix1 tiy1 tix2 tiy2
-      centerCanvas $W $centX $centY
-
-#       puts "Breite  : $breite"
-#       puts "Höhe    : $hoehe"
-#       puts ""
-#       puts "Dragbox : $dragBoxX $dragBoxY $canvX $canvY"
-#       puts "Breite  : $dBreite"
-#       puts "Hoehe   : $dHoehe"
-#       puts "ScaleFak: $scaleFak"
+      # Ignore a click with no extent. Preserve one-axis zoom gestures using
+      # their finite dimension rather than computing an infinite intermediate.
+      if {$dBreite > 0 || $dHoehe > 0} {
+        if {$dBreite == 0} {
+          set scaleFak [expr {$hoehe/$dHoehe}]
+        } elseif {$dHoehe == 0} {
+          set scaleFak [expr {$breite/$dBreite}]
+        } else {
+          set scaleFak [ffMin [expr {$breite/$dBreite}] [expr {$hoehe/$dHoehe}]]
+        }
+        scan [unproj $centX $centY] {%f %f %f} centX centY dummy
+        $befehl boxscale $scaleFak $scaleFak
+        scan [proj $centX $centY] {%f %f %f} centX centY dummy
+        centerCanvas $W $centX $centY
+      }
 
     } {Navigate} {
     }
@@ -972,24 +750,18 @@ proc buildEdgeMenu {} {
 
 proc buildMainCanvas {} {
   # build widget .frame0
-  frame .frame0 \
-    -background {gainsboro} \
-    -relief {raised}
+  ttk::frame .frame0
 
   global aktuCanvas
 
   # build widget .frame0.scrollbar1
-  scrollbar .frame0.scrollbar1 \
-      -command {global aktuCanvas; $aktuCanvas yview} \
-      -bg {gold} \
-      -relief {raised}
+  ttk::scrollbar .frame0.scrollbar1 \
+      -command {global aktuCanvas; $aktuCanvas yview}
 
   # build widget .frame0.scrollbar3
-  scrollbar .frame0.scrollbar3 \
+  ttk::scrollbar .frame0.scrollbar3 \
       -command {global aktuCanvas; $aktuCanvas xview} \
-      -bg {gold} \
-      -orient {horizontal} \
-      -relief {raised}
+      -orient {horizontal}
 
 
   # build widget .frame0.canvas2
@@ -1033,32 +805,24 @@ proc buildMainCanvas {} {
 
 proc buildButtonFrame {} {
   # build widget .frame2
-  frame .frame2 \
-    -background {gainsboro} \
-    -borderwidth {2} \
-    -relief {raised}
+  ttk::frame .frame2
     
   # build widget .frame2.frame8
-  frame .frame2.frame8 \
-    -background {gainsboro} \
-    -borderwidth {2}
+  ttk::frame .frame2.frame8
 
-  frame .frame2.frame9
+  ttk::frame .frame2.frame9
   
-  label .frame2.frame9.l1 -text "Zoom: "
-  label .frame2.frame9.l2 -text "Rotate: "
+  ttk::label .frame2.frame9.l1 -text "Zoom: "
+  ttk::label .frame2.frame9.l2 -text "Rotate: "
   
   pack append .frame2.frame9 \
     .frame2.frame9.l1 {top} \
     .frame2.frame9.l2 {top}
     
   # build widget .frame2.frame8.scale16
-  scale .frame2.frame8.scale16 \
-    -width 10 \
-    -background {gainsboro} \
+  ::ffgraph_ui::scale .frame2.frame8.scale16 \
     -command {global aktuCommand; $aktuCommand setZWinkel} \
     -orient {horizontal} \
-    -relief {raised} \
     -showvalue {0} \
     -from {-360} \
     -to {360}
@@ -1066,12 +830,9 @@ proc buildButtonFrame {} {
   .frame2.frame8.scale16 set {0}
 
   # build widget .frame2.frame8.scale17
-  scale .frame2.frame8.scale17 \
-    -width 10 \
-    -background {gainsboro} \
+  ::ffgraph_ui::scale .frame2.frame8.scale17 \
     -command {global aktuCommand; $aktuCommand zoomScale} \
     -orient {horizontal} \
-    -relief {raised} \
     -showvalue {0} \
     -from {4} \
     -to {220}
@@ -1118,7 +879,7 @@ proc addUserUsage {canv} {
   wm title $canv {Graph Usage: }
 
   # build widget $canv.button4
-  button $canv.button4 -command "destroy $canv"  -text {OK}
+  ttk::button $canv.button4 -command "destroy $canv"  -text {OK}
   message $canv.message3 -aspect {1331} -borderwidth {2} -justify {left}\
     -padx {3} -pady {1} -relief {flat} -text {No Help Today ...}
 
@@ -1215,14 +976,10 @@ proc showUsageBox {} {
 
 proc buildMainMenu {} {
   # build widget .frame1
-  frame .frame1 \
-    -background {gainsboro} \
-    -borderwidth {2} \
-    -relief {raised}
+  ttk::frame .frame1
 
   # build widget .frame1.menubutton0
-  menubutton .frame1.menubutton0 \
-    -background {gainsboro} \
+  ttk::menubutton .frame1.menubutton0 \
     -menu {.frame1.menubutton0.m} \
     -text {Layout} 
 
@@ -1231,8 +988,7 @@ proc buildMainMenu {} {
     -background {gainsboro} 
 
   # build widget .frame1.menubutton1
-  menubutton .frame1.menubutton1 \
-    -background {gainsboro} \
+  ttk::menubutton .frame1.menubutton1 \
     -menu {.frame1.menubutton1.m} \
     -text {File} 
     
@@ -1266,8 +1022,7 @@ proc buildMainMenu {} {
     -label {Quit (M-q)} 
 
   # build widget .frame1.menubutton4
-  menubutton .frame1.menubutton4 \
-    -background {gainsboro} \
+  ttk::menubutton .frame1.menubutton4 \
     -menu {.frame1.menubutton4.m} \
     -text {Window} 
 
@@ -1293,8 +1048,7 @@ proc buildMainMenu {} {
     #    -underline {0}
 
   # build widget .frame1.menubutton2
-  menubutton .frame1.menubutton2 \
-    -background {gainsboro} \
+  ttk::menubutton .frame1.menubutton2 \
     -menu {.frame1.menubutton2.m} \
     -text {Help} 
 
@@ -1308,8 +1062,7 @@ proc buildMainMenu {} {
     -state {active} 
 
   # build widget .frame1.menubutton3
-  menubutton .frame1.menubutton3 \
-    -background {gainsboro} \
+  ttk::menubutton .frame1.menubutton3 \
     -menu {.frame1.menubutton3.m} \
     -text {Options} 
 
@@ -1355,8 +1108,7 @@ proc buildMainMenu {} {
     -label {Show Edges} 
 
   # build widget .frame1.menubutton5
-  menubutton .frame1.menubutton5 \
-    -background {gainsboro} \
+  ttk::menubutton .frame1.menubutton5 \
     -menu {.frame1.menubutton5.m} \
     -text {Edit} 
 
@@ -1535,133 +1287,11 @@ proc changeWindowSize { parent id xoff yoff } {
 }
 
 # Procedure: changeMask
-proc changeMask { item mask {selMask "__NoMask__"} {canv "." } } {
-  global ICON_LIB_DIR
-    
-  if {$canv == "." } {
-    global symbolicName
-    set canv $symbolicName(graphView)
-  }
-  
-  if {[lsearch [$canv gettags $item] iconNode] != -1} {
-    global tk_version
-    global selectImage
-    global unselectImage
-    global iconType    
-    global iconSelType    
-    global iconCache
-    
-    set ffHasSelectImage 0
-    
-    if { $selectImage($canv,$item) == $unselectImage($canv,$item) } {
-      set ffHasSelectImage 1
-    }
-
-    set maskBild [file rootname $mask]
-
-    if { $selMask != "__NoMask__" } {
-      set selMaskBild [file rootname $selMask]
-      set selMaskType $iconSelType($canv,$item)
-    } {
-      set selMaskBild $maskBild
-      set selMaskType $iconSelType($canv,$item)  
-      # ??? obere Zeile evtl. nicht korrekt
-    }
-    
-
-    set tmpImage $unselectImage($canv,$item)
-    set tmpTyp $iconType($canv,$item)
-    
-    if { $mask != "__NoMask__" } {
-      switch $iconType($canv,$item) {xbm} {
-        
-        if { [info exists iconCache($tmpImage,$tmpTyp,$maskBild)] } {
-          puts "Using Mask Cache"
-          set tmpNewImage $iconCache($tmpImage,$tmpTyp,$maskBild)
-        } {
-          global iconFileCache
-          puts "Building Mask Cache"
-          puts "Image: [$canv itemconfigure $item -image]"
-
-          set tmpNewImage [image create pixmap -file \
-                             $iconFileCache($tmpImage,$tmpTyp)]
-
-          $tmpNewImage configure -maskfile $ICON_LIB_DIR/xbm/$maskBild.xbm
-          set iconCache($tmpImage,$tmpTyp,$maskBild) $tmpNewImage
-        }
-
-        set $unselectImage($canv,$item) $tmpNewImage
-        $canv itemconfigure $item -image $tmpNewImage
-        
-      } {xpm} {
-
-        if { [info exists iconCache($tmpImage,$tmpTyp,$maskBild)] } {
-          puts "Using Mask Cache"
-          set tmpNewImage $iconCache($tmpImage,$tmpTyp,$maskBild)
-        } {
-          global iconFileCache
-          puts "Building Mask Cache"
-          puts "Image: $iconFileCache($tmpImage,$tmpTyp)"
-          set tmpNewImage [image create pixmap -file \
-                             $iconFileCache($tmpImage,$tmpTyp)]
-          $tmpNewImage configure -maskfile $ICON_LIB_DIR/xbm/$maskBild.xbm
-          set iconCache($tmpImage,$tmpTyp,$maskBild) $tmpNewImage
-        }
-        
-        set $unselectImage($canv,$item) $tmpNewImage
-        $canv itemconfigure $item -image $tmpNewImage
-
-      } {default} {
-        puts stderr "Masks ($mask) not supported for type $iconType($canv,$item)"
-      }
-    }
-    
-    if { $ffHasSelectImage == 1} {
-      set selectImage($canv,$item) $unselectImage($canv,$item)
-    } {
-      set tmpImage $selectImage($canv,$item)
-      set tmpTyp $selMaskType
-
-      if {$selMaskBild != "__NoMask__"} {
-        switch $selMaskType {xbm} {
-          
-          if { [info exists iconCache($tmpImage,$tmpTyp,$selMaskBild)] } {
-            puts "Using Mask Cache"
-            set tmpNewImage $iconCache($tmpImage,$tmpTyp,$selMaskBild)
-          } {
-            puts "Building Mask Cache"
-            set tmpNewImage [image create bitmap]
-          $tmpNewImage copy $tmpImage
-            $tmpNewImage configure -maskfile $ICON_LIB_DIR/xbm/$selMaskBild.xbm
-            set iconCache($tmpImage,$tmpTyp,$selMaskBild) $tmpNewImage
-          }
-          
-          set selectImage($canv,$item) $tmpNewImage
-          $canv itemconfigure $item -image $tmpNewImage
-          
-        } {xpm} {
-          if { [info exists iconCache($tmpImage,$tmpTyp,$selMaskBild)] } {
-            puts "Using Mask Cache"
-            set tmpNewImage $iconCache($tmpImage,$tmpTyp,$selMaskBild)
-          } {
-            puts "Building Mask Cache"
-            set tmpNewImage [image create pixmap]
-            $tmpNewImage copy $tmpImage
-            $tmpNewImage configure -maskfile $ICON_LIB_DIR/xbm/$selMaskBild.xbm
-            set iconCache($tmpImage,$tmpTyp,$selMaskBild) $tmpNewImage
-          }
-        
-          set selectImage($canv,$item) $tmpNewImage
-          $canv itemconfigure $item -image $tmpNewImage
-
-        } {default} {
-          if { $mask != "__NoMask__" } {
-            # puts $selMaskType
-            puts stderr "Masks ($mask) not supported for type $selMaskType"
-          }
-        }
-      }
-    }
+proc changeMask {item mask {selMask "__NoMask__"} {canv "."}} {
+  global symbolicName
+  if {$canv eq "."} {set canv $symbolicName(graphView)}
+  if {[lsearch -exact [$canv gettags $item] iconNode] >= 0} {
+    ::ffgraph_icons::applyMask $canv $item $mask $selMask
   }
 }
 
@@ -1737,22 +1367,23 @@ proc drawDragBox {canv x2 y2} {
 }
 
 proc centerCanvas {dasCanvas x y} {
-  scan "[$dasCanvas cget -scrollregion]" {%d %d %d %d} sx1 sy1 sx2 sy2
-  
-  scan "[$dasCanvas xview]" {%f %f} fraqX1 fraqX2
-  scan "[$dasCanvas yview]" {%f %f} fraqY1 fraqY2
-  set fraqX [expr $fraqX2-$fraqX1]
-  set fraqY [expr $fraqY2-$fraqY1]
-  
-  #     set breite [expr ($sx2 - $sx1)*$fraqX]
-  #     set hoehe [expr ($sy2 - $sy1)*$fraqY]
-  set breite [winfo width $dasCanvas]
-  set hoehe [winfo height $dasCanvas]
-  
-  
-  $dasCanvas xview moveto [expr ($x- $breite/2.0-$sx1)/($sx2 - $sx1)];
-  $dasCanvas yview moveto [expr ($y- $hoehe/2.0-$sy1)/($sy2 - $sy1)];
+  set region [$dasCanvas cget -scrollregion]
+  # An empty graph need not have a scroll region yet. There is no bounded
+  # content to center in that case; do not invent bounds from the drag box.
+  if {[llength $region] != 4} {return}
+  lassign $region sx1 sy1 sx2 sy2
+  foreach coordinate {sx1 sy1 sx2 sy2} {
+    set $coordinate [winfo fpixels $dasCanvas [set $coordinate]]
+  }
+  # Treat each axis independently so a zero-width/height region is harmless.
+  if {$sx2 > $sx1} {
+    $dasCanvas xview moveto [expr {($x - [winfo width $dasCanvas]/2.0 - $sx1)/($sx2 - $sx1)}]
+  }
+  if {$sy2 > $sy1} {
+    $dasCanvas yview moveto [expr {($y - [winfo height $dasCanvas]/2.0 - $sy1)/($sy2 - $sy1)}]
+  }
 }
+
 
 # Procedure: findGraph
 proc findGraph {} {
@@ -1859,12 +1490,10 @@ proc setBoring { c {bild "-1"}} {
 proc makeIconCanvas { frame {name ""} } {
 
 
-  frame $frame \
-    -background {gainsboro} \
-    -relief {raised}
+  ttk::frame $frame
   
   if {$name != ""} {
-    entry $frame.l -relief flat -bd 0
+    ttk::entry $frame.l
     $frame.l insert 0 $name
     $frame.l configure -state disabled
     pack append $frame $frame.l {top frame nw}
@@ -1876,14 +1505,12 @@ proc makeIconCanvas { frame {name ""} } {
     -width 0
   
   # build widget .frame0.scrollbar1
-  scrollbar $frame.scrollbar1 \
-    -command "$frame.canvas yview" \
-    -bg {gold} 
+  ttk::scrollbar $frame.scrollbar1 \
+    -command "$frame.canvas yview"
   
   # build widget .frame0.scrollbar3
-  scrollbar $frame.scrollbar3 \
+  ttk::scrollbar $frame.scrollbar3 \
     -command "$frame.canvas xview" \
-    -bg {gold} \
     -orient {horizontal} 
   
   
@@ -1967,8 +1594,8 @@ proc showIconBox {} {
   wm title .topIcon {Icons: }
   wm geometry .topIcon 350x360
   
-  frame .topIcon.frameLeft
-  frame .topIcon.frameRight
+  ttk::frame .topIcon.frameLeft
+  ttk::frame .topIcon.frameRight
 
   makeIconCanvas .topIcon.frameLeft.frame0 "Icons"
   makeIconCanvas .topIcon.frameRight.frame1 "Select Icon"
@@ -2002,12 +1629,24 @@ proc showIconBox {} {
   set y 10
   set maxY 0
   
-  foreach i "[glob -nocomplain $ICON_LIB_DIR/xpm/*.xpm] \
-  [glob -nocomplain $ICON_LIB_DIR/gif/*.gif] \
-  [glob -nocomplain $ICON_LIB_DIR/ppm/*.ppm] \
-  [glob -nocomplain $ICON_LIB_DIR/xbm/*.xbm] " {
-    
+  set files [concat \
+    [glob -nocomplain -directory $ICON_LIB_DIR/png *.png] \
+    [glob -nocomplain -directory $ICON_LIB_DIR/png/xbm *.png] \
+    [glob -nocomplain -directory $ICON_LIB_DIR/gif *.gif] \
+    [glob -nocomplain -directory $ICON_LIB_DIR/ppm *.ppm] \
+    [glob -nocomplain -directory $ICON_LIB_DIR/xbm *.xbm]]
+  if {[lsearch -exact [image types] pixmap] >= 0} {
+    set files [concat $files [glob -nocomplain -directory $ICON_LIB_DIR/xpm *.xpm]]
+  }
+  foreach i $files {
+    # A previous installation may still contain old bundled files. Prefer
+    # their PNG aliases and reserve the compatibility gallery for custom files.
+    if {[file extension $i] in {".xpm" ".xbm"}} {
+      set oldReference [file join [file tail [file dirname $i]] [file tail $i]]
+      if {[file extension [::ffgraph_icons::resolve $oldReference]] eq ".png"} {continue}
+    }
     set bild [file tail $i]
+    if {[file normalize [file dirname $i]] eq [file normalize [file join $ICON_LIB_DIR png xbm]]} {set bild xbm/$bild}
     set typ [file extension $i]	
     
     if { $typ == "" } {
@@ -2015,14 +1654,6 @@ proc showIconBox {} {
     } {
       set typ [string trimleft $typ {.}]
     }
-    
-    switch $typ {xbm} {
-      set createTyp bitmap
-    } {xpm} {
-      set createTyp pixmap
-    } {default} {
-      set createTyp photo
-    }       
     
     global iconCache
     set cacheBild [file rootname $bild]
@@ -2033,7 +1664,7 @@ proc showIconBox {} {
       set neuesImage $iconCache($cacheBild,$typ)
       set tmpF 0
     } {
-      set tmpF [catch  "image create $createTyp -file $i" neuesImage]
+      set tmpF [catch {::ffgraph_icons::load $i} neuesImage]
     }
     
     if {$tmpF == 0} {
@@ -2046,7 +1677,7 @@ proc showIconBox {} {
       puts "Building Icon Cache"
       puts "set iconFileCache($neuesImage,$typ) $i"
       
-#     set neuesImage [image create $createTyp -file $i]
+
     
 
       $canv itemconfigure $tmpTag -image $neuesImage
@@ -2082,24 +1713,14 @@ proc showIconBox {} {
               recall setCurrentIcon $iconBox([%W itemcget $tmpTag -image])
               recall setNoMask
 
-              if { [file extension $iconBox([%W itemcget $tmpTag -image])]
-                   == ".xpm" } {
-                fillMaskCanvas .topIcon.frameLeft.framem0.canvas %W \
-                  [%W find withtag [expr $tw-$tx]x[expr $th-$ty]xxbm]
-              } {
-                fillMaskCanvas .topIcon.frameLeft.framem0.canvas %W ""
-              }
+              fillMaskCanvas .topIcon.frameLeft.framem0.canvas %W \
+                [%W find withtag [expr $tw-$tx]x[expr $th-$ty]xmask]
             } 
             .topIcon.frameRight.frame1.canvas {
               recall setCurrentSelIcon $iconBox([%W itemcget $tmpTag -image])
               recall setNoSelMask
-              if { [file extension $iconBox([%W itemcget $tmpTag -image])]
-                   == ".xpm" } {
-                fillMaskCanvas .topIcon.frameRight.framem1.canvas %W \
-                  [%W find withtag [expr $tw-$tx]x[expr $th-$ty]xxbm]
-              } {
-                fillMaskCanvas .topIcon.frameRight.framem1.canvas %W ""
-              }
+              fillMaskCanvas .topIcon.frameRight.framem1.canvas %W \
+                [%W find withtag [expr $tw-$tx]x[expr $th-$ty]xmask]
             }
           }
         }
@@ -2115,7 +1736,11 @@ proc showIconBox {} {
       if { $dh > $maxY } {set maxY $dh}
       
       $canv addtag [set dw]x[set dh]x[set typ] withtag $tmpTag
-      $selCanv addtag [set dw]x[set dh]x[set typ] withtag $tmpSelTag    
+      $selCanv addtag [set dw]x[set dh]x[set typ] withtag $tmpSelTag
+      if {$typ eq "xbm" || [string match "xbm/*" $bild]} {
+        $canv addtag ${dw}x${dh}xmask withtag $tmpTag
+        $selCanv addtag ${dw}x${dh}xmask withtag $tmpSelTag
+      }
     
       set x [expr $x +$dw+5]
 #       puts "Breite:"
@@ -2228,15 +1853,8 @@ proc unsetSelected { c {canv "."} {col "black"} } {
   
   if {[lsearch $tmpSet iconNode] != -1} {
     global tk_version
-    if { $tk_version < 4 } {
-      global icons
-      global ICON_LIB_DIR
-      set tmpMap $icons($canv,$c)N.xpm
-      $canv itemconfigure $c  -bitmap @$ICON_LIB_DIR/$tmpMap
-    } {
       global unselectImage
       $canv itemconfigure $c -image $unselectImage($canv,$c)
-    }
   } {
     #        $canv itemconfigure $c -fill $col
     $canv itemconfigure $c -fill "black"
@@ -2286,14 +1904,8 @@ proc setSelected { c {canv "."}} {
   
   if {[lsearch [$canv gettags $c] iconNode] != -1} {
     global tk_version
-    if { $tk_version < 4 } {
-      global icons
-      global ICON_LIB_DIR
-      $canv itemconfigure $c  -bitmap @$ICON_LIB_DIR/xpm/$icons($canv,$c)S.xpm 
-    } {
       global selectImage
       $canv itemconfigure $c -image $selectImage($canv,$c)
-    }
   } {
     $canv itemconfigure $c -fill {#ffa0a0}
   }

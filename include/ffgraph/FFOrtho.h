@@ -7,7 +7,7 @@
 #include <ffgraph/FFEdgeClass.h>
 
 #include <ffgraph/FFLayoutLabel.h>
-#include <String.h>
+#include <FFString.h>
 
 #define ffOrthoType String("FFOrtho")
 #define ORTHO_X_OFFSET 100

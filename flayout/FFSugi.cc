@@ -7,6 +7,8 @@
 #include <ffgraph/FFGraphClass.h>
 #include <ffgraph/FFGraphWindow.h>
 #include <ffgraph/FFSugiInsp.h>
+#include <cmath>
+#include <new>
 
 FFSugi::FFSugi ()
 {
@@ -182,7 +184,7 @@ int FFSugi::getCrossingAlg ()
 
 BOOL FFSugi::setCrossingAlg (int value)
 {
-  if ((value == 0) || (value == 1))
+  if ((value == 0) || (value == 1) || (value == 2))
     {
       info.crossingAlg = value;
       return (YES);
@@ -218,7 +220,7 @@ FFCoord FFSugi::getxoff ()
 
 BOOL FFSugi::setxoff (FFCoord value)
 {
-  if (value < 0)
+  if (!std::isfinite(value) || value < 0)
     return (NO);
   else
     {
@@ -236,7 +238,7 @@ FFCoord FFSugi::getyoff ()
 
 BOOL FFSugi::setyoff (FFCoord value)
 {
-  if (value < 0)
+  if (!std::isfinite(value) || value < 0)
     return (NO);
   else
     {
@@ -254,7 +256,7 @@ FFCoord FFSugi::getzoff ()
 
 BOOL FFSugi::setzoff (FFCoord value)
 {
-  if (value < 0)
+  if (!std::isfinite(value) || value < 0)
     return (NO);
   else
     {
@@ -272,7 +274,7 @@ FFCoord FFSugi::getxDistance ()
 
 BOOL FFSugi::setxDistance (FFCoord value)
 {
-  if (value < 1)
+  if (!std::isfinite(value) || value < 1)
     return (NO);
   else
     {
@@ -290,7 +292,7 @@ FFCoord FFSugi::getyDistance ()
 
 BOOL FFSugi::setyDistance (FFCoord value)
 {
-  if (value < 1)
+  if (!std::isfinite(value) || value < 1)
     return (NO);
   else
     {
@@ -308,7 +310,7 @@ FFCoord FFSugi::getzDistance ()
 
 BOOL FFSugi::setzDistance (FFCoord value)
 {
-  if (value < 1)
+  if (!std::isfinite(value) || value < 1)
     return (NO);
   else
     {
@@ -370,27 +372,27 @@ void FFSugi::setDimension (int value)
 //                                                                         //
 /////////////////////////////////////////////////////////////////////////////
 
-void FFSugi::layout (FFSet <FFNode> &locNodes)
-{
-  if (graph->getWindow ())
-    graph->getWindow ()->setBusy ();
-
-  sugiyama (graph, info, locNodes);
-
-  if (graph->getWindow ())
-    graph->getWindow ()->unsetBusy ();
+namespace {
+struct BusyScope {
+  FFGraphWindow* window;
+  explicit BusyScope(FFGraphWindow* w) : window(w) { if (window) window->setBusy(); }
+  ~BusyScope() { if (window) window->unsetBusy(); }
+};
 }
-
-
-void FFSugi::layout ()
-{
-  if (graph->getWindow ())
-    graph->getWindow ()->setBusy ();
-
-  sugiyama (graph, info, graph->allNodes ());
-
-  if (graph->getWindow ())
-    graph->getWindow ()->unsetBusy ();
+void FFSugi::layout(FFSet<FFNode>& locNodes) {
+  try {
+    BusyScope busy(graph->getWindow());
+    sugiyama(graph,info,locNodes);
+  } catch(const std::bad_alloc&) {
+    // The legacy by-value argument copy happens before sugiyama's own try.
+    ffError(USER_ERROR,NO_MEMORY);
+  }
 }
-
-
+void FFSugi::layout() {
+  try {
+    BusyScope busy(graph->getWindow());
+    sugiyama(graph,info,graph->allNodes());
+  } catch(const std::bad_alloc&) {
+    ffError(USER_ERROR,NO_MEMORY);
+  }
+}

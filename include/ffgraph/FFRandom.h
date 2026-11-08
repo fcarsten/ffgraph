@@ -6,7 +6,7 @@
 #include <ffgraph/FFNodeClass.h>
 #include <ffgraph/FFEdgeClass.h>
 #include <ffgraph/FFLayoutLabel.h>
-#include <String.h>
+#include <FFString.h>
 
 #define ffRandomType String("FFRandom")
 

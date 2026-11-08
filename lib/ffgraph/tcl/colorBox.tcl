@@ -1,3 +1,4 @@
+source [file join [file dirname [info script]] ttk.tcl]
 # procedures to show a ColorBox in which to choose
 # adapted from Sven Delmas
 
@@ -44,118 +45,90 @@ proc ColorBox {{defName "black"} \
     wm minsize .colorBox 100 100
     # end build of toplevel
     
-    frame .colorBox.frame1 -borderwidth 0 -relief raised
-    button .colorBox.frame1.ok -text "OK"
-    button .colorBox.frame1.cancel -text "Cancel"
-    frame .colorBox.frame2 -borderwidth 0 -relief raised
-    radiobutton .colorBox.frame2.rgb\
+    ttk::frame .colorBox.frame1
+    ttk::button .colorBox.frame1.ok -text "OK"
+    ttk::button .colorBox.frame1.cancel -text "Cancel"
+    ttk::frame .colorBox.frame2
+    ttk::radiobutton .colorBox.frame2.rgb\
       -command "ColorBoxShowSlides"\
       -text "RGB"\
       -value "RGB" \
       -variable colorBox(type)
     
-    radiobutton .colorBox.frame2.hsv\
+    ttk::radiobutton .colorBox.frame2.hsv\
       -command "ColorBoxShowSlides"\
       -text "HSV"\
       -value "HSV"\
       -variable colorBox(type)
     
-    radiobutton .colorBox.frame2.list\
+    ttk::radiobutton .colorBox.frame2.list\
       -command "ColorBoxShowSlides "\
       -text "List"\
       -value "List"\
       -variable colorBox(type)
     
-    frame .colorBox.palette -borderwidth 0 -relief raised
+    ttk::frame .colorBox.palette
     
 
-    scale .colorBox.red \
-      -background "red" \
+    ::ffgraph_ui::scale .colorBox.red \
       -showvalue 0\
       -from 0\
       -label "Red"\
       -orient horizontal\
-      -relief raised\
-      -sliderlength 15\
-      -to 255\
-      -width 8
+                  -to 255
     
-    scale .colorBox.green\
-      -background "green"\
-      -showvalue 0\
+    ::ffgraph_ui::scale .colorBox.green\
+            -showvalue 0\
       -from 0\
       -label "Green"\
       -orient horizontal\
-      -relief raised\
-      -sliderlength 15\
-      -to 255\
-      -width 8
+                  -to 255
     
-    scale .colorBox.blue\
-      -background "blue"\
-      -showvalue 0\
+    ::ffgraph_ui::scale .colorBox.blue\
+            -showvalue 0\
       -from 0\
       -label "Blue"\
       -orient horizontal\
-      -relief raised\
-      -sliderlength 15\
-      -to 255\
-      -width 8
+                  -to 255
     
-    scale .colorBox.h\
+    ::ffgraph_ui::scale .colorBox.h\
       -from 0\
       -showvalue 0\
       -label "Hue"\
       -orient horizontal\
-      -relief raised\
-      -sliderlength 15\
-      -to 1000\
-      -width 8
+                  -to 1000
     
-    scale .colorBox.s\
+    ::ffgraph_ui::scale .colorBox.s\
       -from 0\
       -showvalue 0\
       -label "Saturation * 100"\
       -orient horizontal\
-      -relief raised\
-      -sliderlength 15\
-      -to 1000\
-      -width 8
+                  -to 1000
     
-    scale .colorBox.v\
+    ::ffgraph_ui::scale .colorBox.v\
       -from 0\
       -showvalue 0\
       -label "Value"\
       -orient horizontal\
-      -relief raised\
-      -sliderlength 15\
-      -to 1000\
-      -width 8
+                  -to 1000
     
-    label .colorBox.demo\
-      -relief raised\
-      -text "This text shows the results"
+    ::ffgraph_ui::swatch label .colorBox.demo\
+            -text "This text shows the results"
     
-    frame .colorBox.current\
-      -borderwidth 0\
-      -relief raised
+    ttk::frame .colorBox.current
     
-    label .colorBox.current.labelcurrent\
-      -relief raised
+    ttk::label .colorBox.current.labelcurrent
     
-    entry .colorBox.current.current\
-      -relief raised
+    ttk::entry .colorBox.current.current
     
-    frame .colorBox.colors       -borderwidth 0       -relief raised
+    ttk::frame .colorBox.colors
     
-    scrollbar .colorBox.colors.vscroll\
-      -relief raised\
-      -command ".colorBox.colors.colors yview"
+    ttk::scrollbar .colorBox.colors.vscroll\
+            -command ".colorBox.colors.colors yview"
     
-    scrollbar .colorBox.colors.hscroll\
+    ttk::scrollbar .colorBox.colors.hscroll\
       -orient horizontal\
-      -relief raised\
-      -command ".colorBox.colors.colors xview"
+            -command ".colorBox.colors.colors xview"
     
     listbox .colorBox.colors.colors\
       -exportselection false\
@@ -257,7 +230,7 @@ proc ColorBox {{defName "black"} \
     ffSetColorsForWin .colorBox
     set counter 0
     foreach element $colorBox(palette) {
-      button .colorBox.palette.palette$counter\
+      ::ffgraph_ui::swatch button .colorBox.palette.palette$counter\
         -command "ColorBoxSetPalette $counter"\
         -width 3
       .colorBox.palette.palette$counter config \
@@ -271,7 +244,7 @@ proc ColorBox {{defName "black"} \
         
   }
 
-  .colorBox.frame2.rgb select
+  set colorBox(type) RGB
   ColorBoxShowSlides  
   
   # wait for the box to be destroyed
@@ -399,12 +372,14 @@ proc ColorBoxSelectColor { colorW colorY} {
 
   set colorNearest [$colorW nearest $colorY]
   if {$colorNearest >= 0} {
-    $colorW select set $colorNearest
+    $colorW selection clear 0 end
+    $colorW selection set $colorNearest
     set colorTmpValue [$colorW get $colorNearest]
     set colorCurrentColor [lrange $colorTmpValue 0 \
                              [expr [llength $colorTmpValue]-2]]
-    set colorCurrentValue [lrange $colorTmpValue\
-                             [expr [llength $colorTmpValue]-1] end]
+    # Read the hex token itself, not a one-element list whose string form may
+    # brace-quote its leading # and make the following numeric scans fail.
+    set colorCurrentValue [lindex $colorTmpValue end]
 
     scan [string range $colorCurrentValue 1 2] "%x" colorBoxValue
     .colorBox.red set $colorBoxValue

@@ -1,0 +1,14 @@
+# file	nodes	edges
+real/b4-alledges.g	64	126
+real/dataflow.g	158	234
+real/hierarchy.g	43	31
+real/cluster.g	11	14
+real/cme.g	18	26
+real/ten-dm.gml	17	32
+real/big-tree.g	180	179
+real/planar.g	57	148
+real/cube.g	8	12
+real/dodekaeder.g	12	30
+real/gml-sample.gml	2	1
+real/nase.gml	32	69
+real/process-tree.g	499	499

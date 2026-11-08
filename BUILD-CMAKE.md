@@ -1,5 +1,9 @@
 # CMake build (Ubuntu 24.04)
 
+For the initial native Windows build without X11/Xpm, see
+[BUILD-WINDOWS.md](BUILD-WINDOWS.md). Linux keeps its existing full test suite;
+Windows starts with an explicitly selected portable suite.
+
 The CMake build now selects the modern GNU Bison/Flex GML importer by default.
 FF/sgraph also uses its modern GNU Bison/Flex importer in every build.
 All three parser/scanner pairs are generated in the build tree; their legacy
@@ -7,11 +11,25 @@ implementations have been retired.
 Use CMake; the historical Makefile fragments do not build the active FF/GML/Rome
 importers.
 
+The full application requires **CMake 3.24 or newer** (LINK_GROUP support).
+
 Install prerequisites:
 
 ```sh
-sudo apt install build-essential cmake ninja-build pkg-config bison flex tcl-dev tk-dev libx11-dev libxpm-dev
+sudo apt install build-essential cmake ninja-build pkg-config bison flex tcl-dev tk-dev libx11-dev
 ```
+
+Bundled icons and masks use PNG, read directly by Tk 8.6. Xpm is not needed
+for the normal Linux build. For external legacy Xpm images only, install
+`libxpm-dev` and explicitly configure `-DFFGRAPH_XPM=ON`. Existing build
+caches may retain the old ON value; use `-DFFGRAPH_XPM=OFF` to remove it.
+Legacy graph names for bundled images (such as `redball.xpm`) work in either
+build through PNG aliases, without changing serialized graph metadata.
+See [the PNG migration report](docs/FFGRAPH-PNG-ASSET-MIGRATION.md).
+
+Controls use ttk, included with Tk 8.6. Linux uses the `clam` theme; canvas,
+text and list displays retain Tk widgets. No additional theme package is
+required. See [the ttk port report](docs/FFGRAPH-TTK-WIDGET-PORT.md).
 
 Build and test:
 
@@ -28,6 +46,119 @@ cmake --preset release
 cmake --build --preset release --parallel
 ctest --preset release
 ```
+
+The latest correctness fixes and exact layout speedups are documented in
+[the layout-controls checkpoint](docs/FFGRAPH-LAYOUT-CONTROLS-CHECKPOINT.md) and
+[the performance checkpoint](docs/FFGRAPH-EXACT-LAYOUT-OPTIMIZATIONS.md).
+Spring keeps the selected-node pinning convention and its distinct legacy
+weighted formulas. Finite quality now honors the configured maximum iteration
+count; quality zero still runs until stopped. Sugiyama's configured offsets
+translate the drawing and its routes consistently in either orientation.
+The experimental aesthetic layouts remain parked.
+
+The default suite now includes a broader Sugiyama corpus: 13 real FF/GML graphs
+and 18 synthetic graphs, each under six configurations with reference/optimized
+geometry and crossing comparisons. Inputs are stored in the repository; sibling
+graph directories are not required. Run it directly with:
+
+```sh
+ctest --preset debug -R '^test_sugiyama_corpus_' -V
+```
+
+See [the corpus README](tests/sugiyama_corpus/README.md) and
+[verification report](docs/FFGRAPH-SUGIYAMA-CORPUS-EXPANSION.md).
+
+Sugiyama large-input regressions cover checked scratch dimensions, wide
+barycenter sums, 20,000-deep traversals, a 1,024-level full layout and injected
+array-allocation failures in headless/GUI operation:
+
+```sh
+ctest --preset debug -R 'sugiyama_large_input|sugiyama_deep_traversal|sugiyama_failure' -V
+```
+
+See [the large-input checkpoint](docs/FFGRAPH-SUGIYAMA-LARGE-INPUT-CORRECTNESS.md)
+for recovery guarantees and remaining numeric/publication limits.
+
+The numeric/publication continuation rejects unsupported numeric ranges and
+restores the graphic model after renderer exceptions. Sanitizer builds also check
+floating-to-integer overflow. Run its focused tests with:
+
+```sh
+ctest --preset debug -R 'sugiyama_numeric|sugiyama_publication_gui|test_mplex_stl' -V
+```
+
+See [numeric bounds and publication recovery](docs/FFGRAPH-SUGIYAMA-NUMERIC-PUBLICATION-RECOVERY.md)
+for route-storage lifetime, repaint limits and measured validation coverage.
+
+Linux native builds also exercise real OS address-space limits in isolated
+subprocesses, including actual-window recovery and successful reuse:
+
+```sh
+ctest --preset debug -R '^test_sugiyama_resource_' -V
+```
+
+Sanitizer builds run the moderate successful controls and existing injected
+failure tests. The OS-limit tests are native-only because `RLIMIT_AS` conflicts
+with ASan's reserved shadow address space. See
+[resource-limit testing and the follow-up audit](docs/FFGRAPH-SUGIYAMA-RESOURCE-LIMITS.md)
+for exact coverage, refreshed performance measurements and the remaining
+limits of OS resource testing.
+
+The large-offset/4x zoom renderer overflow is now fixed at the shared Tk rendering
+boundary. Unsupported projected items are temporarily hidden while world geometry
+is retained; zooming or panning back into range restores them. Run its tests with:
+
+```sh
+ctest --preset debug -R '^test_renderer_coordinates' -V
+```
+
+See [renderer coordinate bounds](docs/FFGRAPH-RENDERER-COORDINATE-BOUNDS.md) for
+actual 2D/3D window coverage, whole-edge suppression and remaining toolkit limits.
+
+Ordinary C++ allocation failures are also swept through both Sugiyama entry
+points and real Tk rendering, with exact model/canvas recovery checks:
+
+```sh
+ctest --preset debug -R '^test_sugiyama_scalar_failure' -V
+```
+
+See [ordinary allocation recovery](docs/FFGRAPH-SUGIYAMA-SCALAR-ALLOCATION-RECOVERY.md)
+for argument-copy, busy cleanup and stream-formatting fixes, successful sorting
+fallback checks and the limits of one-shot failure testing.
+
+The latest exact Sugiyama optimization combines each crossing counter row's two
+scans and accelerates active matrix comparisons. Run its focused coverage with:
+
+```sh
+ctest --preset debug -R '^test_sugiyama_(matrix_comparisons|crossings|corpus_)' -V
+```
+
+See [crossing scans and matrix comparisons](docs/FFGRAPH-SUGIYAMA-CROSSING-COMPARISON-OPTIMIZATION.md)
+for unchanged geometry/crossing checks, controlled timing results and limits.
+
+For reproducible headless import/layout profiling, build the optional driver:
+
+```sh
+cmake -S . -B build/profile -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DBUILD_TESTING=OFF -DFFGRAPH_BUILD_PROFILER=ON \
+  -DCMAKE_CXX_FLAGS=-fno-omit-frame-pointer
+cmake --build build/profile --target profile_graphs --parallel 2
+python3 tools/profile_graphs.py --binary build/profile/profile_graphs \
+  --output build/profile-smoke-local --sizes 100 --samples 5
+```
+
+Use a new output directory for each run. The runner writes raw samples,
+CSV/JSON summaries, input hashes and build metadata. The previously failing
+1,000-node Spring star is covered by the numerical regression described in
+[the Spring fix report](docs/FFGRAPH-SPRING-NUMERICAL-STABILITY.md).
+Failures produce a nonzero exit status. These are measurements, with no timing
+thresholds in CTest. See [the profiling checkpoint](docs/FFGRAPH-IMPORT-LAYOUT-PROFILING.md)
+for phase definitions, larger runs, CPU profiles, results and remaining limits.
+The [hotspot follow-up](docs/FFGRAPH-PROFILING-HOTSPOTS-CHECKPOINT.md) adds import
+scaling, captured Sugiyama matrices and the optional `profile_crossings`
+executable. The validated counting approach is now used by the normal application;
+see [the production optimization checkpoint](docs/FFGRAPH-SUGIYAMA-CROSSING-COUNTER-OPTIMIZATION.md)
+for measured whole-layout gains and compatibility details.
 
 Sanitizers (GCC/Clang):
 
@@ -67,8 +198,13 @@ cmake --install build/install
 ```
 
 The `ffgraph3D` symlink is installed alongside `ffgraph`. Runtime assets
-are installed under the library directory as in the original Makefiles.
-Check application-specific runtime asset lookup on your target installation.
+remain under the library directory. The application locates them relative to
+its installed executable, so it can launch from other working directories;
+build-tree executables use the configured source resources. Existing FF_LIBDIR
+and FF_ICONDIR overrides remain supported. Install-time --prefix and DESTDIR
+are honored by the symlink step. See
+[the runtime portability checkpoint](docs/FFGRAPH-RUNTIME-PORTABILITY-CHECKPOINT.md)
+for actual clean production-only builds and staged 2D/3D startup checks.
 
 ## Tcl/Tk window teardown
 
@@ -132,6 +268,10 @@ Known Tk/fontconfig leaks can fail strict leak-enabled GUI sanitizer checks;
 see `docs/FFGRAPH-PASS12-FF-LEGACY-RETIREMENT.md` for measured results and limits.
 
 ## Rome parser (GNU Bison/Flex)
+
+The Rome graph format is **deprecated**. Loading remains supported and tested;
+loader performance optimization is low priority. Prefer FF/sgraph or GML for
+new graph files.
 
 Modern Rome is now the only production Rome importer, including in the GUI.
 No pilot flag or backend selector is needed. Filename dispatch is preserved:

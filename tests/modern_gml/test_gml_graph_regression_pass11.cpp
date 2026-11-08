@@ -72,6 +72,28 @@ void topologyAndGeometryGolden() {
   }
   require(parallels == 2 && loops == 1, "parallel/loop multiplicities changed");
 }
+void wideGraphGolden() {
+  constexpr int count = 6000;
+  std::ostringstream source;
+  source << "graph [ label \"wide\"\n";
+  ffgraph_test::GraphSnapshot expected;
+  expected.name = "wide";
+  for (int i = 1; i <= count; ++i) {
+    const auto name = "node_" + std::to_string(i);
+    source << "node [ id " << i << " label \"" << name
+           << "\" graphics [ x " << i % 97 << " y " << i % 53 << " ] ]\n";
+    expected.nodes.emplace_back(i, name, i % 97, i % 53, 0);
+  }
+  for (int i = 1; i < count; ++i) {
+    source << "edge [ id " << i << " source " << i << " target " << i + 1
+           << " label \"link\" ]\n";
+    expected.edges.emplace_back(i, i + 1, i, "link");
+  }
+  source << "]\n";
+  const auto actual = replay(source.str());
+  const auto difference = ffgraph_test::difference(expected, actual);
+  require(difference.empty(), "wide graph independent oracle: " + difference);
+}
 void syntaxAndSemanticFailures() {
   FFGraph graph(YES);
   initialise(graph);
@@ -136,6 +158,7 @@ int main(int argc, char** argv) {
     curated("minimal", "graph [ node [ id 1 ] ]\n", 1, 0, "");
     curated("empty", "graph []\n", 0, 0, "");
     topologyAndGeometryGolden();
+    wideGraphGolden();
     syntaxAndSemanticFailures();
     require(argc <= 2, "usage: test_gml_graph_regression_pass11 [corpus_dir]");
     if (argc == 2) generated(argv[1]);

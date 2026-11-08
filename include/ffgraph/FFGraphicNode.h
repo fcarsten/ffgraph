@@ -14,13 +14,14 @@
 
 #include "globdefs.h"
 
-#include <String.h>
+#include <FFString.h>
 #include "FFPoint.h"
 
 #include "FFNodeClass.h"
 class FFGraphWindow;
 class FFGraphicEdge;
 class FFTclGraphInsp;
+namespace ffgraph_sugiyama { struct Publication; }
 
 #include "FFNodeLabel.h"
 
@@ -143,6 +144,7 @@ public:
   friend class FFTclWindow;
   friend class FFGraphicEdge;
   friend class FFTclGraphInsp;  
+  friend struct ffgraph_sugiyama::Publication;
 };
 
 typedef FFGraphicNode * FFGraphicNodeP;

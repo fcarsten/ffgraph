@@ -1,4 +1,4 @@
-#!/public/bin/pixmap-wish -f
+#!/usr/bin/env wish
 # Program: spring
 # Tcl version: 7.3 (Tcl/Tk/XF)
 # Tk version: 3.6
@@ -6,45 +6,21 @@
 #
 
 
-proc Spring_SetupWindow {w} {
-  set tmplist [winfo children $w]
-  while {[llength $tmplist] != 0} {
-    switch [winfo class [lindex $tmplist 0]] {
-      Radiobutton {[lindex $tmplist 0] configure -relief raised
-	bind [lindex $tmplist 0] <1> {
-	  %W configure -relief sunken
-	}
-	bind [lindex $tmplist 0] <ButtonRelease> {
-	  %W configure -relief raised
-	}
-      }
-      Checkbutton {[lindex $tmplist 0] configure -relief raised
-	bind [lindex $tmplist 0] <1> {
-	  %W configure -relief sunken
-	}
-	bind [lindex $tmplist 0] <ButtonRelease> {
-	  %W configure -relief raised
-	}
-      }
-    }
-    set tmplist [concat $tmplist [winfo children [lindex $tmplist 0]]]
-    set tmplist [lreplace $tmplist 0 0]
-  }
-}
+proc Spring_SetupWindow {w} {::ffgraph_ui::surface $w}
 
 
 global FF_LIBDIR
 source $FF_LIBDIR/tcl/xfmisc.tcl
 
 proc Spring_MakeParamButtons {} {
-  frame .parambuttons -bd 3 -relief ridge
-  label .parambuttons.l -text "Parameters:" -anchor nw 
-  checkbutton .parambuttons.3d\
-    -text "3D Layout" -anchor nw \
+  ttk::frame .parambuttons
+  ttk::label .parambuttons.l -text "Parameters:" -anchor nw
+  ttk::checkbutton .parambuttons.3d\
+    -text "3D Layout"  \
     -command {recall toggle3D}\
     -variable {3dlayout}
 
-  checkbutton .parambuttons.useedgeweight -text "Use Edgeweight" -anchor nw \
+  ttk::checkbutton .parambuttons.useedgeweight -text "Use Edgeweight"  \
     -command {recall setEdgeWeight} -variable {edgeweight}
   pack append .parambuttons \
     .parambuttons.l {top frame nw expand fillx} \
@@ -55,9 +31,9 @@ proc Spring_MakeParamButtons {} {
 
 proc Spring_MakePositionItems {} {
   proc Spring_MakeMyEntry {name text recall_text} {
-    frame $name
-    label $name.l -text $text -anchor w
-    entry $name.e -width 8 -relief sunken -bg white
+    ttk::frame $name
+    ttk::label $name.l -text $text -anchor w
+    ttk::entry $name.e -width 8
     $name.e insert 1 "100"
     bind $name.e <KeyPress> {
       if {("[expr %N -48]" != "%A") && ("%A" != "\{\}") && ("%K" != "BackSpace") && ("%K" != "Delete")} {
@@ -69,8 +45,8 @@ proc Spring_MakePositionItems {} {
       $name.l {left frame w expand fillx} \
       $name.e {right frame w}
   }
-  frame .positionitems -bd 3 -relief ridge
-  label .positionitems.l -text "Positioning:" -anchor nw
+  ttk::frame .positionitems
+  ttk::label .positionitems.l -text "Positioning:" -anchor nw
   Spring_MakeMyEntry .positionitems.xoffset "X Offset" xoff
   Spring_MakeMyEntry .positionitems.yoffset "Y Offset" yoff
   Spring_MakeMyEntry .positionitems.zoffset "Z Offset" zoff
@@ -85,20 +61,17 @@ proc Spring_MakePositionItems {} {
 }
 
 proc Spring_MakeAnimation {} {
-  frame .animation -bd 3 -relief ridge
-  label .animation.l -text "Animation:" -anchor nw
-  checkbutton .animation.animation -text "Animate" -anchor nw \
+  ttk::frame .animation
+  ttk::label .animation.l -text "Animation:" -anchor nw
+  ttk::checkbutton .animation.animation -text "Animate"  \
      -command {recall animate} -variable {animate}
-  label .animation.l2 -text "Iterations per Animation" -anchor nw
-  scale .animation.scale  \
+  ttk::label .animation.l2 -text "Iterations per Animation" -anchor nw
+  ::ffgraph_ui::scale .animation.scale  \
     -command {recall animIters} \
     -orient {horizontal} \
-    -relief {sunken} \
     -length {100} \
-    -bd 1 \
     -from {2} \
     -showvalue {1} \
-    -width 10 \
     -to {30}
   pack append .animation \
     .animation.l {top frame nw expand fillx} \
@@ -116,9 +89,9 @@ proc Spring_MakeQuality {} {
   proc Sugi_QualityLimited { } {
     .quality.f.l configure -text "Quality: [.quality.scale.scale get]"
     .quality.scale.scale configure -state normal
-    .quality.scale.l.low configure -fg "black"
-    .quality.scale.l.medium configure -fg "black"
-    .quality.scale.l.high configure -fg "black"
+    .quality.scale.l.low configure -state normal
+    .quality.scale.l.medium configure -state normal
+    .quality.scale.l.high configure -state normal
     .quality.f.check configure -command Sugi_QualityUnlimited
     recall quality [.quality.scale.scale get]
   }
@@ -126,37 +99,34 @@ proc Spring_MakeQuality {} {
   proc Sugi_QualityUnlimited { } {
     .quality.f.l configure -text "Quality: oo"
     .quality.scale.scale configure -state disabled
-    .quality.scale.l.low configure -fg "grey"
-    .quality.scale.l.medium configure -fg "grey"
-    .quality.scale.l.high configure -fg "grey"
+    .quality.scale.l.low configure -state disabled
+    .quality.scale.l.medium configure -state disabled
+    .quality.scale.l.high configure -state disabled
     .quality.f.check configure -command Sugi_QualityLimited
     recall quality 0
   }
   
-  frame .quality -relief ridge -bd 3
-  frame .quality.f -relief ridge -bd 3
-  label .quality.f.l -text "Quality: " -anchor nw
-  checkbutton .quality.f.check -text "oo" -anchor nw \
+  ttk::frame .quality
+  ttk::frame .quality.f
+  ttk::label .quality.f.l -text "Quality: " -anchor nw
+  ttk::checkbutton .quality.f.check -text "oo"  \
     -command {Sugi_QualityUnlimited}
   
-  frame .quality.scale -bd 2 -relief ridge
-  frame .quality.scale.l
-  label .quality.scale.l.low -text "Low" -anchor nw
-  label .quality.scale.l.medium -text "Medium" -anchor center
-  label .quality.scale.l.high -text "High" -anchor ne
+  ttk::frame .quality.scale
+  ttk::frame .quality.scale.l
+  ttk::label .quality.scale.l.low -text "Low" -anchor nw
+  ttk::label .quality.scale.l.medium -text "Medium" -anchor center
+  ttk::label .quality.scale.l.high -text "High" -anchor ne
   pack append .quality.scale.l \
     .quality.scale.l.low {left frame center expand fillx} \
     .quality.scale.l.medium {left frame center expand fillx} \
     .quality.scale.l.high {left frame ne expand fillx} 
-  scale .quality.scale.scale \
+  ::ffgraph_ui::scale .quality.scale.scale \
     -command {Sugi_QualityScaleTo} \
     -orient {horizontal} \
-    -relief {sunken} \
     -length {100} \
-    -bd 1 \
     -from {1} \
     -showvalue {0} \
-    -width 10 \
     -to {10}
   pack append .quality.scale \
     .quality.scale.l  {top frame nw expand fillx} \
@@ -181,10 +151,10 @@ proc Spring_MakeActionButtons {} {
     .actionbuttons.ok configure -command "Spring_DoIt"
   }
   
-  frame .actionbuttons 
-  button .actionbuttons.ok -text "Just do it" -anchor nw \
+  ttk::frame .actionbuttons
+  ttk::button .actionbuttons.ok -text "Just do it"  \
     -command {Spring_DoIt}
-  button .actionbuttons.dismiss -text Dismiss -anchor nw \
+  ttk::button .actionbuttons.dismiss -text Dismiss  \
     -command {recall deleteWindow}
 
   pack append .actionbuttons \

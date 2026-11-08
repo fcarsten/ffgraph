@@ -51,7 +51,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
             build-essential cmake ninja-build pkg-config bison flex \
-            tcl-dev tk-dev libx11-dev libxpm-dev xvfb xauth
+            tcl-dev tk-dev libx11-dev xvfb xauth
       - name: Configure generated GML graph and oracle tests
         run: >-
           cmake -S . -B build/gml-parity -G Ninja
@@ -116,7 +116,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
             build-essential cmake ninja-build pkg-config bison flex \
-            tcl-dev tk-dev libx11-dev libxpm-dev
+            tcl-dev tk-dev libx11-dev
       - name: Configure standard graph oracle corpus
         run: >-
           cmake -S . -B build/gml-diff-standard -G Ninja

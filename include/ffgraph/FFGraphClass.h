@@ -29,7 +29,7 @@ class FFGraphicEdge;
 #include <container/VHSet.h>
 #include <container/MPlex.h>
 #include <SLList.h>
-#include <String.h>
+#include <FFString.h>
 #include <ffgraph/ffError.h>
 #include <ffgraph/FFPoint.h>
 #include <ffgraph/FFLabelClass.h>
@@ -222,6 +222,8 @@ protected:
   void removeGraphic();
 };
 
+// Default-label registration borrows its prototype. Callers retain ownership
+// and must keep it alive while graphs may clone it; each graph owns its clone.
 void addDefaultGraphLabel(class FFGraphLabel *);
 void addDefaultNodeLabel(class FFNodeLabel *);
 void addDefaultEdgeLabel(class FFEdgeLabel *);

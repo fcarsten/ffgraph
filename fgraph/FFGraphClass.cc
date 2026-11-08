@@ -16,10 +16,12 @@
 
 // #define FF_NO_TESTS 1
 
+#ifndef _WIN32
 extern "C" {
 #include <pwd.h>
 #include <sys/types.h>
 }
+#endif
 
 #include <globdefs.h>
 #include <stream.h>
@@ -72,6 +74,16 @@ String expand_path(const String& path)
  if (ffPath.length() == 0 || ffPath[0] != '~')
   return ffPath;
 
+#ifdef _WIN32
+ // Windows has no Unix password database. Retain HOME overrides and expand
+ // the current user's ~ using the Windows profile directory.
+ if (ffPath.length() == 1 || ffPath[1] == '/' || ffPath[1] == '\\') {
+   const char* home = getenv("HOME");
+   if (!home) home = getenv("USERPROFILE");
+   if (home) return String(home) + (ffPath.length() > 1 ? ffPath.from(1) : String());
+ }
+ return ffPath;
+#else
  const char *pfx = 0;
  int pos = ffPath.index('/');
  
@@ -110,6 +122,7 @@ String expand_path(const String& path)
  result += ffPath.after('/');
  
  return result;
+#endif
 }
 
 
@@ -1324,10 +1337,14 @@ void FFGraphClass::_saveGML(ostream& ofDatei, const FFSet<FFNode>& nodes)
  
  ofDatei << "graph" << endl << "[" << endl;
  
+#ifdef _WIN32
+ const char* creator = getenv("USERNAME");
+ if (!creator) creator = "unknown user";
+#else
  struct passwd *tmpPwd = getpwuid(getuid());
- 
- 
- ofDatei << "creator \"ffGraph for " << tmpPwd->pw_gecos << "\"" << endl;
+ const char* creator = tmpPwd->pw_gecos;
+#endif
+ ofDatei << "creator \"ffGraph for " << creator << "\"" << endl;
  ofDatei << "label \"" << getName() << "\"" << endl;
  
 //  if(directed)

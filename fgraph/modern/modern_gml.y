@@ -31,7 +31,10 @@
 %start input
 %%
 input : attributes ;
-attributes : %empty | attribute attributes ;
+/* Reduce siblings as they arrive: right recursion grows the parser stack
+ * with graph width and rejects ordinary large graphs at YYMAXDEPTH. Attribute
+ * actions still emit events in source order, including nested list boundaries. */
+attributes : %empty | attributes attribute ;
 attribute
   : KEY INTEGER {
       events->integer($1, $2);

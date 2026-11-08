@@ -1,4 +1,4 @@
-#include <unistd.h>
+#include <ffgraph/FFPlatform.h>
 #include <stream.h>
 #include <ffgraph/FFTIGraphLabel.h>
 #include <ffgraph/FFTINodeLabel.h>

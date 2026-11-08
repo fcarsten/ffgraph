@@ -7,7 +7,7 @@
 #include <ffgraph/FFEdgeClass.h>
 #include <container/AVLMap.h>
 #include <ffgraph/FFLayoutLabel.h>
-#include <String.h>
+#include <FFString.h>
 
 #define ffKaeseType String("FFKaese")
 

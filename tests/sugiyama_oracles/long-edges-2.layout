@@ -1,0 +1,18 @@
+graph "long-edges" 1 8 9
+node 1 "node1" 110 0 0 1
+node 2 "node2" 0 80 0 1
+node 3 "node3" 0 160 0 1
+node 4 "node4" 0 240 0 1
+node 5 "node5" 0 320 0 1
+node 6 "node6" 0 400 0 1
+node 7 "node7" 0 480 0 1
+node 8 "node8" 110 560 0 1
+edge 1 2 "edge1" 1.5 2 110 0 0 1 0 80 0 1
+edge 1 8 "edge8" 2 5 110 0 0 1 220 80 0 1 220 400 0 1 220 480 0 1 110 560 0 1
+edge 2 3 "edge2" 2 2 0 80 0 1 0 160 0 1
+edge 2 7 "edge9" 1 5 0 80 0 1 110 160 0 1 110 320 0 1 110 400 0 1 0 480 0 1
+edge 3 4 "edge3" 1 2 0 160 0 1 0 240 0 1
+edge 4 5 "edge4" 1.5 2 0 240 0 1 0 320 0 1
+edge 5 6 "edge5" 2 2 0 320 0 1 0 400 0 1
+edge 6 7 "edge6" 1 2 0 400 0 1 0 480 0 1
+edge 7 8 "edge7" 1.5 2 0 480 0 1 110 560 0 1

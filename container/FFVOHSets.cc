@@ -9,7 +9,7 @@
 
 #include <VOHSet.cc>
 #include <MFSet.cc>
-#include <String.h>
+#include <FFString.h>
 
 #include "compare.cc"
 

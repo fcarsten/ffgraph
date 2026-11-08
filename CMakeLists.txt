@@ -1,18 +1,41 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.24)
 project(ffgraph LANGUAGES C CXX VERSION 1.0)
 
 include(GNUInstallDirs)
 include(CTest)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(TK REQUIRED IMPORTED_TARGET tk)
-find_package(X11 REQUIRED)
-find_library(XPM_LIBRARY NAMES Xpm REQUIRED)
-find_path(XPM_INCLUDE_DIR NAMES X11/xpm.h REQUIRED)
-find_library(MATH_LIBRARY NAMES m)
-find_library(DL_LIBRARY NAMES dl)
+pkg_check_modules(TK REQUIRED IMPORTED_TARGET tk>=8.6)
+if(WIN32)
+  if(NOT MINGW)
+    message(FATAL_ERROR "The initial native Windows port requires MinGW-w64 (MSYS2 UCRT64). MSVC is not yet supported.")
+  endif()
+  add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN FFGRAPH_NO_XPM)
+  set(FFGRAPH_DISPLAY_LIBRARIES "")
+else()
+  find_package(X11 REQUIRED)
+  set(FFGRAPH_DISPLAY_LIBRARIES X11::X11)
+  option(FFGRAPH_XPM "Enable legacy external Xpm images on Linux (bundled icons use PNG)" OFF)
+  if(FFGRAPH_XPM)
+    find_library(XPM_LIBRARY NAMES Xpm REQUIRED)
+    find_path(XPM_INCLUDE_DIR NAMES X11/xpm.h REQUIRED)
+    list(APPEND FFGRAPH_DISPLAY_LIBRARIES "${XPM_LIBRARY}")
+  else()
+    add_compile_definitions(FFGRAPH_NO_XPM)
+  endif()
+  find_library(MATH_LIBRARY NAMES m)
+  find_library(DL_LIBRARY NAMES dl)
+endif()
+option(FFGRAPH_INITIAL_TESTS_ONLY "Build the initial portable test suite instead of the full Linux suite" ${WIN32})
+if(FFGRAPH_INITIAL_TESTS_ONLY)
+  message(STATUS "Using initial portable test suite; the full Linux suite is not registered")
+endif()
+if(WIN32 AND BUILD_TESTING AND NOT FFGRAPH_INITIAL_TESTS_ONLY)
+  message(FATAL_ERROR "The full Linux test suite is not yet ported to Windows. Enable FFGRAPH_INITIAL_TESTS_ONLY.")
+endif()
 
 option(FFGRAPH_SANITIZERS "Enable address and undefined-behavior sanitizers (GCC/Clang)" OFF)
 option(FFGRAPH_GUI_STRESS_TESTS "Enable slower, large-graph Tk/Xvfb workflow tests" OFF)
+option(FFGRAPH_BUILD_PROFILER "Build headless graph and crossing-counter profiling tools" OFF)
 if(DEFINED FFGRAPH_ROME_BACKEND AND NOT FFGRAPH_ROME_BACKEND STREQUAL "modern")
   message(FATAL_ERROR "Legacy Rome has been retired. Clear obsolete options: "
     "cmake -U FFGRAPH_ROME_BACKEND -U FFGRAPH_ENABLE_MODERN_ROME_PILOT ...")
@@ -27,8 +50,8 @@ if(FFGRAPH_SANITIZERS)
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     message(FATAL_ERROR "Sanitizer configuration requires GCC or Clang")
   endif()
-  add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-  add_link_options(-fsanitize=address,undefined)
+  add_compile_options(-fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address,undefined,float-cast-overflow)
 endif()
 
 # FF, GML and Rome use generated GNU Bison/Flex parsers in all CMake builds.
@@ -102,8 +125,10 @@ add_library(FFGraphic STATIC
   fgraphic/FFTclWindow.cc
   fgraphic/FFTcl3DWindow.cc
   fgraphic/../misc/tkAppInit.c
-  fgraphic/../misc/tkImgPmap.c
 )
+if(NOT WIN32 AND FFGRAPH_XPM)
+  target_sources(FFGraphic PRIVATE misc/tkImgPmap.c)
+endif()
 
 foreach(target FFcontainer FFGraph FFlayout FFGraphic)
   target_compile_features(${target} PUBLIC cxx_std_17)
@@ -122,12 +147,20 @@ foreach(target FFcontainer FFGraph FFlayout FFGraphic)
     $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wno-unused-parameter>
   )
 endforeach()
-target_include_directories(FFGraphic PRIVATE ${XPM_INCLUDE_DIR})
-target_link_libraries(FFGraphic PUBLIC FFGraph PkgConfig::TK X11::X11 ${XPM_LIBRARY})
-add_executable(ffgraph ffmain.cc)
+if(NOT WIN32 AND FFGRAPH_XPM)
+  target_include_directories(FFGraphic PRIVATE ${XPM_INCLUDE_DIR})
+endif()
+target_link_libraries(FFGraphic PUBLIC FFGraph PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES})
+file(RELATIVE_PATH FFGRAPH_RESOURCE_RELATIVE "${CMAKE_INSTALL_FULL_BINDIR}" "${CMAKE_INSTALL_FULL_LIBDIR}/ffgraph")
+configure_file(misc/FFRuntimePathsConfig.h.in generated/FFRuntimePathsConfig.h @ONLY)
+add_executable(ffgraph ffmain.cc misc/FFDefaultLayouts.cc misc/FFRuntimePaths.cc)
+if(WIN32)
+  set_target_properties(ffgraph PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
+target_include_directories(ffgraph PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_compile_features(ffgraph PRIVATE cxx_std_17)
 # Preserve historical static archive resolution order.
-target_link_libraries(ffgraph PRIVATE FFGraph FFGraphic FFlayout FFcontainer PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+target_link_libraries(ffgraph PRIVATE FFGraph FFGraphic FFlayout FFcontainer PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES})
 if(MATH_LIBRARY)
   target_link_libraries(ffgraph PRIVATE ${MATH_LIBRARY})
 endif()
@@ -135,8 +168,21 @@ if(DL_LIBRARY)
   target_link_libraries(ffgraph PRIVATE ${DL_LIBRARY})
 endif()
 
-install(TARGETS ffgraph RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(CODE "execute_process(COMMAND \"${CMAKE_COMMAND}\" -E create_symlink ffgraph \"$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/ffgraph3D\")")
+install(TARGETS ffgraph RUNTIME_DEPENDENCY_SET ffgraph_runtime
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(IS_ABSOLUTE "${CMAKE_INSTALL_BINDIR}")
+  set(FFGRAPH_LINK_DESTINATION "\$ENV{DESTDIR}${CMAKE_INSTALL_BINDIR}/ffgraph3D")
+else()
+  set(FFGRAPH_LINK_DESTINATION "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/ffgraph3D")
+endif()
+if(NOT WIN32)
+  install(CODE "file(REMOVE \"${FFGRAPH_LINK_DESTINATION}\")\nfile(CREATE_LINK ffgraph \"${FFGRAPH_LINK_DESTINATION}\" SYMBOLIC)")
+else()
+  # A real copy works without Windows symlink privileges and preserves argv[0]
+  # dispatch to the existing 3D window implementation.
+  install(PROGRAMS "$<TARGET_FILE:ffgraph>" DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME ffgraph3D.exe)
+  include(cmake/WindowsRuntime.cmake)
+endif()
 install(DIRECTORY lib/ffgraph DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY include/ffgraph/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ffgraph FILES_MATCHING PATTERN "*.h")
 install(TARGETS FFGraph FFGraphic FFlayout FFcontainer ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -153,7 +199,33 @@ target_sources(FFGraph PRIVATE fgraph/modern/rome_graph_adapter.cc)
 target_link_libraries(FFGraph PUBLIC ffgraph_modern_rome)
 install(TARGETS ffgraph_modern_rome ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-if(BUILD_TESTING)
+if(FFGRAPH_BUILD_PROFILER)
+  add_executable(profile_graphs tools/profile_graphs.cpp)
+  target_include_directories(profile_graphs PRIVATE fgraph/modern)
+  add_executable(profile_crossings tools/profile_crossings.cpp)
+  foreach(profile_target IN ITEMS profile_graphs profile_crossings)
+    target_compile_features(${profile_target} PRIVATE cxx_std_17)
+    target_link_libraries(${profile_target} PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES})
+    if(MATH_LIBRARY)
+      target_link_libraries(${profile_target} PRIVATE ${MATH_LIBRARY})
+    endif()
+    if(DL_LIBRARY)
+      target_link_libraries(${profile_target} PRIVATE ${DL_LIBRARY})
+    endif()
+  endforeach()
+endif()
+
+if(BUILD_TESTING AND FFGRAPH_INITIAL_TESTS_ONLY)
+  include(tests/initial/CMakeLists.txt)
+endif()
+
+if(BUILD_TESTING AND NOT FFGRAPH_INITIAL_TESTS_ONLY)
+  add_executable(test_runtime_paths tests/test_runtime_paths.cpp misc/FFRuntimePaths.cc)
+  target_compile_features(test_runtime_paths PRIVATE cxx_std_17)
+  target_include_directories(test_runtime_paths PRIVATE include misc "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  add_test(NAME test_runtime_paths COMMAND test_runtime_paths)
   add_executable(test_check_ndebug tests/test_check_ndebug.cpp)
   target_compile_features(test_check_ndebug PRIVATE cxx_std_17)
   target_compile_definitions(test_check_ndebug PRIVATE NDEBUG)
@@ -198,12 +270,33 @@ if(BUILD_TESTING)
   foreach(test_name
       test_graph_invariants_pass9
       test_graph_geometry_pass9
-      test_graph_layout_pass9)
+      test_graph_layout_pass9
+      test_spring_numerics
+      test_spring_equilibrium
+      test_spring_weight_toggle
+      test_spring_force_compat
+      test_layout_controls
+      test_sugiyama_missing_graphics
+      test_sugiyama_large_input
+      test_sugiyama_numeric
+      test_sugiyama_failure
+      test_sugiyama_resources
+      test_renderer_coordinates
+      test_sugiyama_barycenters
+      test_sugiyama_permutations
+      test_sugiyama_parallel_index
+      test_sugiyama_crossings
+      test_sugiyama_matrix_comparisons
+      test_application_default_layouts
+      test_sugiyama_layout)
     add_executable(${test_name} tests/${test_name}.cpp)
+    if(test_name STREQUAL "test_application_default_layouts")
+      target_sources(${test_name} PRIVATE misc/FFDefaultLayouts.cc)
+    endif()
     target_compile_features(${test_name} PRIVATE cxx_std_17)
     target_link_libraries(${test_name} PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES}
     )
     if(MATH_LIBRARY)
       target_link_libraries(${test_name} PRIVATE ${MATH_LIBRARY})
@@ -211,8 +304,56 @@ if(BUILD_TESTING)
     if(DL_LIBRARY)
       target_link_libraries(${test_name} PRIVATE ${DL_LIBRARY})
     endif()
-    add_test(NAME ${test_name} COMMAND ${test_name})
+    if(test_name STREQUAL "test_sugiyama_resources")
+      if(FFGRAPH_SANITIZERS)
+        target_compile_definitions(${test_name} PRIVATE FFGRAPH_RESOURCE_ASAN=1)
+      endif()
+      # Registered below after the required Python interpreter is located.
+      continue()
+    elseif(test_name STREQUAL "test_sugiyama_layout")
+      add_test(NAME ${test_name} COMMAND ${test_name}
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/sugiyama_oracles")
+    else()
+      add_test(NAME ${test_name} COMMAND ${test_name})
+    endif()
     set_tests_properties(${test_name} PROPERTIES TIMEOUT 30)
+  endforeach()
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  add_test(NAME test_sugiyama_resource_controls
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_sugiyama_resources.py"
+      --binary "$<TARGET_FILE:test_sugiyama_resources>" --mode controls)
+  set_tests_properties(test_sugiyama_resource_controls PROPERTIES TIMEOUT 300)
+  # RLIMIT_AS needs Linux /proc and conflicts with ASan's huge virtual shadow.
+  # Sanitizer builds retain the moderate successful controls above and all
+  # existing injected allocation/publication failure regressions.
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT FFGRAPH_SANITIZERS)
+    add_test(NAME test_sugiyama_resource_limits
+      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_sugiyama_resources.py"
+        --binary "$<TARGET_FILE:test_sugiyama_resources>" --mode limits)
+    set_tests_properties(test_sugiyama_resource_limits PROPERTIES TIMEOUT 450)
+  endif()
+  # Four 1,000-node layouts also run in instrumented builds.
+  set_tests_properties(test_spring_numerics PROPERTIES TIMEOUT 90)
+  add_test(NAME test_sugiyama_deep_traversal COMMAND test_sugiyama_large_input --deep)
+  set_tests_properties(test_sugiyama_deep_traversal PROPERTIES TIMEOUT 60)
+  add_test(NAME test_sugiyama_scalar_failure COMMAND test_sugiyama_failure --scalar)
+  set_tests_properties(test_sugiyama_scalar_failure PROPERTIES TIMEOUT 120)
+  add_test(NAME test_application_default_layouts_exit COMMAND test_application_default_layouts --exit)
+  set_tests_properties(test_application_default_layouts_exit PROPERTIES TIMEOUT 30)
+
+  # Actual FF/GML loads and generated graphs, with frozen-reference checks on
+  # every incoming permutation and complete layouts on the same graph objects.
+  # The verified reduction object is test-only; application code has no oracle.
+  add_executable(test_sugiyama_corpus tests/test_sugiyama_corpus.cpp
+    tests/sugiyama_verified_reduction.cpp)
+  target_compile_features(test_sugiyama_corpus PRIVATE cxx_std_17)
+  target_link_libraries(test_sugiyama_corpus PRIVATE
+    "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
+  foreach(corpus_mode real synthetic)
+    add_test(NAME test_sugiyama_corpus_${corpus_mode} COMMAND test_sugiyama_corpus
+      ${corpus_mode} "${CMAKE_CURRENT_SOURCE_DIR}/tests/sugiyama_corpus")
+    set_tests_properties(test_sugiyama_corpus_${corpus_mode} PROPERTIES TIMEOUT 300)
   endforeach()
 
   # Exercise the public FFGraphClass::load() entry point independently of
@@ -222,7 +363,7 @@ if(BUILD_TESTING)
   target_compile_features(test_gml_production_backend_pass11 PRIVATE cxx_std_17)
   target_link_libraries(test_gml_production_backend_pass11 PRIVATE
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-    PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES})
   if(MATH_LIBRARY)
     target_link_libraries(test_gml_production_backend_pass11 PRIVATE ${MATH_LIBRARY})
   endif()
@@ -244,7 +385,7 @@ if(BUILD_TESTING)
   target_link_libraries(test_gml_graph_regression_pass11 PRIVATE
     ffgraph_modern_gml
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-    PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES})
   if(MATH_LIBRARY)
     target_link_libraries(test_gml_graph_regression_pass11 PRIVATE ${MATH_LIBRARY})
   endif()
@@ -269,7 +410,6 @@ if(BUILD_TESTING)
   if(NOT FFGRAPH_GML_DIFFERENTIAL_PROFILE MATCHES "^(smoke|standard|stress)$")
     message(FATAL_ERROR "Unsupported FFGRAPH_GML_DIFFERENTIAL_PROFILE")
   endif()
-  find_package(Python3 COMPONENTS Interpreter REQUIRED)
   set(FFGRAPH_DIFF_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_corpus")
   set(FFGRAPH_DIFF_GRAPHS
     "${CMAKE_CURRENT_BINARY_DIR}/gml-differential-${FFGRAPH_GML_DIFFERENTIAL_PROFILE}")
@@ -312,7 +452,7 @@ if(BUILD_TESTING)
   target_link_libraries(test_gml_corpus_oracle_pass11 PRIVATE
     ffgraph_modern_gml
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-    PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES})
   if(MATH_LIBRARY)
     target_link_libraries(test_gml_corpus_oracle_pass11 PRIVATE ${MATH_LIBRARY})
   endif()
@@ -328,7 +468,7 @@ if(BUILD_TESTING)
   target_link_libraries(test_gml_semantic_atomicity_pass11 PRIVATE
     ffgraph_modern_gml
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-    PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES})
   if(MATH_LIBRARY)
     target_link_libraries(test_gml_semantic_atomicity_pass11 PRIVATE ${MATH_LIBRARY})
   endif()
@@ -373,7 +513,7 @@ if(BUILD_TESTING)
     target_compile_features(test_graph_corpus_layout_pass11 PRIVATE cxx_std_17)
     target_link_libraries(test_graph_corpus_layout_pass11 PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES})
     if(MATH_LIBRARY)
       target_link_libraries(test_graph_corpus_layout_pass11 PRIVATE ${MATH_LIBRARY})
     endif()
@@ -404,7 +544,7 @@ if(BUILD_TESTING)
     target_compile_features(test_graph_corpus_metamorphic_pass11 PRIVATE cxx_std_17)
     target_link_libraries(test_graph_corpus_metamorphic_pass11 PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY})
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES})
     if(MATH_LIBRARY)
       target_link_libraries(test_graph_corpus_metamorphic_pass11 PRIVATE ${MATH_LIBRARY})
     endif()
@@ -423,7 +563,7 @@ if(BUILD_TESTING)
     FFGRAPH_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   target_link_libraries(test_graph_io_pass10 PRIVATE
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-    PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES}
   )
   if(MATH_LIBRARY)
     target_link_libraries(test_graph_io_pass10 PRIVATE ${MATH_LIBRARY})
@@ -437,7 +577,7 @@ if(BUILD_TESTING)
   add_executable(test_ff_production_backend_pass12 tests/test_ff_production_backend_pass12.cpp)
   target_link_libraries(test_ff_production_backend_pass12 PRIVATE
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-    PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
   add_test(NAME test_ff_production_backend_pass12 COMMAND test_ff_production_backend_pass12)
   set_tests_properties(test_ff_production_backend_pass12 PROPERTIES TIMEOUT 40)
 
@@ -446,7 +586,7 @@ if(BUILD_TESTING)
     FFGRAPH_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   target_link_libraries(test_rome_production_backend_pass12 PRIVATE
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-    PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
   add_test(NAME test_rome_production_backend_pass12 COMMAND test_rome_production_backend_pass12)
   set_tests_properties(test_rome_production_backend_pass12 PROPERTIES TIMEOUT 40)
 
@@ -454,7 +594,7 @@ if(BUILD_TESTING)
   target_compile_features(test_graph_ownership PRIVATE cxx_std_17)
   target_link_libraries(test_graph_ownership PRIVATE
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-    PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES}
   )
   if(MATH_LIBRARY)
     target_link_libraries(test_graph_ownership PRIVATE ${MATH_LIBRARY})
@@ -469,7 +609,7 @@ if(BUILD_TESTING)
   add_executable(test_graph_reference_cycle tests/test_graph_reference_cycle.cpp)
   target_link_libraries(test_graph_reference_cycle PRIVATE
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-    PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES}
   )
   if(MATH_LIBRARY)
     target_link_libraries(test_graph_reference_cycle PRIVATE ${MATH_LIBRARY})
@@ -485,7 +625,7 @@ if(BUILD_TESTING)
     add_executable(${test_name} tests/${test_name}.cpp)
     target_link_libraries(${test_name} PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES}
     )
     if(MATH_LIBRARY)
       target_link_libraries(${test_name} PRIVATE ${MATH_LIBRARY})
@@ -500,7 +640,7 @@ if(BUILD_TESTING)
   add_executable(test_label_replacement tests/test_label_replacement.cpp)
   target_link_libraries(test_label_replacement PRIVATE
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-    PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES}
   )
   if(MATH_LIBRARY)
     target_link_libraries(test_label_replacement PRIVATE ${MATH_LIBRARY})
@@ -513,7 +653,7 @@ if(BUILD_TESTING)
   add_executable(test_tcl_command_lifetime tests/test_tcl_command_lifetime.cpp)
   target_link_libraries(test_tcl_command_lifetime PRIVATE
     "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-    PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+    PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES}
   )
   if(MATH_LIBRARY)
     target_link_libraries(test_tcl_command_lifetime PRIVATE ${MATH_LIBRARY})
@@ -548,7 +688,7 @@ if(BUILD_TESTING)
     add_executable(test_ffwindow_tk_teardown tests/test_ffwindow_tk_teardown.cpp)
     target_link_libraries(test_ffwindow_tk_teardown PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES}
     )
     if(MATH_LIBRARY)
       target_link_libraries(test_ffwindow_tk_teardown PRIVATE ${MATH_LIBRARY})
@@ -568,7 +708,7 @@ if(BUILD_TESTING)
       tests/test_load_window_lifetime_pass11.cpp)
     target_link_libraries(test_load_window_lifetime_pass11 PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES}
     )
     if(MATH_LIBRARY)
       target_link_libraries(test_load_window_lifetime_pass11 PRIVATE ${MATH_LIBRARY})
@@ -587,7 +727,7 @@ if(BUILD_TESTING)
     add_executable(test_ff_window_oracle_pass12 tests/test_ff_window_oracle_pass12.cpp)
     target_link_libraries(test_ff_window_oracle_pass12 PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
     add_test(NAME test_ff_window_oracle_pass12
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_ff_window_oracle_pass12>"
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/modern_ff/fixtures/gui.g")
@@ -597,7 +737,7 @@ if(BUILD_TESTING)
     add_executable(test_rome_window_oracle_pass12 tests/test_rome_window_oracle_pass12.cpp)
     target_link_libraries(test_rome_window_oracle_pass12 PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY} ${MATH_LIBRARY} ${DL_LIBRARY})
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
     add_test(NAME test_rome_window_oracle_pass12
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_rome_window_oracle_pass12>"
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/rome_fixtures/structure.rome"
@@ -613,7 +753,7 @@ if(BUILD_TESTING)
       tests/test_gui_file_workflow_pass11.cpp)
     target_link_libraries(test_gui_file_workflow_pass11 PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES}
     )
     if(MATH_LIBRARY)
       target_link_libraries(test_gui_file_workflow_pass11 PRIVATE ${MATH_LIBRARY})
@@ -667,7 +807,7 @@ if(BUILD_TESTING)
     target_compile_features(test_tk_lifecycle_pass10 PRIVATE cxx_std_17)
     target_link_libraries(test_tk_lifecycle_pass10 PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES}
     )
     if(MATH_LIBRARY)
       target_link_libraries(test_tk_lifecycle_pass10 PRIVATE ${MATH_LIBRARY})
@@ -682,7 +822,7 @@ if(BUILD_TESTING)
     add_executable(test_inspector_visibility tests/test_inspector_visibility.cpp)
     target_link_libraries(test_inspector_visibility PRIVATE
       "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
-      PkgConfig::TK X11::X11 ${XPM_LIBRARY}
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES}
     )
     if(MATH_LIBRARY)
       target_link_libraries(test_inspector_visibility PRIVATE ${MATH_LIBRARY})
@@ -692,21 +832,112 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME test_inspector_visibility
       COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_inspector_visibility>")
+
+    add_executable(test_layout_controls_gui tests/test_layout_controls_gui.cpp)
+    target_link_libraries(test_layout_controls_gui PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
+    add_test(NAME test_layout_controls_gui
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_layout_controls_gui>")
+    add_executable(test_renderer_coordinates_gui tests/test_renderer_coordinates_gui.cpp)
+    target_link_libraries(test_renderer_coordinates_gui PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
+    add_test(NAME test_renderer_coordinates_gui
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_renderer_coordinates_gui>")
+    set_tests_properties(test_renderer_coordinates_gui PROPERTIES TIMEOUT 60
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    add_test(NAME test_sugiyama_failure_gui
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_sugiyama_failure>" --gui)
+    set_tests_properties(test_sugiyama_failure_gui PROPERTIES TIMEOUT 90
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    add_test(NAME test_sugiyama_scalar_failure_gui
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_sugiyama_failure>" --scalar-gui)
+    set_tests_properties(test_sugiyama_scalar_failure_gui PROPERTIES TIMEOUT 300
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    add_test(NAME test_sugiyama_publication_gui
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:test_sugiyama_failure>" --publication-gui)
+    set_tests_properties(test_sugiyama_publication_gui PROPERTIES TIMEOUT 180
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT FFGRAPH_SANITIZERS)
+      add_test(NAME test_sugiyama_resource_limits_gui
+        COMMAND "${XVFB_RUN_EXECUTABLE}" -a "${Python3_EXECUTABLE}"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_sugiyama_resources.py"
+          --binary "$<TARGET_FILE:test_sugiyama_resources>" --mode gui)
+      set_tests_properties(test_sugiyama_resource_limits_gui PROPERTIES TIMEOUT 120
+        ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    endif()
+    set_tests_properties(test_layout_controls_gui PROPERTIES TIMEOUT 60
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    if(Python3_Interpreter_FOUND)
+      add_test(NAME test_installed_runtime
+        COMMAND "${XVFB_RUN_EXECUTABLE}" -a "${Python3_EXECUTABLE}"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_installed_runtime.py"
+          --build "${CMAKE_CURRENT_BINARY_DIR}" --libdir "${CMAKE_INSTALL_LIBDIR}")
+      set_tests_properties(test_installed_runtime PROPERTIES TIMEOUT 90)
+    endif()
   endif()
 endif()
 
 if(BUILD_TESTING)
+  if(Python3_Interpreter_FOUND)
+    add_test(NAME test_installed_runtime_env
+      COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_installed_runtime_env.py")
+    set_tests_properties(test_installed_runtime_env PROPERTIES TIMEOUT 30 LABELS headless)
+  endif()
+  # These GUI regressions run in both the full and initial suites.
+  find_program(XVFB_RUN_EXECUTABLE NAMES xvfb-run)
+  if(WIN32 OR XVFB_RUN_EXECUTABLE)
+    add_executable(test_image_assets tests/test_image_assets.cpp)
+    target_compile_features(test_image_assets PRIVATE cxx_std_17)
+    target_compile_definitions(test_image_assets PRIVATE FFGRAPH_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+    target_link_libraries(test_image_assets PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
+    set(image_test_command ${CMAKE_CROSSCOMPILING_EMULATOR})
+    if(NOT WIN32)
+      set(image_test_command "${XVFB_RUN_EXECUTABLE}" -a)
+    endif()
+    add_test(NAME test_image_assets COMMAND ${image_test_command} "$<TARGET_FILE:test_image_assets>")
+    set_tests_properties(test_image_assets PROPERTIES TIMEOUT 90
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    add_executable(test_file_selector tests/test_file_selector.cpp)
+    target_compile_features(test_file_selector PRIVATE cxx_std_17)
+    target_link_libraries(test_file_selector PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
+    add_test(NAME test_file_selector COMMAND ${image_test_command} "$<TARGET_FILE:test_file_selector>")
+    set_tests_properties(test_file_selector PROPERTIES TIMEOUT 90
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    add_executable(test_ttk_widgets tests/test_ttk_widgets.cpp)
+    target_compile_features(test_ttk_widgets PRIVATE cxx_std_17)
+    target_link_libraries(test_ttk_widgets PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
+    add_test(NAME test_ttk_widgets COMMAND ${image_test_command} "$<TARGET_FILE:test_ttk_widgets>")
+    set_tests_properties(test_ttk_widgets PROPERTIES TIMEOUT 90
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+    add_executable(test_canvas_zoom tests/test_canvas_zoom.cpp)
+    target_compile_features(test_canvas_zoom PRIVATE cxx_std_17)
+    target_link_libraries(test_canvas_zoom PRIVATE
+      "$<LINK_GROUP:RESCAN,FFGraph,FFGraphic,FFlayout,FFcontainer>"
+      PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES} ${MATH_LIBRARY} ${DL_LIBRARY})
+    add_test(NAME test_canvas_zoom COMMAND ${image_test_command} "$<TARGET_FILE:test_canvas_zoom>")
+    set_tests_properties(test_canvas_zoom PROPERTIES TIMEOUT 90
+      ENVIRONMENT "FF_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph;FF_ICONDIR=${CMAKE_CURRENT_SOURCE_DIR}/lib/ffgraph/icons")
+  endif()
   # Parser subdirectories label their own tests, also in standalone builds.
   get_property(headless_tests DIRECTORY PROPERTY TESTS)
   set_tests_properties(${headless_tests} PROPERTIES LABELS headless)
   # All tests requiring Xvfb belong to the GUI partition, including stress tests.
   foreach(gui_test IN ITEMS
-      test_ffwindow_tk_teardown test_load_window_lifetime_pass11
+      test_image_assets test_file_selector test_ttk_widgets test_canvas_zoom test_native_gui_smoke test_ffwindow_tk_teardown test_load_window_lifetime_pass11
       test_ff_window_oracle_pass12 test_gui_file_workflow_pass11
       test_ff_gui_file_workflow_pass12 test_gui_large_file_workflow_pass11
       test_rome_window_oracle_pass12 test_rome_gui_file_workflow_2d_pass12
       test_rome_gui_file_workflow_3d_pass12
-      test_tk_lifecycle_pass10 test_inspector_visibility)
+      test_tk_lifecycle_pass10 test_inspector_visibility test_layout_controls_gui test_installed_runtime test_sugiyama_failure_gui test_sugiyama_publication_gui
+      test_sugiyama_resource_limits_gui test_renderer_coordinates_gui test_sugiyama_scalar_failure_gui)
     if(TEST ${gui_test})
       set_tests_properties(${gui_test} PROPERTIES LABELS gui)
     endif()

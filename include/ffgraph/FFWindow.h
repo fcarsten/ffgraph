@@ -26,7 +26,7 @@ extern "C" {
 #include <tk.h>
 }
 
-#include <String.h>
+#include <FFString.h>
 
 class FFGraph;
 

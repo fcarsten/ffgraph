@@ -7,7 +7,7 @@
 
 #ifdef USE_VHSET
 
-#include <String.h>
+#include <FFString.h>
 #include "compare.cc"
 #include <VHSet.cc>
 #include <MFSet.cc>

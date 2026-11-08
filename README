@@ -6,3 +6,10 @@ described in doc/ffgraph.ps. Graphs can be loaded and saved in a
 slightly extended sgraph file format.
 
 It was originally created in the early 90s and recently ported to compile and run on modern Linux, namely Ubuntu 24.04.
+
+An initial native Windows MinGW-w64/Tcl-Tk port is available without X11 or
+Xpm. See BUILD-WINDOWS.md for build instructions and verification limits.
+
+Bundled icons and masks use PNG. Linux Xpm loading is optional
+(-DFFGRAPH_XPM=ON) for external legacy images; bundled legacy graph references
+resolve to PNG without Xpm. See docs/FFGRAPH-PNG-ASSET-MIGRATION.md.

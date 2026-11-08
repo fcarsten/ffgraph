@@ -6,7 +6,7 @@
 #include <DLList.h>
 #include <SLList.h>
 #include <stream.h>
-#include <String.h>
+#include <FFString.h>
 
 #include <ffgraph/FFlayout_algorithmen.h>
 #include <ffgraph/FFGraphClass.h>

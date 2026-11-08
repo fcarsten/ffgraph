@@ -7,7 +7,7 @@
 #include <ffgraph/FFEdgeClass.h>
 
 #include <ffgraph/FFLayoutLabel.h>
-#include <String.h>
+#include <FFString.h>
 
 #define ffNaivType String("FFNaiv")
 #define NAIV_X_OFFSET 100

@@ -18,7 +18,7 @@
 #define FF_WIN_UPD(a);   if (graph->getWindow ()) \
 {\
  graph->getWindow()->update();\
- sleep(a);\
+ ffgraph_platform::sleepSeconds(a);\
 }
 
 FFOrtho::FFOrtho ()
