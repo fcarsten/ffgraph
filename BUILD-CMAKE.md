@@ -3,6 +3,11 @@
 Current release candidate: **1.0.0-rc1**. See [release notes](RELEASE-NOTES.md)
 and [packaging instructions](RELEASING.md). `VERSION` is authoritative.
 
+To diagnose file-selector visibility or focus, set a writable log path before
+launching: `FFGRAPH_FILE_SELECTOR_LOG=/tmp/ffgraph-selector.log ./build/debug/ffgraph`.
+Logging is opt-in and appends UTF-8 records including directory/resource paths.
+See [the diagnostics report](docs/FFGRAPH-FILE-SELECTOR-DIAGNOSTICS.md).
+
 For the initial native Windows build without X11/Xpm, see
 [BUILD-WINDOWS.md](BUILD-WINDOWS.md). Linux keeps its existing full test suite;
 Windows starts with an explicitly selected portable suite.

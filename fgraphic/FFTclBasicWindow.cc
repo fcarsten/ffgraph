@@ -542,8 +542,11 @@ int FFTclBasicWindow::recall(Tcl_Interp *, int , const char **c)
      }		
     else if(key == "n")
      {
-      // FFGraph()->createGraphic(new FFTclWindow);
-      FFGraph()->createGraphic((FFGraphWindow *)this->proto());
+      // Match File > Load: the window label observes its graph, so keep an
+      // owning handle after this command's temporary handle goes out of scope.
+      FFGraph created;
+      created->createGraphic((FFGraphWindow *)this->proto());
+      FFWindow::retainGraph(created);
      }
     else if(key == "m")
      {

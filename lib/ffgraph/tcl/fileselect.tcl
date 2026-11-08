@@ -18,6 +18,13 @@ source [file join [file dirname [info script]] ttk.tcl]
 #
 #**************************************************************************/
 
+proc FileSelectorBox_Warn {message} {
+  # A native Windows GUI process may have no Tcl stderr channel. Warnings
+  # must not abort construction before the completed selector is shown.
+  catch {puts stderr $message}
+  catch {::ffgraph_selector_debug::record warning $message}
+}
+
 proc FileSelectorBox_SetMenuText {text} {
   ##############
   # Procedure  : FileSelectorBox_SetMenuText
@@ -724,6 +731,7 @@ proc FileSelectorBox {title pattern given_start_dir args} {
   ##############
   global fileselect
   global fileselectcolor
+  set previousFocus [focus]
   FileSelectorBox_GetArgs $args
 
   set fileselect(focus_to_entry) 0
@@ -740,6 +748,11 @@ proc FileSelectorBox {title pattern given_start_dir args} {
   } {
     wm withdraw .fileselect
   }
+  # Establish ownership while hidden. Otherwise activation of the graph
+  # (including focus restoration after menu selection) can cover this window.
+  # Changing a visible toplevel's ownership may also make the WM remap it.
+  wm transient .fileselect .
+  wm protocol .fileselect WM_DELETE_WINDOW {set fileselect(state) dismiss}
   if {$fileselect(previous_settings) == "0"} {
     wm title .fileselect $title
     FileSelectorBox_FillEntry .fileselect.misc.right.pattern.e $pattern
@@ -761,7 +774,7 @@ proc FileSelectorBox {title pattern given_start_dir args} {
     } else {
       set fileselect(start_dir) [pwd]
       FileSelectorBox_GetDirStruct [pwd] $pattern
-      puts stderr "FSBox: No valid Dir-Name ->$start_dir<-"
+      FileSelectorBox_Warn "FSBox: No valid Dir-Name ->$start_dir<-"
     }
     
     .fileselect.misc.right.pattern.l configure -text "Pattern:  [.fileselect.misc.right.pattern.e get]"
@@ -793,6 +806,7 @@ proc FileSelectorBox {title pattern given_start_dir args} {
   set fileselect(state) wait
   wm deiconify .fileselect
   raise .fileselect
+  focus .fileselect.choose.current.e
   
 #   while {$fileselect(state) == "wait"} {
 #     update
@@ -805,11 +819,14 @@ proc FileSelectorBox {title pattern given_start_dir args} {
 	   "Attention" "Do it" "Forget it"] =="1"} {
       catch {file mkdir [file dirname $result]} tmp
       if {$tmp != ""} {
-	puts stderr  "FSBox: Start action-> $tmp"
+	FileSelectorBox_Warn "FSBox: Start action-> $tmp"
       }
     }
   }
   wm withdraw .fileselect
+  if {$previousFocus ne "" && [winfo exists $previousFocus]} {
+    focus $previousFocus
+  }
   
   if {$fileselect(state) == "ok"} {
     return "[file dirname $result]/[file tail $result]"
@@ -817,3 +834,5 @@ proc FileSelectorBox {title pattern given_start_dir args} {
     return "";
   }
 }
+
+source [file join [file dirname [info script]] fileselect-diagnostics.tcl]

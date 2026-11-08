@@ -4,14 +4,27 @@
 #include <ffgraph/FFTcl3DWindow.h>
 
 namespace {
-void exercise(bool threeD) {
+void exercise(bool threeD, bool diagnostics = false) {
   FFGraph graph(YES);
   auto* window = threeD ? static_cast<FFTclBasicWindow*>(new FFTcl3DWindow)
                         : static_cast<FFTclBasicWindow*>(new FFTclWindow);
   graph->createGraphic(window);
+  Tcl_SetVar(window->getInterpreter(), "selectorDiagnostics", diagnostics ? "1" : "0", TCL_GLOBAL_ONLY);
+  // Native GUI executables may have no standard Tcl channels. Keep the actual
+  // channel alive, but remove the stderr alias while exercising the selector.
+  Tcl_Channel savedStderr = Tcl_GetStdChannel(TCL_STDERR);
+  Tcl_SetStdChannel(nullptr, TCL_STDERR);
   const int status = Tcl_Eval(window->getInterpreter(), R"tcl(
     proc selectorCheck {condition message} {
       if {![uplevel 1 [list expr $condition]]} {error $message}
+    }
+    set channel [file tempfile selectorLog]
+    close $channel
+    if {$selectorDiagnostics} {
+      set env(FFGRAPH_FILE_SELECTOR_LOG) $selectorLog
+      ::ffgraph_selector_debug::enable
+      # Repeated enabling must not duplicate hooks or event bindings.
+      ::ffgraph_selector_debug::enable
     }
     # Reject any construction-time post before Windows enters its native menu
     # loop. This catches even a popup that is immediately hidden again on X11.
@@ -47,6 +60,8 @@ void exercise(bool threeD) {
     trace add execution FileSelectorBox_GetDirStruct enter selectorScanTrace
     set channel [file tempfile selectorFile]
     close $channel
+    set missingStart [file join [file dirname $selectorFile] ffgraph-missing-[pid]-[clock clicks]]
+    selectorCheck {![file exists $missingStart]} {Missing-directory fixture unexpectedly exists}
     set selectorFailure ""
     set selectorRealMenu 0
     proc bgerror {message} {set ::selectorFailure $message; puts stderr $::errorInfo}
@@ -125,6 +140,13 @@ void exercise(bool threeD) {
         update
         set ::selectorPreparing 0
         selectorCheck {[winfo ismapped .fileselect]} {Ready file selector is hidden}
+        selectorCheck {[wm transient .fileselect] eq "."} {File selector has no graph-window owner}
+        # Mapping a dialog/menu can deliver a delayed pointer Enter to the
+        # underlying canvas. Passive hover must not reactivate the graph.
+        event generate .frame0.canvas2 <Enter>
+        update
+        selectorCheck {[focus] eq ".fileselect.choose.current.e"} {File selector did not focus the filename field}
+        selectorCheck {[wm protocol .fileselect WM_DELETE_WINDOW] ne ""} {Window close does not cancel the file selector}
         selectorCheck {[llength $::selectorMapStates] == $::selectorOpening} {File selector was mapped more than once per opening}
         foreach state $::selectorMapStates {
           selectorCheck {$state eq "wait"} {File selector was mapped before it was ready}
@@ -133,10 +155,12 @@ void exercise(bool threeD) {
         selectorCheck {[winfo exists .fileselect.action.ok]} {Incomplete file selector}
         selectorCheck {![winfo ismapped .fileselect.menu_begin_dir]} {Navigation menu is visible at startup}
         selectorCheck {[FileSelectorBox_GetMenuEntries .fileselect.menu_begin_dir] eq {Home Root Current}} {Missing navigation entries}
-        if {!$accept && [tk windowingsystem] eq "x11"} {selectorNavigate}
-        if {$accept} {
+        if {$accept == 0 && [tk windowingsystem] eq "x11"} {selectorNavigate}
+        if {$accept == 1} {
           FileSelectorBox_FillEntry .fileselect.choose.current.e $::selectorFile
           .fileselect.action.ok invoke
+        } elseif {$accept == 2} {
+          uplevel #0 [wm protocol .fileselect WM_DELETE_WINDOW]
         } else {
           .fileselect.action.dismiss invoke
         }
@@ -145,29 +169,38 @@ void exercise(bool threeD) {
         set ::fileselect(state) dismiss
       }
     }
-    set selectorWatchdog [after 5000 {
-      set selectorFailure {File selector did not reach its response loop}
-      set fileselect(state) dismiss
-    }]
+    proc selectorArmWatchdog {} {
+      if {[info exists ::selectorWatchdog]} {after cancel $::selectorWatchdog}
+      # Bound each opening; native Windows activation and directory scans can
+      # take time, and this test now opens four dialogs instead of two.
+      set ::selectorWatchdog [after 5000 {
+        set selectorFailure {File selector did not reach its response loop}
+        set fileselect(state) dismiss
+      }]
+    }
     try {
       # A first opening must reach the complete dialog without a menu popup.
+      focus -force .frame0.canvas2
+      selectorArmWatchdog
       set selectorPreparing 1
       incr selectorOpening
       set selectorResponse [after 0 {selectorRespond 0}]
-      set selected [FileSelectorBox {Open graph} * [file dirname $selectorFile]]
+      set selected [FileSelectorBox {Open graph} * $missingStart]
       selectorCheck {$selectorFailure eq ""} $selectorFailure
       selectorCheck {$selected eq ""} {Cancel returned a filename}
       selectorCheck {[wm state .fileselect] eq "withdrawn"} {Cancel left the dialog visible}
+      selectorCheck {[focus] eq ".frame0.canvas2"} {Cancel did not restore graph focus}
 
       # The original button binding must still request the navigation popup.
       set selectorAllowPost 1
       set binding [bind TMenubutton <space>]
       set outcome [catch {eval [string map {%W .fileselect.misc.left.begin_dir} $binding]} message]
-      selectorCheck {$outcome == 1 && $message eq "SELECTOR_TEST_POST"} {Navigation binding failed to post its menu}
+      selectorCheck {$outcome == 1 && $message eq "SELECTOR_TEST_POST"} "Navigation binding failed to post its menu: $outcome $message"
       selectorCheck {[lrange $selectorPost 0 1] eq {.fileselect.menu_begin_dir post}} {Wrong navigation menu posted}
       set selectorAllowPost 0
 
       # Reopening the existing selector must also work, including acceptance.
+      selectorArmWatchdog
       set selectorPreparing 1
       incr selectorOpening
       set selectorResponse [after 0 {selectorRespond 1}]
@@ -175,15 +208,66 @@ void exercise(bool threeD) {
       selectorCheck {$selectorFailure eq ""} $selectorFailure
       selectorCheck {[file normalize $selected] eq [file normalize $selectorFile]} {Wrong selected filename}
       selectorCheck {[wm state .fileselect] eq "withdrawn"} {Accept left the dialog visible}
+      selectorCheck {[focus] eq ".frame0.canvas2"} {Accept did not restore graph focus}
+      focus .frame1.menubutton1
+      event generate .frame0.canvas2 <Enter>
+      update
+      selectorCheck {[focus] eq ".frame0.canvas2"} {Canvas hover no longer focuses the graph after dismissal}
+
+      # Exercise the real File-menu callbacks and C++ fsBox() bridge as well
+      # as the direct Tcl entry point. Closing the title bar must dismiss the
+      # selector without destroying the widgets or leaving tkwait blocked.
+      foreach label {{Load (M-l)} {Save As (M-S)}} {
+        selectorArmWatchdog
+        set selectorPreparing 1
+        incr selectorOpening
+        set selectorResponse [after 0 {selectorRespond 2}]
+        set fileMenu .frame1.menubutton1.m
+        $fileMenu invoke $label
+        selectorCheck {$selectorFailure eq ""} $selectorFailure
+        selectorCheck {[wm state .fileselect] eq "withdrawn"} {File-menu cancellation left the selector visible}
+        selectorCheck {[focus] eq ".frame0.canvas2"} {File-menu cancellation did not restore graph focus}
+      }
+      if {$selectorDiagnostics} {
+        set code [catch {FileSelectorBox} message]
+        selectorCheck {$code == 1 && [string match {*wrong # args*} $message]} {Diagnostics changed Tcl error handling}
+        set channel [open $selectorLog r]
+        fconfigure $channel -encoding utf-8
+        set log [read $channel]
+        close $channel
+        foreach marker {{event enabled} {event call-enter} {event call-leave} {event state-write}
+            {event Map} {event Unmap} {owner .} {state wait} {wrong # args}} {
+          selectorCheck {[string first $marker $log] >= 0} "Diagnostic record missing: $marker"
+        }
+        # Logging errors must not prevent a dialog from opening or dismissing.
+        set env(FFGRAPH_FILE_SELECTOR_LOG) [file join $selectorLog nonexistent log.txt]
+        selectorArmWatchdog
+        set selectorPreparing 1
+        incr selectorOpening
+        set selectorResponse [after 0 {selectorRespond 2}]
+        FileSelectorBox {Unwritable log} * [file dirname $selectorFile]
+        selectorCheck {$selectorFailure eq ""} $selectorFailure
+        unset env(FFGRAPH_FILE_SELECTOR_LOG)
+      } else {
+        selectorCheck {[file size $selectorLog] == 0} {Diagnostics wrote a log without being enabled}
+      }
     } finally {
+      if {$selectorDiagnostics && $selectorFailure ne ""} {
+        set failedLog [file join [file dirname $selectorLog] ffgraph-selector-test-failure.log]
+        file copy -force $selectorLog $failedLog
+        puts stderr "Selector diagnostic failure log: $failedLog"
+      }
+      unset -nocomplain env(FFGRAPH_FILE_SELECTOR_LOG)
       after cancel $selectorWatchdog
       after cancel $selectorResponse
       trace remove execution menu leave selectorCreatedMenu
       trace remove execution FileSelectorBox_GetDirStruct enter selectorScanTrace
       file delete $selectorFile
+      file delete $selectorLog
       catch {destroy .fileselect}
     }
   )tcl");
+  Tcl_SetStdChannel(savedStderr, TCL_STDERR);
   if (status != TCL_OK) std::cerr << Tcl_GetStringResult(window->getInterpreter()) << '\n';
   FF_CHECK(status == TCL_OK);
   graph->removeGraphic();
@@ -194,5 +278,7 @@ int main(int argc, char** argv) {
   Tcl_FindExecutable(argc ? argv[0] : "test_file_selector");
   exercise(false); FFWindow::collectPendingInterpreters();
   exercise(true); FFWindow::collectPendingInterpreters();
+  exercise(false, true); FFWindow::collectPendingInterpreters();
+  exercise(true, true); FFWindow::collectPendingInterpreters();
   std::cout << "File selector startup, navigation binding, cancel and accept verified in 2D/3D\n";
 }

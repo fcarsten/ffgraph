@@ -82,3 +82,16 @@ The installed library provides `find_package(ffgraph 1.0 CONFIG REQUIRED)` and
 the `ffgraph::ffgraph` target. Configure consumers with the same native MinGW
 toolchain and `-DCMAKE_PREFIX_PATH=/path/to/staged-prefix`; Tcl/Tk development
 packages are required to build clients. `ffgraph --version` reports `1.0.0-rc1`.
+
+For file-selector diagnostics, launch from PowerShell in the extracted package:
+
+```powershell
+$env:FFGRAPH_FILE_SELECTOR_LOG = "$env:TEMP\ffgraph-selector.log"
+& ".\bin\ffgraph.exe"
+```
+
+The UTF-8 log appends window visibility/stacking, focus, directory-scan and Tcl
+error records, including directory/resource paths. It is readable while the GUI
+is waiting. Use `ffgraph3D.exe` for the 3D application. Disable logging for the
+next launch with `Remove-Item Env:FFGRAPH_FILE_SELECTOR_LOG`.
+See [the diagnostics report](docs/FFGRAPH-FILE-SELECTOR-DIAGNOSTICS.md).

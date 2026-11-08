@@ -6,3 +6,4 @@
 /CMakeUserPresets.json
 /staging/
 tests/graph_corpus/__pycache__/
+/ffgraph-selector.log

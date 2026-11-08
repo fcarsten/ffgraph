@@ -661,7 +661,13 @@ proc addCanvasBindings {canv } {
 
 #   bind $canv <Double-Button-1> "$befehl unsetCurrent"
   bind $canv <Double-Button-1> "recall modPress i"
-  bind $canv <Enter> {focus %W}
+  bind $canv <Enter> {
+    # Delayed crossing events after a menu/dialog maps must not activate the
+    # graph behind its file selector. Explicit canvas clicks still focus it.
+    if {![winfo exists .fileselect] || ![winfo viewable .fileselect]} {
+      focus %W
+    }
+  }
   bind $canv <Mod1-Key> "$befehl modPress %A"
   bind $canv <KeyPress> "$befehl keyPress %K %A"
 
