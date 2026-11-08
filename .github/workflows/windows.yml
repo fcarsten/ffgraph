@@ -52,3 +52,13 @@ jobs:
         with:
           name: ffgraph-windows-${{ matrix.build_type }}
           path: build/windows-stage/
+      - name: Assemble release packages and checksums
+        if: matrix.build_type == 'Release'
+        run: python scripts/package-release.py --build build/windows --output build/release-artifacts
+      - name: Preserve release packages
+        if: matrix.build_type == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffgraph-windows-release-packages
+          path: build/release-artifacts/
+          if-no-files-found: error

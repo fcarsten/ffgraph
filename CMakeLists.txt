@@ -1,8 +1,14 @@
 cmake_minimum_required(VERSION 3.24)
-project(ffgraph LANGUAGES C CXX VERSION 1.0)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" FFGRAPH_RELEASE_VERSION LIMIT_COUNT 1)
+if(NOT FFGRAPH_RELEASE_VERSION MATCHES "^([0-9]+\\.[0-9]+\\.[0-9]+)(-[a-zA-Z0-9.]+)?$")
+  message(FATAL_ERROR "VERSION must contain a semantic release version")
+endif()
+set(FFGRAPH_NUMERIC_VERSION "${CMAKE_MATCH_1}")
+project(ffgraph LANGUAGES C CXX VERSION "${FFGRAPH_NUMERIC_VERSION}")
 
 include(GNUInstallDirs)
 include(CTest)
+include(CMakePackageConfigHelpers)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(TK REQUIRED IMPORTED_TARGET tk>=8.6)
 if(WIN32)
@@ -159,6 +165,7 @@ if(WIN32)
 endif()
 target_include_directories(ffgraph PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_compile_features(ffgraph PRIVATE cxx_std_17)
+target_compile_definitions(ffgraph PRIVATE FFGRAPH_RELEASE_VERSION="${FFGRAPH_RELEASE_VERSION}")
 # Preserve historical static archive resolution order.
 target_link_libraries(ffgraph PRIVATE FFGraph FFGraphic FFlayout FFcontainer PkgConfig::TK ${FFGRAPH_DISPLAY_LIBRARIES})
 if(MATH_LIBRARY)
@@ -184,7 +191,16 @@ else()
   include(cmake/WindowsRuntime.cmake)
 endif()
 install(DIRECTORY lib/ffgraph DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(DIRECTORY include/ffgraph/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ffgraph FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hh"
+  PATTERN "tkInt.h" EXCLUDE PATTERN "tkPort.h" EXCLUDE)
+install(FILES globdefs.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES README VERSION RELEASE-NOTES.md RELEASING.md BUILD-CMAKE.md BUILD-WINDOWS.md THIRD-PARTY-NOTICES.md
+  DESTINATION ${CMAKE_INSTALL_DOCDIR})
+install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/ffgraph)
+install(FILES container/COPYING DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/ffgraph RENAME container-COPYING)
+install(FILES misc/license.terms DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/ffgraph RENAME legacy-tk-license.terms)
+install(DIRECTORY licenses/ DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/ffgraph)
 install(TARGETS FFGraph FFGraphic FFlayout FFcontainer ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 # Installed FFGraph static archives now depend on this generated parser.
 install(TARGETS ffgraph_modern_gml ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -198,6 +214,22 @@ add_subdirectory(tests/modern_rome)
 target_sources(FFGraph PRIVATE fgraph/modern/rome_graph_adapter.cc)
 target_link_libraries(FFGraph PUBLIC ffgraph_modern_rome)
 install(TARGETS ffgraph_modern_rome ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+configure_package_config_file(cmake/ffgraphConfig.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/ffgraphConfig.cmake"
+  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ffgraph"
+  PATH_VARS CMAKE_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR)
+write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/ffgraphConfigVersion.cmake"
+  VERSION "${FFGRAPH_NUMERIC_VERSION}" COMPATIBILITY SameMajorVersion)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ffgraphConfig.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/ffgraphConfigVersion.cmake"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ffgraph")
+set(FFGRAPH_RELEASE_ARCHITECTURE "${CMAKE_SYSTEM_PROCESSOR}")
+if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+  set(FFGRAPH_RELEASE_ARCHITECTURE x86_64)
+endif()
+configure_file(cmake/ReleaseInfo.json.in "${CMAKE_CURRENT_BINARY_DIR}/release-info.json" @ONLY)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
 
 if(FFGRAPH_BUILD_PROFILER)
   add_executable(profile_graphs tools/profile_graphs.cpp)
@@ -880,7 +912,19 @@ if(BUILD_TESTING AND NOT FFGRAPH_INITIAL_TESTS_ONLY)
 endif()
 
 if(BUILD_TESTING)
+  find_package(Git REQUIRED)
+  add_test(NAME test_release_version COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} "$<TARGET_FILE:ffgraph>" --version)
+  set_tests_properties(test_release_version PROPERTIES TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "ffgraph ${FFGRAPH_RELEASE_VERSION}")
+  configure_file(tests/test_installed_library.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/test_installed_library.cmake" @ONLY)
+  add_test(NAME test_installed_library
+    COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/test_installed_library.cmake")
+  set_tests_properties(test_installed_library PROPERTIES TIMEOUT 180)
   if(Python3_Interpreter_FOUND)
+    add_test(NAME test_release_packaging
+      COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_release_packaging.py")
+    set_tests_properties(test_release_packaging PROPERTIES TIMEOUT 30)
     add_test(NAME test_installed_runtime_env
       COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_installed_runtime_env.py")
     set_tests_properties(test_installed_runtime_env PROPERTIES TIMEOUT 30 LABELS headless)

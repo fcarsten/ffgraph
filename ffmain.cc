@@ -64,6 +64,10 @@ static bool isPositiveIntegerArgument(const char* argument)
 
 int main(int argc, char **argv)
 {
+ if (argc == 2 && std::string(argv[1]) == "--version") {
+   std::cout << "ffgraph " << FFGRAPH_RELEASE_VERSION << '\n';
+   return 0;
+ }
  Tcl_FindExecutable(argv[0]);
  ffgraph_app::configureRuntimePaths(argv[0]);
  // Keep SIGFPE at its default disposition. IEEE-754 floating-point

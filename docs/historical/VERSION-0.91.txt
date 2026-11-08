@@ -1,0 +1,54 @@
+ffgraph 0.91 alpha
+
+Programs using the library may need to be recompiled before linking
+against the new library!
+
+Changes since 0.9:
+
+- Added a new orthogonal layout algorithm for directed graphs
+- Added a new Methods getCoord, setCoord to FFNodeClass to store a
+  double temporarly without a label.
+- Speed improvment on springembedder
+- Infinity Quality and Stop Button added to Springembedder
+- Layout inspectors now use selected nodes correctly
+- Zoom to fit in graph window added
+- Zoom to a selected rectangle using Mod1-Mouse1-Drag
+- Edge weight information is now correctly saved and loaded
+- HP/UX 9.xx and 10.xx are now supported (GCC and Gnu make only, 
+        HP C++ not tested, HP make does not work (tested :)).
+- Loading and Saving of Rotation and Scalation Settings.
+- Significant graph-loading speedup.
+- Reduced Complexity of FFGraphClass::copy from O(n^2) to O(n)
+- Many memory leaks fixed.
+- Colorbox for selecting Colors available. (Double M3 on Color entry
+  field)
+- Double M1 brings up the inspector.
+- Setting edge and node names without inspector by just typing in the window
+- Variable radius for nodes supported. (Drag Mod1-M1 on node)
+- Various bugs fixed. Especially at label handling routines.
+- More Sugiyama layout features.
+- Faster Sugiyama layout.
+- New Environment variable "FF_LIBDIR" to be able to change location of
+  runtime files dynamically.
+- New Environment variable "FF_ICONDIR" to be able to change location
+  of icons dynamically.
+- ~ should now be handled correctly in paths.
+- Some new graph editing features. 
+- Basic support for loading and saving GML file format.
+- Inspecting groups of selected nodes 
+  - New method "inspectGroup" added to FFGraphInspector.
+- New methods "get/setBackground" for GraphWindows.
+- NO MORE SUPPORT FOR SUNOS 4.x OR TK < 4.0
+- Support for systems without Xpm library should work now.
+
+Planed for next release:
+
+- Update the documenation to scope the changes.
+- Fixing Bugs.
+- Support for more node-shapes.
+- Extending GML support.
+- Full support for undirected graphs
+- Faster.
+- Faster.
+- Faster.
+

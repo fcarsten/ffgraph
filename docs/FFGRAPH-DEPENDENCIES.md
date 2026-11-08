@@ -1,5 +1,12 @@
 # ffgraph — build, runtime and development dependencies
 
+**Historical dependency report:** current release instructions are in
+[BUILD-CMAKE.md](../BUILD-CMAKE.md), [BUILD-WINDOWS.md](../BUILD-WINDOWS.md)
+and [RELEASE-NOTES.md](../RELEASE-NOTES.md). In 1.0.0-rc1, Bison 3.8+, Flex
+2.6+ and Python 3 are build requirements, CMake requires 3.24+, installation
+and executable-relative resources work, and Linux Xpm support is opt-in.
+The older inventory and candidate work below are retained as historical context.
+
 **Status:** Baseline dependency inventory based on `ffgraph-current.zip` and the subsequent patches discussed through Priority 2 Pass 7, **not a complete snapshot of the user's latest Git checkout**. Check current CMake declarations and the current Ubuntu machine before treating this as authoritative. Last reviewed: 1 November 2026.
 
 **PNG migration update (5 November 2026):** Normal builds no longer require

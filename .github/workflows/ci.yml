@@ -40,6 +40,16 @@ jobs:
 
       - name: Run tests (including Xvfb GUI tests)
         run: ctest --preset ${{ matrix.preset }} --output-on-failure --parallel 2
+      - name: Assemble release packages and checksums
+        if: matrix.preset == 'release'
+        run: python3 scripts/package-release.py --build build/release --output build/release-artifacts
+      - name: Preserve release packages
+        if: matrix.preset == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffgraph-linux-release-packages
+          path: build/release-artifacts/
+          if-no-files-found: error
 
   ubuntu-24-04-legacy-xpm:
     name: Ubuntu 24.04 / optional legacy Xpm images

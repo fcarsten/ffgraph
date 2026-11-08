@@ -1,5 +1,8 @@
 # CMake build (Ubuntu 24.04)
 
+Current release candidate: **1.0.0-rc1**. See [release notes](RELEASE-NOTES.md)
+and [packaging instructions](RELEASING.md). `VERSION` is authoritative.
+
 For the initial native Windows build without X11/Xpm, see
 [BUILD-WINDOWS.md](BUILD-WINDOWS.md). Linux keeps its existing full test suite;
 Windows starts with an explicitly selected portable suite.
@@ -13,10 +16,13 @@ importers.
 
 The full application requires **CMake 3.24 or newer** (LINK_GROUP support).
 
+Parser generators require Bison 3.8+ and Flex 2.6+. Python 3 is required
+for build-time fixtures; release packaging requires Python 3.11+ and Git.
+
 Install prerequisites:
 
 ```sh
-sudo apt install build-essential cmake ninja-build pkg-config bison flex tcl-dev tk-dev libx11-dev
+sudo apt install build-essential cmake ninja-build pkg-config bison flex git tcl-dev tk-dev libx11-dev
 ```
 
 Bundled icons and masks use PNG, read directly by Tk 8.6. Xpm is not needed
@@ -46,6 +52,28 @@ cmake --preset release
 cmake --build --preset release --parallel
 ctest --preset release
 ```
+
+Install into a dedicated prefix, then keep `bin`, `lib`, `include` and `share`
+together:
+
+```sh
+cmake --install build/release --prefix "$PWD/build/linux-stage"
+./build/linux-stage/bin/ffgraph --version
+```
+
+External C++ projects can use the installed static library and its dependencies:
+
+```cmake
+cmake_minimum_required(VERSION 3.24)
+project(my_graph_app LANGUAGES CXX)
+find_package(ffgraph 1.0 CONFIG REQUIRED)
+add_executable(my_graph_app main.cpp)
+target_link_libraries(my_graph_app PRIVATE ffgraph::ffgraph)
+```
+
+Configure with `-DCMAKE_PREFIX_PATH=/path/to/ffgraph-prefix`. Use a compatible
+compiler/runtime and Tcl/Tk development packages. The public compatibility
+header is `FFString.h` (formerly `String.h`).
 
 The latest correctness fixes and exact layout speedups are documented in
 [the layout-controls checkpoint](docs/FFGRAPH-LAYOUT-CONTROLS-CHECKPOINT.md) and

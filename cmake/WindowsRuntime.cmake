@@ -34,3 +34,16 @@ install(FILES "${FFGRAPH_TCL_PREFIX}/share/licenses/tcl/license.terms"
   DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/ffgraph RENAME tcl-license.terms OPTIONAL)
 install(FILES "${FFGRAPH_TK_PREFIX}/share/licenses/tk/license.terms"
   DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/ffgraph RENAME tk-license.terms OPTIONAL)
+# Keep the actual native toolchain package notices as well as the checked-in
+# upstream snapshots. Cross-toolchains may instead supply a notice directory.
+set(FFGRAPH_WINDOWS_EXTRA_LICENSE_DIR "" CACHE PATH "Additional notices for a Windows cross-toolchain")
+foreach(component tcl tk gcc gcc-libs mingw-w64 winpthreads zlib)
+  if(IS_DIRECTORY "${FFGRAPH_TCL_PREFIX}/share/licenses/${component}")
+    install(DIRECTORY "${FFGRAPH_TCL_PREFIX}/share/licenses/${component}"
+      DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/ffgraph/toolchain)
+  endif()
+endforeach()
+if(FFGRAPH_WINDOWS_EXTRA_LICENSE_DIR)
+  install(DIRECTORY "${FFGRAPH_WINDOWS_EXTRA_LICENSE_DIR}/"
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/ffgraph/toolchain)
+endif()

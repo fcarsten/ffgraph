@@ -1,4 +1,4 @@
-# Native Windows build (initial port)
+# Native Windows build — 1.0.0-rc1
 
 The initial Windows target is 64-bit MinGW-w64 with native Tcl/Tk 8.6.
 MSYS2 supplies development tools; the installed application uses native Windows
@@ -34,8 +34,8 @@ ctest --test-dir build/windows --output-on-failure --parallel 1
 ./build/windows/ffgraph.exe
 ```
 
-Windows defaults to `FFGRAPH_INITIAL_TESTS_ONLY=ON`. This registers the initial
-24 tests, including containers, graph invariants and geometry, layouts and
+Windows defaults to `FFGRAPH_INITIAL_TESTS_ONLY=ON`. This registers the portable
+suite, including containers, graph invariants and geometry, layouts and
 allocation recovery, FF/GML loading and serialization, GML/Rome parsers,
 resource lookup, native 2D/3D windows, cross-window graph copy/paste, inspector
 controls, and staged application startup. GUI tests use native Tk directly.
@@ -63,7 +63,22 @@ files remain an optional Linux-only compatibility feature (`FFGRAPH_XPM=ON`).
 Windows uses the system clipboard for graph copy/paste. See
 [the PNG migration report](docs/FFGRAPH-PNG-ASSET-MIGRATION.md).
 
-The new [Windows workflow](.github/workflows/windows.yml) builds Debug and
-Release, runs the initial suite, and uploads the staged application. Workflow
-execution requires the changes to be present on GitHub; adding the workflow
-does not establish a successful CI run.
+The [Windows workflow](.github/workflows/windows.yml) builds Debug and Release,
+runs the initial suite and uploads the staged application. Release builds also
+produce source/binary packages, manifests and checksums. Check CI results for
+the exact commit being released.
+
+Package a verified native Release build with Python 3.11+ and Git:
+
+```sh
+python scripts/package-release.py --build build/windows --output build/release-artifacts
+```
+
+Use `--preview` for uncommitted work. See [RELEASING.md](RELEASING.md) for
+artifact names, notices and the final Windows 11 desktop check. Keep `share`
+with `bin` and `lib`; it contains documentation and license notices.
+
+The installed library provides `find_package(ffgraph 1.0 CONFIG REQUIRED)` and
+the `ffgraph::ffgraph` target. Configure consumers with the same native MinGW
+toolchain and `-DCMAKE_PREFIX_PATH=/path/to/staged-prefix`; Tcl/Tk development
+packages are required to build clients. `ffgraph --version` reports `1.0.0-rc1`.

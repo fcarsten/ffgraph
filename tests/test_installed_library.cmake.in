@@ -1,0 +1,30 @@
+# Stage and relocate an install, then build/run a separate project against it.
+function(run_checked)
+  execute_process(COMMAND ${ARGV} WORKING_DIRECTORY "${work}"
+    RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE errors)
+  if(NOT result EQUAL 0)
+    message(FATAL_ERROR "${ARGV}\n${output}\n${errors}\nExit: ${result}")
+  endif()
+endfunction()
+string(RANDOM LENGTH 10 ALPHABET 0123456789abcdef unique)
+set(work "@CMAKE_CURRENT_BINARY_DIR@/installed-library-${unique}")
+file(MAKE_DIRECTORY "${work}")
+run_checked("@CMAKE_COMMAND@" --install "@CMAKE_CURRENT_BINARY_DIR@"
+  --prefix "${work}/original prefix")
+file(RENAME "${work}/original prefix" "${work}/relocated prefix")
+file(COPY "@CMAKE_CURRENT_SOURCE_DIR@/tests/installed_library/" DESTINATION "${work}/consumer")
+set(toolchain)
+if(NOT "@CMAKE_TOOLCHAIN_FILE@" STREQUAL "")
+  list(APPEND toolchain "-DCMAKE_TOOLCHAIN_FILE=@CMAKE_TOOLCHAIN_FILE@")
+endif()
+run_checked("@CMAKE_COMMAND@" -S "${work}/consumer" -B "${work}/consumer-build"
+  -G "@CMAKE_GENERATOR@" "-DCMAKE_CXX_COMPILER=@CMAKE_CXX_COMPILER@"
+  "-DCMAKE_BUILD_TYPE=@CMAKE_BUILD_TYPE@"
+  "-DCMAKE_PREFIX_PATH=${work}/relocated prefix"
+  -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF
+  -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF
+  "-DFFGRAPH_CONSUMER_SANITIZERS=@FFGRAPH_SANITIZERS@" ${toolchain})
+run_checked("@CMAKE_COMMAND@" --build "${work}/consumer-build" --parallel 2)
+set(emulator "@CMAKE_CROSSCOMPILING_EMULATOR@")
+run_checked(${emulator} "${work}/consumer-build/consumer@CMAKE_EXECUTABLE_SUFFIX@")
+message(STATUS "Relocated installed-library consumer passed: ${work}")

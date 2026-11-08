@@ -1,0 +1,113 @@
+Installation currently not supported.
+
+To build and run locally, call  "make all"
+
+
+
+Legacy Installation instructions:
+
+The library has already been successfully installed on the following
+platforms:
+
+- Solaris 2.4 using gcc 2.6.8, tcl 7.3 and tk 3.6 (!!! NO LONGER
+                                                       SUPPORTED !!!)
+
+- Solaris 2.5 usgin gcc 2.7.0, tcl 7.4 and tk 4.0
+- Solaris 2.5 usgin gcc 2.7.2, tcl 7.5 and tk 4.1
+- Linux 1.2.13 using gcc 2.7.0, tcl 7.4 and tk 4.0
+- Linux 1.3.80 using gcc 2.7.2, tcl 7.5 and tk 4.1
+- Sinix, using the Sinix C++ compiler and the motif widget set (although I
+  have never seen this one myself )
+
+To install the library you need the following Programs and libraries
+installed on your system:
+
+- g++ version 2.6.3 or higher.
+- libg++ according to the compiler.
+- X11R5 or higher
+- tcl 7.4 and tk 4.0 (recommended)
+or
+- tcl 7.3 and tk 3.6 optional with the tkPixmap
+  extension. (!!! NO LONGER SUPPORTED !!!)
+
+If you want to compile the .y and .l files you need (Precompiled .cc
+and .h files are included in the distribution) :
+
+- bison++ 1.21-8 
+- flex++ 2.3.8-7 (the real flex++, not the one from the flex distribution !!!) 
+
+If you want to change some of the configure files you also need:
+
+- autoconf
+- autoheader
+
+If you want to be able to use Xpm images you also need the
+
+- Xpm library (recommended)
+
+To install the library do the following:
+
+- You might want to edit the top section of 
+  "./include/ffgraph/ffGlobdefs.h.in"
+
+- Type "./configure". You may want to pass some options
+  like "--prefix=/usr/local" to configure.
+
+- make dependall (optional, but recommended)
+- make
+- make install
+- make install.lib
+- make cleanall (if you want to save disc-space)
+- If all worked fine, stand up and pat yourself on the
+  shoulder
+
+TROUBLESHOUTING:
+
+If something went wrong, maybe one of the following could help:
+
+
+- Error: " make: Warning: Can't find `Makefile.dependencies'"
+
+  Solution:
+
+  Somehow a dependencies file got lost. This can happen if you
+  interrupt "make" at a wrong moment. Go to the corresponding
+  directory and type "touch Makefile.dependencies".
+
+- Error: "gcc: tk.h: No such file or directory"
+
+  Solution:
+
+  The tcl/tk header files are not where the library expects them. Add
+  the directory to "INCLUDES" in "Makefile.head.common.in" and
+  rerun "configure".
+
+- Error: tkAppInit.c: tcl_RcFileName unkown variable
+
+  Solution:
+  
+  comment out the line 
+  tcl_RcFileName = "~/.wishrc";
+
+- Error: "ld: fatal: library -lxxx: not found"
+
+  Solution:
+
+  The library xxx ist not where the ffgraph library expected it. Add
+  the apropriat directory to "LDFLAGS" in "Makefile.head.common.in'
+  and rerun "configure".
+
+- Error: Any other error
+
+  Solution:
+
+  - Find the error, fix it and send a patch to "friedric@fmi.uni-passau.de"
+
+  - Send a bug report to "friedric@fmi.uni-passau.de" containing:
+
+    - Kind of computer you use
+    - Kind and version of operating system you use
+    - Kind and version of compiler you use
+    - Version of ffgraph library you use
+    - Detailed description of the error, including a description on
+      how to reproduce it.

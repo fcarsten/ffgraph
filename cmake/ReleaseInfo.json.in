@@ -1,0 +1,15 @@
+{
+  "version": "@FFGRAPH_RELEASE_VERSION@",
+  "system": "@CMAKE_SYSTEM_NAME@",
+  "architecture": "@FFGRAPH_RELEASE_ARCHITECTURE@",
+  "build_type": "@CMAKE_BUILD_TYPE@",
+  "compiler": "@CMAKE_CXX_COMPILER_ID@ @CMAKE_CXX_COMPILER_VERSION@",
+  "tk_version": "@TK_VERSION@",
+  "sanitizers": "@FFGRAPH_SANITIZERS@",
+  "external_xpm": "@FFGRAPH_XPM@",
+  "bindir": "@CMAKE_INSTALL_BINDIR@",
+  "includedir": "@CMAKE_INSTALL_INCLUDEDIR@",
+  "libdir": "@CMAKE_INSTALL_LIBDIR@",
+  "datadir": "@CMAKE_INSTALL_DATADIR@",
+  "docdir": "@CMAKE_INSTALL_DOCDIR@"
+}
