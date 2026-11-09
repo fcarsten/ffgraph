@@ -721,6 +721,21 @@ proc FileSelectorBox_GetArgs {args} {
 }
 
 proc FileSelectorBox {title pattern given_start_dir args} {
+  global fileselect
+  if {![info exists fileselect(active)]} {set fileselect(active) 0}
+  incr fileselect(active)
+  try {
+    return [FileSelectorBox_Run $title $pattern $given_start_dir {*}$args]
+  } finally {
+    incr fileselect(active) -1
+    if {$fileselect(active) == 0 && [info exists ::ffgraphClosePending] && $::ffgraphClosePending} {
+      # Let the C++ fsBox()/Load/Save callback return before deleting its owner.
+      after idle closeGraphWindow
+    }
+  }
+}
+
+proc FileSelectorBox_Run {title pattern given_start_dir args} {
   ##############
   # Procedure  : 
   # Description: 
@@ -731,6 +746,7 @@ proc FileSelectorBox {title pattern given_start_dir args} {
   ##############
   global fileselect
   global fileselectcolor
+  if {[info exists ::ffgraphClosePending] && $::ffgraphClosePending} {return ""}
   set previousFocus [focus]
   FileSelectorBox_GetArgs $args
 
@@ -757,6 +773,7 @@ proc FileSelectorBox {title pattern given_start_dir args} {
     wm title .fileselect $title
     FileSelectorBox_FillEntry .fileselect.misc.right.pattern.e $pattern
     update
+    if {[info exists ::ffgraphClosePending] && $::ffgraphClosePending} {return ""}
     if {[string first "/" $given_start_dir] != "-1"} {
       set start_dir $given_start_dir
     } else {
@@ -802,6 +819,7 @@ proc FileSelectorBox {title pattern given_start_dir args} {
   # Directory scans process events. Keep both new and reused selectors hidden
   # until their title, contents and pending layout work are ready to present.
   update idletasks
+  if {[info exists ::ffgraphClosePending] && $::ffgraphClosePending} {return ""}
   wm minsize .fileselect [winfo reqwidth .fileselect.misc] 400
   set fileselect(state) wait
   wm deiconify .fileselect
@@ -813,7 +831,7 @@ proc FileSelectorBox {title pattern given_start_dir args} {
 #   }
   tkwait variable fileselect(state)
   set result [.fileselect.choose.current.e get]
-  if {[file isdirectory [file dirname $result]] != "1"} {
+  if {$fileselect(state) == "ok" && [file isdirectory [file dirname $result]] != "1"} {
     if {[FileSelectorBox_MessageBox \
 	   "The Directory\n\n[file dirname $result]\n\ndoesn't exists!\nShall i create it?" \
 	   "Attention" "Do it" "Forget it"] =="1"} {

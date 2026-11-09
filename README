@@ -30,9 +30,9 @@ compiler/runtime. The old String.h compatibility header is now FFString.h.
 
 Main authors: Carsten Friedrich, Falk Schreiber
 
-Contributors: Dirk Koschützki, Andreas Holzmann, Achim Dannecker, Andreas Claßen, Volker Braun, Barbara Zündorf
+Contributors: Dirk Koschützki, Andreas Holzmann, Achim Dannecker, Andreas Claßen, Volker Braun, Barbara Zündorf, others at the Lehrstuhl für Programmiersysteme University of Passau 
 
-Project lead: Bernhard Steffen, Head of Lehrstuhl Für Programmiersysteme at the University of Passau 
+Project lead: Bernhard Steffen, Head of Lehrstuhl für Programmiersysteme at the University of Passau 
 
 # License
 

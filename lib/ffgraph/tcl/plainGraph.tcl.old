@@ -745,7 +745,7 @@ proc showUsageBox {} {
   wm sizefrom .topA ""
   wm maxsize .topA 1000 1000
   wm minsize .topA 10 10
-  wm title .topA {Graph Usage: }
+  wm title .topA {Info: }
 
 
   # build widget .topA.button4

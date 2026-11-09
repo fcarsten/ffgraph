@@ -994,7 +994,7 @@ proc buildButtonFrame {} {
 }
 
 proc addUserUsage {canv} {
-  wm title $canv {Graph Usage: }
+  wm title $canv {Info: }
 
   # build widget $canv.button4
   button $canv.button4 -command "destroy $canv"  -text {OK}

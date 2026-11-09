@@ -568,6 +568,11 @@ int FFTclBasicWindow::recall(Tcl_Interp *, int , const char **c)
      }
     else if(key == "w")
      {
+      // fsBox() runs a nested Tcl event loop on this very object. Cancel that
+      // operation before closing, then let its outer C++ callback unwind.
+      const char* selectorActive = Tcl_GetVar2(interp, "fileselect", "active", TCL_GLOBAL_ONLY);
+      if (selectorActive && atoi(selectorActive) > 0)
+        return FF_TclEvalObjv(interp, {"closeGraphWindow"});
       if(inspector)
        {
         inspector->hide();

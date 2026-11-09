@@ -885,7 +885,7 @@ proc updateScale {schieber wert} {
 }
 
 proc addUserUsage {canv} {
-  wm title $canv {Graph Usage: }
+  wm title $canv {Info: }
 
   # build widget $canv.button4
   ttk::button $canv.button4 -command "destroy $canv"  -text {OK}
@@ -1922,10 +1922,23 @@ proc setSelected { c {canv "."}} {
 
 # end source
 
+proc closeGraphWindow {} {
+  global fileselect ffgraphClosePending
+  # Repeated WM requests can arrive before deferred interpreter deletion.
+  if {[info commands recall] eq ""} {return}
+  if {[info exists fileselect(active)] && $fileselect(active) > 0} {
+    set ffgraphClosePending 1
+    set fileselect(state) dismiss
+    # A Save As confirmation has its own nested event loop.
+    if {[winfo exists .htmessagebox]} {set ::htmessagebox 0}
+    return
+  }
+  set ffgraphClosePending 0
+  recall modPress w
+}
+
 proc EndSrc {} {
-#  wm protocol . WM_DELETE_WINDOW { recall deleteWindow;}
-  # Share File > Close cleanup, including deferred interpreter deletion.
-  wm protocol . WM_DELETE_WINDOW {recall modPress w}
+  wm protocol . WM_DELETE_WINDOW closeGraphWindow
 }
 
 # initialize global variables

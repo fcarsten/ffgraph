@@ -8,7 +8,7 @@ source $FF_LIBDIR/tcl/stdGraph.tcl
 
 # Procedure: showUsageBox
 proc addUserUsage {fenster} {
-  wm title $fenster {Graph Usage: }
+  wm title $fenster {Info: }
 
   # build widget $fenster.button4
   ttk::button $fenster.button4 -command "destroy $fenster"  -text {OK}
@@ -16,6 +16,23 @@ proc addUserUsage {fenster} {
   # build widget $fenster.message3
   message $fenster.message3 -aspect {1331} -borderwidth {4} -justify {left}\
     -padx {5} -pady {2} -relief {raised} -text {
+    # Authors and contributors to the historic code:
+
+      Main authors: Carsten Friedrich, Falk Schreiber
+
+      Contributors: Dirk Koschützki, Andreas Holzmann, Achim Dannecker, Andreas Claßen, Volker Braun, 
+                    Barbara Zündorf, others at the Lehrstuhl für Programmiersysteme University of Passau
+
+      Project lead: Bernhard Steffen, Head of Lehrstuhl für Programmiersysteme at the University of Passau 
+
+    # License
+
+      GPL 3
+
+    Github: https://github.com/fcarsten/ffgraph
+
+    # Usage (Historic Text)
+
     Shift-XX, Ctrl-XX, Alt-XX etc := press key Shift, Ctrl, ... while doing XX
     Mn := Press Mouse Button n
     

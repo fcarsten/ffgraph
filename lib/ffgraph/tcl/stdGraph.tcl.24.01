@@ -296,7 +296,7 @@ proc createIcon { iconFile {selIconFile "__NoIcon__"} } {
   }
 
   if { [info exists cfTmpImage] } {
-    # puts "Bestätige Icon Cache"
+    # puts "Bestï¿½tige Icon Cache"
   } {
     set cfTmpImage [image create $createTyp -file $normalBild ]
     set iconCache($bild,$typ) $cfTmpImage
@@ -310,7 +310,7 @@ proc createIcon { iconFile {selIconFile "__NoIcon__"} } {
   set tmpB $bild.$typ
   if { $tmpA != $tmpB } {
     if { [info exists cfTmpSelImage] } {
-      # puts "Bestätige selIcon Cache"
+      # puts "Bestï¿½tige selIcon Cache"
     } {
       set cfTmpSelImage [image create $selCreateTyp -file $selectBild]
       set iconCache($selBild,$selTyp) $cfTmpSelImage
@@ -804,7 +804,7 @@ proc button1Release {befehl W x y} {
       centerCanvas $W $centX $centY
 
 #       puts "Breite  : $breite"
-#       puts "Höhe    : $hoehe"
+#       puts "Hï¿½he    : $hoehe"
 #       puts ""
 #       puts "Dragbox : $dragBoxX $dragBoxY $canvX $canvY"
 #       puts "Breite  : $dBreite"
@@ -1113,7 +1113,7 @@ proc updateScale {schieber wert} {
 }
 
 proc addUserUsage {canv} {
-  wm title $canv {Graph Usage: }
+  wm title $canv {Info: }
 
   # build widget $canv.button4
   button $canv.button4 -command "destroy $canv"  -text {OK}
