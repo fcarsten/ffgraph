@@ -7,6 +7,7 @@ source [file join [file dirname [info script]] ttk.tcl]
 #
 
 source [file join [file dirname [info script]] icons.tcl]
+source -encoding utf-8 [file join [file dirname [info script]] info.tcl]
 
 # Bind the Alt key by name: Windows Tk maps Mod1/M1 to Num Lock, so raw
 # Mod1 bindings intercept ordinary mouse and key events when Num Lock is on.
@@ -885,17 +886,9 @@ proc updateScale {schieber wert} {
 }
 
 proc addUserUsage {canv} {
-  wm title $canv {Info: }
-
-  # build widget $canv.button4
-  ttk::button $canv.button4 -command "destroy $canv"  -text {OK}
-  message $canv.message3 -aspect {1331} -borderwidth {2} -justify {left}\
-    -padx {3} -pady {1} -relief {flat} -text {No Help Today ...}
-
-  pack append $canv     \
-    $canv.message3 {top frame center}     \
-    $canv.button4 {bottom frame center fillx}
+  ::ffgraph_info::build $canv
 }
+
 
 # Procedure: addSubWindow
 proc addSubWindow { canv x y } {

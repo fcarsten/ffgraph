@@ -6,59 +6,7 @@ source $FF_LIBDIR/tcl/xfmisc.tcl
 source $FF_LIBDIR/tcl/fileselect.tcl
 source $FF_LIBDIR/tcl/stdGraph.tcl
 
-# Procedure: showUsageBox
-proc addUserUsage {fenster} {
-  wm title $fenster {Info: }
-
-  # build widget $fenster.button4
-  ttk::button $fenster.button4 -command "destroy $fenster"  -text {OK}
-
-  # build widget $fenster.message3
-  message $fenster.message3 -aspect {1331} -borderwidth {4} -justify {left}\
-    -padx {5} -pady {2} -relief {raised} -text {
-    # Authors and contributors to the historic code:
-
-      Main authors: Carsten Friedrich, Falk Schreiber
-
-      Contributors: Dirk Koschützki, Andreas Holzmann, Achim Dannecker, Andreas Claßen, Volker Braun, 
-                    Barbara Zündorf, others at the Lehrstuhl für Programmiersysteme University of Passau
-
-      Project lead: Bernhard Steffen, Head of Lehrstuhl für Programmiersysteme at the University of Passau 
-
-    # License
-
-      GPL 3
-
-    Github: https://github.com/fcarsten/ffgraph
-
-    # Usage (Historic Text)
-
-    Shift-XX, Ctrl-XX, Alt-XX etc := press key Shift, Ctrl, ... while doing XX
-    Mn := Press Mouse Button n
-    
-    Add Node: Ctrl-M1 on background
-    Add Edge: Ctrl-M1 on source Node then Ctrl-M1 on target Node
-    Add Edgepoint: Select Edge then Shift-Ctrl-M1 on background
-
-    Move Node: M1 on Node then drag
-    Move Edge: M1 on Edgepoint then drag
-    Move Edgepoint: Shift-M1 on Edgepoint then drag
-
-    Delete Node: M2 on Node
-    Delete Edge: M2 on Edge
-    Delete Edgepoint: Select Edge, Shift-Ctrl-M2 near point
-
-    Bring up Node Menu: M3 on Node
-    Bring up Edge Menu: M3 on Edge
-      
-    Zoom to a rectangle: Mod-M1 on brackground then drag
-  }
-
-  # pack widget $fenster
-  pack append $fenster     \
-    $fenster.message3 {top frame center}     \
-    $fenster.button4 {bottom frame center fillx}
-}
+# The shared Info page is defined by stdGraph.tcl.
 
 # end source
 

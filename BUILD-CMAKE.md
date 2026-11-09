@@ -42,6 +42,12 @@ Controls use ttk, included with Tk 8.6. Linux uses the `clam` theme; canvas,
 text and list displays retain Tk widgets. No additional theme package is
 required. See [the ttk port report](docs/FFGRAPH-TTK-WIDGET-PORT.md).
 
+Info links use the default browser. Native Linux needs `xdg-open` (from
+`xdg-utils`) or `gio` with a configured HTTP(S) handler. WSL uses `wslview` when
+available, otherwise Windows' `rundll32.exe` through WSL interoperability, so a
+separate Linux browser is not required there. Windows executables must be
+available on WSL's `PATH` for that fallback.
+
 Build and test:
 
 ```sh
