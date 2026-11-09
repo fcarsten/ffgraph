@@ -26,4 +26,16 @@ The installed C++ library includes a CMake package: find_package(ffgraph 1.0
 CONFIG REQUIRED), then link ffgraph::ffgraph. Rebuild clients with a compatible
 compiler/runtime. The old String.h compatibility header is now FFString.h.
 
-Project: https://github.com/fcarsten/ffgraph
+# Authors and contributors to the historic code:
+
+Main authors: Carsten Friedrich, Falk Schreiber
+
+Contributors: Dirk Koschützki, Andreas Holzmann, Achim Dannecker, Andreas Claßen, Volker Braun, Barbara Zündorf
+
+Project lead: Bernhard Steffen, Head of Lehrstuhl Für Programmiersysteme at the University of Passau 
+
+# License
+
+GPL 3
+
+Github: https://github.com/fcarsten/ffgraph
