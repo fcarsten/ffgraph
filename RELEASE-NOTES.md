@@ -2,7 +2,36 @@
 
 A preservation release of the historical ffgraph algorithms and application,
 updated for modern Linux and Windows, with documented correctness fixes.
-This release candidate is intended for final compatibility testing.
+This prerelease is available for public compatibility testing before 1.0.0.
+Feedback on real Linux and Windows desktops is especially welcome.
+
+## Downloads and getting started
+
+Choose the appropriate file from this release's **Assets**:
+
+| Platform | Archive |
+| --- | --- |
+| Windows x86-64 | `ffgraph-1.0.0-rc1-windows-x86_64.zip` |
+| Ubuntu 24.04 x86-64 | `ffgraph-1.0.0-rc1-linux-x86_64.tar.gz` |
+| Source code | `ffgraph-1.0.0-rc1-source.tar.gz` |
+
+**Windows:** extract the complete ZIP into a fresh directory and open the
+extracted `ffgraph-1.0.0-rc1` folder. Launch
+`bin\ffgraph.exe` for 2D or `bin\ffgraph3D.exe` for 3D. Keep the `bin`, `lib`,
+`include` and `share` directories together. Tcl/Tk and the required runtime DLLs
+are bundled; no MSYS2, WSL, X server or separate Tcl/Tk installation is needed.
+The Windows executables are not code-signed.
+
+**Ubuntu:** extract the complete archive and run `bin/ffgraph` or
+`bin/ffgraph3D`. This binary package targets Ubuntu 24.04 and uses system
+Tcl/Tk 8.6 and X11 libraries. For building from source, follow the
+[Linux build instructions](https://github.com/fcarsten/ffgraph/blob/v1.0.0-rc1/BUILD-CMAKE.md)
+or [Windows build instructions](https://github.com/fcarsten/ffgraph/blob/v1.0.0-rc1/BUILD-WINDOWS.md).
+
+Platform-specific `SHA256SUMS` and manifest files accompany the archives.
+Verify the download against its checksum; manifests identify the source commit,
+build configuration and packaged file hashes. The source archive is also
+available for rebuilding the candidate.
 
 ## Supported configurations
 
@@ -13,8 +42,7 @@ This release candidate is intended for final compatibility testing.
 - GNU Bison 3.8+, Flex 2.6+ and Python 3 are build prerequisites; Git is
   required for the test suite and release packaging.
 
-See `BUILD-CMAKE.md` and `BUILD-WINDOWS.md` for current instructions. Original
-0.91 release notes and 1990s installation instructions are retained under
+Original 0.91 release notes and 1990s installation instructions are retained under
 `docs/historical/`. Earlier per-patch reports under `docs/` are historical
 verification records and may contain superseded counts or open issues.
 
@@ -29,8 +57,19 @@ verification records and may contain superseded counts or open issues.
   theme. Graph canvases and widgets without ttk equivalents retain Tk.
 - All 85 bundled Xpm/XBM images converted to PNG, preserving pixels and legacy
   graph references. Linux external Xpm support is opt-in (`FFGRAPH_XPM=ON`).
-- Fixes for icon creation/missing artwork, file-selector mapping/navigation,
-  inspector selection, colour selection and empty-region zoom.
+- Fixes for icon creation/missing artwork, colour selection and node fills,
+  layout-inspector selection on Windows, and zooming empty graph regions.
+- File-selector startup, focus, navigation and cancellation fixes, including
+  Windows GUI builds without a console. Closing a graph with an active Load
+  or Save As dialog cancels the file operation before closing its owner.
+- New Graph windows remain open after creation. The title-bar Close button
+  closes the selected graph and its helper windows; closing the last graph
+  exits the application normally.
+- Windows node movement, edge creation and Alt shortcuts work with Num Lock
+  enabled; lock keys no longer trigger the node-resize bindings.
+- Shared formatted Info dialog for 2D/3D, with contributor acknowledgements,
+  selectable text and clickable license/project links. Under WSL, links use
+  Windows browser interoperability when available.
 - Graph/container lifetime and GUI callback/interpreter cleanup corrections.
 - Spring stability, equilibrium, weight-toggle, pinning and iteration fixes.
 - Sugiyama crossing/barycenter, termination, controls, offsets, large-input,
@@ -49,19 +88,45 @@ coordinates across every platform, allocator and graph are not guaranteed.
 - CMake is the supported build system; original Makefiles remain archival.
 - Windows external Xpm loading, MSVC, ARM64 and Tcl/Tk 9 are not supported.
 - Linux still requires X11 (including XWayland on Wayland desktops).
+- Info links on native Linux need `xdg-open` or `gio` with a configured HTTP(S)
+  browser handler. WSL uses `wslview` or Windows' `rundll32.exe` when available
+  on its PATH. External browser setup is outside the application.
 - Spring retains its historical distinct weighted 2D/3D formulas and pinned
   selection convention; quality zero runs until stopped.
 - Missing historical artwork is represented by a placeholder; graph references
   are preserved when saved. External images are not embedded into graph files.
 - GUI sanitizer runtime tests and toolkit shutdown-leak diagnostics are separate
   partitions. Passing runtime checks does not establish toolkit leak freedom.
-- Final Windows 11 Release-ZIP testing, including non-ASCII paths and display
-  scaling, must be recorded before promotion to a stable release. Automated
-  Windows CI and Wine tests do not replace that desktop check.
+- Windows 11 desktop validation, especially non-ASCII paths and different
+  display-scaling settings, remains a focus of this release candidate.
+  Automated Windows CI and Wine tests do not cover every desktop configuration.
 
-## Release artifacts
+## What to test and how to report problems
 
-Publish the matching source archive, Windows x86-64 Release ZIP, release
-manifest and `SHA256SUMS`. Preview packages made from uncommitted changes are
-explicitly named `preview` and must be regenerated from the final clean commit.
-See `RELEASING.md` for the repeatable packaging and verification procedure.
+Please try both 2D and 3D, including:
+
+- Loading, saving and reopening FF/sgraph, GML and Rome graphs.
+- Creating/moving nodes and edges, with Num Lock on and off on Windows.
+- Running layouts and opening, dismissing and reopening their inspectors.
+- Icon nodes, colours, labels, zoom and copy/paste between graph windows.
+- File-selector navigation and closing a graph while its file dialog is open.
+- Paths containing spaces or non-ASCII characters, display scaling, Info links
+  and closing the last graph window.
+
+Report reproducible problems through
+[GitHub Issues](https://github.com/fcarsten/ffgraph/issues). Include:
+
+- Release version (`1.0.0-rc1`), operating-system version, and whether you use
+  native Windows, Linux or WSL.
+- Display scaling and relevant keyboard settings such as Num Lock.
+- Steps to reproduce, expected/actual results and the complete error message.
+- A minimal example graph and screenshots or logs where useful.
+
+If a file selector fails to appear or respond, set `FFGRAPH_FILE_SELECTOR_LOG`
+to a writable filename before launch and include the resulting diagnostic log.
+The build instructions explain how to enable it.
+
+Maintainer packaging and verification instructions are in
+[RELEASING.md](https://github.com/fcarsten/ffgraph/blob/v1.0.0-rc1/RELEASING.md).
+Packages labelled `preview` are working-tree snapshots; public candidate assets
+are generated from the clean, tagged release commit.
