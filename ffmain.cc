@@ -104,8 +104,8 @@ int main(int argc, char **argv)
  
  String appName(argv[0]);
 
- // Keep graph handles alive until the Tk event loop has finished. Otherwise
- // the last external graph reference can disappear before any GUI events run.
+ // Keep graph handles alive during startup, then hand them to the same
+ // window-lifetime owner used by File > New and Load.
  std::vector<FFGraph> initialGraphs;
 
  // If arguments were supplied I try to open them as graphs.
@@ -143,13 +143,18 @@ int main(int argc, char **argv)
     initialGraphs.back()->createGraphic(new FFTclWindow);
   }
 
+ // Release each startup graph when its graphic closes, including its hidden
+ // layout inspectors. Keeping these owners until after mainLoop() would leave
+ // inspector Tk roots alive and prevent the last-window shutdown condition.
+ for (const auto& graph : initialGraphs)
+   FFWindow::retainGraph(graph);
+ initialGraphs.clear();
+
  // Process Tcl/Tk events and reclaim deleted window interpreters between
  // top-level events.
  // Tcl_DeleteInterp is unsafe inside commands that delete their own window.
  FFWindow::mainLoop();
- // Releasing the initial graph handles may itself destroy window labels.
- // Collect any interpreters queued by their destructors before exiting.
- initialGraphs.clear();
+ // Drain any remaining deferred interpreter cleanup before exiting.
  FFWindow::collectPendingInterpreters();
 }
 

@@ -1924,7 +1924,8 @@ proc setSelected { c {canv "."}} {
 
 proc EndSrc {} {
 #  wm protocol . WM_DELETE_WINDOW { recall deleteWindow;}
-  wm protocol . WM_DELETE_WINDOW { puts stderr "Use close";}
+  # Share File > Close cleanup, including deferred interpreter deletion.
+  wm protocol . WM_DELETE_WINDOW {recall modPress w}
 }
 
 # initialize global variables

@@ -49,15 +49,21 @@ template<class Base> void exercise() {
       created->addNode(FFPoint(20, 30));
       FF_CHECK(created->getNumNodes() == 1 && parent->getNumNodes() == 0);
     }
+    child.window->showInspector();
+    FF_CHECK(Tk_GetNumMainWindows() == before + 3);
     auto* interp = child.window->getInterpreter();
-    FF_CHECK(Tcl_Eval(interp, "recall modPress w") == TCL_OK);
+    FF_CHECK(Tcl_Eval(interp, "toplevel .closeTestHelper; update idletasks") == TCL_OK);
+    // Exercise the title-bar protocol, rather than bypassing it with Close.
+    FF_CHECK(Tcl_Eval(interp, "uplevel #0 [wm protocol . WM_DELETE_WINDOW]") == TCL_OK);
     FF_CHECK(!child.alive);
     FFWindow::collectPendingInterpreters();
     FF_CHECK(Tk_GetNumMainWindows() == before + 1);
     FF_CHECK(graphDestroyed); // The registry must release the closed graph too.
   }
-  parent->removeGraphic();
+  FF_CHECK(parent->getWindow() == window);
+  FF_CHECK(Tcl_Eval(window->getInterpreter(), "uplevel #0 [wm protocol . WM_DELETE_WINDOW]") == TCL_OK);
   FFWindow::collectPendingInterpreters();
+  FF_CHECK(parent->getWindow() == nullptr);
   FF_CHECK(Tk_GetNumMainWindows() == before);
 }
 }

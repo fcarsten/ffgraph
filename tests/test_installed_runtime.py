@@ -57,12 +57,15 @@ def main():
     # These private staged scripts exercise the genuine app startup, inspectors
     # and icon lookup, then terminate the GUI process without production hooks.
     hook = r'''
-after idle {
+proc ffgraphRuntimeCheck {} {
+  global env
+  # A constructor runs nested updates before publishing its icon directory.
+  # Wait until graph-window initialization is complete before invoking Close.
+  if {![info exists ::ICON_LIB_DIR]} {after 10 ffgraphRuntimeCheck; return}
   if {![file exists $env(FF_LIBDIR)/tcl/xfmisc.tcl]} {exit 11}
   if {![file isdirectory $env(FF_ICONDIR)]} {exit 12}
-  # This idle hook can run inside the window constructor's nested update,
-  # before it publishes ICON_LIB_DIR. Resolve the resource through its loaded
-  # alias table and the actual runtime environment instead.
+  # Resolve the converted asset through the loaded alias table and runtime
+  # environment, as in an ordinary installed application.
   set png [dict get $::ffgraph_icons::aliases xpm/redball.xpm]
   set icon [image create photo -file [file join $env(FF_ICONDIR) $png]]
   if {$icon eq "" || [image type $icon] ne "photo"} {exit 13}
@@ -70,13 +73,19 @@ after idle {
   puts $out $env(FF_LIBDIR)
   puts $out $env(FF_ICONDIR)
   close $out
-  exit 0
+  uplevel #0 [wm protocol . WM_DELETE_WINDOW]
 }
+after idle ffgraphRuntimeCheck
 '''
     for directory in (resources, custom):
         for filename in ("plainGraph.tcl", "fgraph.tcl"):
             with (directory / "tcl" / filename).open("a") as script:
                 script.write(hook)
+    # Cover both startup ownership paths: two command-line graphs and one
+    # empty graph. Normal title-bar Close must end the actual process even
+    # though each graph has withdrawn layout-inspector roots.
+    for filename in ("startup-one.gml", "startup-two.gml"):
+        (work / filename).write_text("graph [ directed 1 node [ id 1 ] ]\n")
     for override in (False, True):
         for executable in (binary, link):
             env = os.environ.copy()
@@ -97,7 +106,8 @@ after idle {
                 env.pop("TK_LIBRARY", None)
             log = work / f"{executable.name}-{override}.log"
             try:
-                run = subprocess.run([*args.emulator, str(executable)], cwd=work, env=env, text=True,
+                files = [] if override else ["startup-one.gml", "startup-two.gml"]
+                run = subprocess.run([*args.emulator, str(executable), *files], cwd=work, env=env, text=True,
                                      capture_output=True, timeout=20)
             except subprocess.TimeoutExpired as exc:
                 def output(value):
@@ -112,7 +122,7 @@ after idle {
                 # Wine exposes host absolute paths through its Z: drive.
                 actual = [line.removeprefix("Z:") for line in actual]
             assert [Path(line) for line in actual] == [chosen, chosen / "icons"]
-    print("Installed 2D/3D runtime and explicit resource overrides passed:", work)
+    print("Installed 2D/3D runtime, resource overrides and last-window title-bar shutdown passed:", work)
 
 
 if __name__ == "__main__":
