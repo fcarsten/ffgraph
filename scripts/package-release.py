@@ -29,8 +29,10 @@ def sha256(path):
 
 def archive_source(source, target, root, preview):
     if not preview:
-        # Archive Git objects, avoiding checkout line-ending transformations.
-        subprocess.run(["git", "-C", str(source), "archive", "--format=tar.gz",
+        # Ignore host checkout-EOL preferences when exporting source objects.
+        # Explicit repository attributes still control their declared files.
+        subprocess.run(["git", "-c", "core.autocrlf=false", "-c", "core.eol=lf",
+                        "-C", str(source), "archive", "--format=tar.gz",
                         f"--prefix={root}/", f"--output={target}", "HEAD"], check=True)
         return
     names = git(source, "ls-files", "-z", "--cached", "--others", "--exclude-standard")

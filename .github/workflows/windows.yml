@@ -27,6 +27,9 @@ jobs:
         with:
           msystem: UCRT64
           update: true
+          # Keep the runner's Git for Windows visible to native Python.
+          # CMake can find it through the registry even when PATH hides it.
+          path-type: inherit
           install: >-
             bison flex
             mingw-w64-ucrt-x86_64-gcc
@@ -36,6 +39,8 @@ jobs:
             mingw-w64-ucrt-x86_64-python
             mingw-w64-ucrt-x86_64-tcl
             mingw-w64-ucrt-x86_64-tk
+      - name: Verify Python can launch Git for tests and packaging
+        run: python -c "import subprocess, sys; print(sys.executable); subprocess.run(['git', '--version'], check=True)"
       - name: Configure native Windows build (no X11 or Xpm)
         run: >-
           cmake -S . -B build/windows -G Ninja

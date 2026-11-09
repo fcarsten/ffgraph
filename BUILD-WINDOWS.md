@@ -14,7 +14,7 @@ Install [MSYS2](https://www.msys2.org/) and open its **UCRT64** terminal. Update
 it following the MSYS2 installation instructions, then install:
 
 ```sh
-pacman -S --needed bison flex \
+pacman -S --needed bison flex git \
   mingw-w64-ucrt-x86_64-gcc \
   mingw-w64-ucrt-x86_64-cmake \
   mingw-w64-ucrt-x86_64-ninja \
@@ -23,6 +23,12 @@ pacman -S --needed bison flex \
   mingw-w64-ucrt-x86_64-tcl \
   mingw-w64-ucrt-x86_64-tk
 ```
+
+Git must be available on PATH to Python subprocesses for the test suite and
+release packaging, even if CMake can locate a Git for Windows installation
+through the registry. The CI workflow preserves the runner PATH inside MSYS2
+and verifies this before configuration. Git is a build/test dependency; it is
+not needed to run the installed application.
 
 From the checkout in that terminal:
 

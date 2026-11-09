@@ -21,17 +21,24 @@ class ReleasePackagingTest(unittest.TestCase):
                 return subprocess.check_output(["git", "-C", str(source), *args], stderr=subprocess.STDOUT)
             git("init")
             (source / ".gitignore").write_text("build/\n")
-            (source / "VERSION").write_text("1.0.0-rc1\n")
+            # Byte assertions below require LF fixtures on Windows too,
+            # independent of Python newline translation and Git autocrlf.
+            (source / "VERSION").write_bytes(b"1.0.0-rc1\n")
+            binary = b"\x00\xff\r\noriginal binary bytes\r\n"
+            (source / "asset.bin").write_bytes(binary)
             git("add", ".")
             git("-c", "user.name=Release test", "-c", "user.email=test@example.invalid",
                 "-c", "commit.gpgsign=false", "commit", "-m", "fixture")
+            # Exercise Windows-style Git settings even in Linux CI.
+            git("config", "core.autocrlf", "true")
             commit, state = packaging.source_state(source, False)
             self.assertEqual(state, "clean")
             target = root / "clean.tar.gz"
             packaging.archive_source(source, target, "ffgraph-test", False)
             with tarfile.open(target) as archive:
                 self.assertEqual(archive.extractfile("ffgraph-test/VERSION").read(), b"1.0.0-rc1\n")
-            (source / "VERSION").write_text("modified preview\n")
+                self.assertEqual(archive.extractfile("ffgraph-test/asset.bin").read(), binary)
+            (source / "VERSION").write_bytes(b"modified preview\n")
             (source / "new-notice.txt").write_text("uncommitted notice\n")
             (source / "build").mkdir()
             (source / "build/private.txt").write_text("must not ship\n")
